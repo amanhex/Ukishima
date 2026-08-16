@@ -31,6 +31,23 @@ ShellRoot {
     property string openSurface: ""
     property string peekMon: ""
 
+    /**
+     * Battery notification latch state. Fired only on the transition into the
+     * state (UPower is event-driven over D-Bus, so these are change-triggered,
+     * never polled): low when a discharging battery crosses 20%, full when a
+     * plugged-in battery reaches 100%. The latch is re-armed by leaving the
+     * state, so one notification per event, not one per tick.
+     */
+    property bool lowBattNotified: false
+    property bool fullBattNotified: false
+
+    function battNote(urgency, summary, body) {
+        battNoteProc.command = urgency.length > 0
+            ? ["notify-send", "-a", "Ukishima", "-u", urgency, summary, body]
+            : ["notify-send", "-a", "Ukishima", summary, body];
+        battNoteProc.running = true;
+    }
+
     function refresh() {
         Hyprland.refreshMonitors();
         Hyprland.refreshWorkspaces();
@@ -41,6 +58,41 @@ ShellRoot {
         refresh();
         Devices.restore();
         void GameMode.active;
+        if (Battery.present && Battery.low && !root.lowBattNotified) {
+            root.lowBattNotified = true;
+            root.battNote("critical", "Low battery",
+                Battery.pct + "% remaining — plug in your charger.");
+        }
+    }
+
+    Process {
+        id: battNoteProc
+    }
+
+    Connections {
+        target: Battery
+        function onLowChanged() {
+            if (!Battery.present)
+                return;
+            if (Battery.low && !root.lowBattNotified) {
+                root.lowBattNotified = true;
+                root.battNote("critical", "Low battery",
+                    Battery.pct + "% remaining — plug in your charger.");
+            } else if (!Battery.low && (Battery.charging || Battery.pct > 25)) {
+                root.lowBattNotified = false;
+            }
+        }
+        function onFullChanged() {
+            if (!Battery.present)
+                return;
+            if (Battery.full && !root.fullBattNotified) {
+                root.fullBattNotified = true;
+                root.battNote("normal", "Battery full",
+                    Battery.pct + "% — you can unplug.");
+            } else if (!Battery.full) {
+                root.fullBattNotified = false;
+            }
+        }
     }
 
     /**
@@ -477,7 +529,7 @@ ShellRoot {
                     surface: overlay.surface
                     forcePinned: root.peekMon === overlay.modelData.name
 
-                    opacity: overlay.monFullscreen ? 0 : 1
+                    opacity: (overlay.monFullscreen && !pill.transientLive) ? 0 : 1
                     Behavior on opacity {
                         NumberAnimation {
                             duration: Motion.morph
@@ -486,7 +538,7 @@ ShellRoot {
                         }
                     }
                     transform: Translate {
-                        y: (overlay.monFullscreen || pill.hidden) ? -(pill.height + overlay.topGap) : 0
+                        y: ((overlay.monFullscreen && !pill.transientLive) || pill.hidden) ? -(pill.height + overlay.topGap) : 0
                         Behavior on y {
                             NumberAnimation {
                                 duration: Motion.morph
