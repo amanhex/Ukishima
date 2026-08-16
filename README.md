@@ -9,7 +9,9 @@ The project is fully self-contained: the config folder holds the QML surfaces, i
 ## Preview
 
 <p align="center">
-<video src="preview/Ukishima-demo.mp4" width="70%" controls loop muted autoplay></video>
+<a href="https://youtu.be/Xkld6B5Pke0">
+  <img src="https://img.youtube.com/vi/Xkld6B5Pke0/maxresdefault.jpg" width="70%" alt="Ukishima demo on YouTube">
+</a>
 </p>
 
 See the [full preview gallery](preview/README.md) for all screenshots.
