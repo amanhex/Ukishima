@@ -58,8 +58,11 @@ Item {
     readonly property bool recorderOpen: surface === "recorder"
     readonly property bool sysmonOpen: surface === "sysmon"
     readonly property bool appearanceOpen: surface === "appearance"
+    readonly property bool displayOpen: surface === "display"
+    readonly property bool themeOpen: surface === "theme"
+    readonly property bool interfaceOpen: surface === "interface"
     readonly property bool fontpickerOpen: surface === "fontpicker"
-    readonly property bool settingsLike: appearanceOpen || fontpickerOpen
+    readonly property bool settingsLike: appearanceOpen || displayOpen || themeOpen || interfaceOpen || fontpickerOpen
     readonly property bool hasMedia: Players.list.length > 0
 
     readonly property var netDevices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
@@ -91,10 +94,11 @@ Item {
     readonly property bool expanded: surfaceOpen || held || hoverLatch
 
     /**
-     * The collapsed pill docks into a full-width top bar when the "strip" main
-     * display is picked: flush to the screen edge, square top corners, and its
-     * own full-width face (workspace dots left, status cluster right). The
-     * hover/expanded faces are untouched — only the rest state changes shape.
+     * The collapsed pill becomes a compact top-centre capsule when the "strip"
+     * main display is picked: it docks flush against the top screen edge, so
+     * its top corners square off while the bottom corners stay rounded — the
+     * Dynamic Glacier silhouette. Window reservation and auto-hide behave
+     * exactly like the other faces.
      */
     readonly property bool stripBar: Flags.mainDisplay === "strip"
 
@@ -142,7 +146,7 @@ Item {
      * (with its 350ms grace) is what keeps the pill up while the cursor is near
      * it, so a cursor sitting on the strip's edge cannot bounce it.
      */
-    readonly property bool hidden: Flags.autoHide && !stripBar && !revealSession && !expanded && !dragActive
+    readonly property bool hidden: Flags.autoHide && !revealSession && !expanded && !dragActive
         && !transientLive && mode !== "game"
 
     /**
@@ -222,7 +226,7 @@ Item {
     readonly property real stripRoomForTitle: stripCap - 2 * stripPad - stripArtW - stripFixedW
         - 4 * stripGap - stripMediaGaps * stripGap
         - (Cava.active ? stripVizW : 0) - (ScreenRec.recording ? stripRecW : 0)
-    readonly property real stripTitleW: stripMedia ? Math.min(stripMaxTitle, Math.max(stripMinTitle, stripRoomForTitle)) : 0
+    readonly property real stripTitleW: stripMedia ? Math.min(stripMaxTitle, stripRoomForTitle, Math.max(stripMinTitle, stripTitleMetrics.advanceWidth)) : 0
     readonly property real stripFixedW: stripDay.implicitWidth + stripTime.implicitWidth
         + stripWs.implicitWidth + stripLay.implicitWidth + stripBat.implicitWidth
 
@@ -257,8 +261,9 @@ Item {
     readonly property real btW: 286 * s
     readonly property real recorderW: 384 * s
     readonly property real sysmonW: 392 * s
-    readonly property real appearanceW: 392 * s
-    readonly property real fontpickerW: 360 * s
+    readonly property real settingsScale: 0.9
+    readonly property real settingsW: 392 * s * settingsScale
+    readonly property real fontpickerW: 360 * s * settingsScale
     readonly property real toastW: 342 * s
     readonly property real quickChooseW: 344 * s
     readonly property real quickChooseH: 76 * s
@@ -309,7 +314,10 @@ Item {
         battery:   { size: () => Qt.size(batteryW, surfaceItem(ldBattery).implicitHeight + 26 * s), ame: () => surfaceItem(ldBattery) },
         recorder:  { size: () => Qt.size(recorderW, surfaceItem(ldRecorder).implicitHeight + 33 * s), ame: () => surfaceItem(ldRecorder) },
         sysmon:    { size: () => Qt.size(sysmonW, surfaceItem(ldSysmon).implicitHeight + 33 * s), ame: () => surfaceItem(ldSysmon) },
-        appearance: { size: () => Qt.size(appearanceW, surfaceItem(ldAppearance).implicitHeight + 29 * s), ame: () => surfaceItem(ldAppearance) },
+        appearance: { size: () => Qt.size(settingsW, surfaceItem(ldAppearance).implicitHeight + 29 * s), ame: () => surfaceItem(ldAppearance) },
+        display:    { size: () => Qt.size(settingsW, surfaceItem(ldDisplay).implicitHeight + 29 * s), ame: () => surfaceItem(ldDisplay) },
+        theme:      { size: () => Qt.size(settingsW, surfaceItem(ldTheme).implicitHeight + 29 * s), ame: () => surfaceItem(ldTheme) },
+        interface:  { size: () => Qt.size(settingsW, surfaceItem(ldInterface).implicitHeight + 29 * s), ame: () => surfaceItem(ldInterface) },
         fontpicker: { size: () => Qt.size(fontpickerW, surfaceItem(ldFontpicker).implicitHeight + 29 * s), ame: () => surfaceItem(ldFontpicker) }
     })
 
@@ -367,6 +375,12 @@ Item {
     function rowNavSurface() {
         if (pill.appearanceOpen)
             return ldAppearance.item;
+        if (pill.displayOpen)
+            return ldDisplay.item;
+        if (pill.themeOpen)
+            return ldTheme.item;
+        if (pill.interfaceOpen)
+            return ldInterface.item;
         if (pill.fontpickerOpen)
             return ldFontpicker.item;
         return null;
@@ -434,12 +448,13 @@ Item {
     }
 
     /**
-     * Step the open surface back one level when its header bar is clicked: the
-     * font picker returns to appearance, and any other surface dismisses to the
+     * Step the open surface back one level when its header bar is clicked: a
+     * settings sub-surface (display, theme, interface, font picker) returns to
+     * the appearance index, and the index or any other surface dismisses to the
      * hover pill. Empty space in the body never triggers this.
      */
     function surfaceBack() {
-        if (pill.fontpickerOpen) {
+        if (pill.displayOpen || pill.themeOpen || pill.interfaceOpen || pill.fontpickerOpen) {
             pill.requestSurface("appearance");
             return;
         }
@@ -560,9 +575,12 @@ Item {
 
     /**
      * Target geometry for the non-surface morph modes. Surface sizes come from
-     * the `surfaces` descriptor; these three are the pill's own modes that have no
+     * the `surfaces` descriptor; these are the pill's own modes that have no
      * surface item. Thunks so the properties they read register as live deps of
-     * targetSize.
+     * targetSize. osd uses its own content-driven size — the workspace flash
+     * fits its dot row (so it stays short even on the wide strip notch) while
+     * volume/brightness/record keep their fixed widths. The toast keeps its
+     * fixed width and sizes its height to the notification.
      */
     readonly property var modeSize: ({
         osd:   () => Qt.size(osd.desiredW, osd.desiredH),
@@ -574,6 +592,13 @@ Item {
         game:        () => Qt.size(gameW, gameH)
     })
 
+    /**
+     * The pill's resting size for the current display mode.
+     */
+    readonly property size restSize: stripBar
+        ? Qt.size(Math.max(restW, stripFaceW), restH)
+        : Qt.size(Math.max(restW, restRow.implicitWidth + 36 * s), restH)
+
     readonly property size targetSize: {
         const sf = surfaces[mode];
         if (sf)
@@ -581,9 +606,7 @@ Item {
         const f = modeSize[mode];
         if (f)
             return f();
-        if (stripBar)
-            return Qt.size(Math.max(restW, stripFaceW), restH);
-        return Qt.size(Math.max(restW, restRow.implicitWidth + 36 * s), restH);
+        return restSize;
     }
     readonly property real targetW: targetSize.width
     readonly property real targetH: targetSize.height
@@ -720,13 +743,17 @@ Item {
         /**
          * Corner flatness rides the morph curve so docking into the game bar
          * squares the corners as one continuous shape change instead of a snap.
+         * The strip docks flush to the screen edge, so its top corners square
+         * off against the edge while the bottom corners stay rounded.
          */
-        property real gameFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
+        property real gameFlat: pill.mode === "game" ? 1 : 0
         Behavior on gameFlat { NumberAnimation { duration: Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
+        property real topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
+        Behavior on topFlat { NumberAnimation { duration: Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
 
         radius: pill.morphRadius
-        topLeftRadius: pill.morphRadius * (1 - gameFlat)
-        topRightRadius: pill.morphRadius * (1 - gameFlat)
+        topLeftRadius: pill.morphRadius * (1 - topFlat)
+        topRightRadius: pill.morphRadius * (1 - topFlat)
         bottomLeftRadius: pill.morphRadius * (1 - gameFlat)
         bottomRightRadius: pill.morphRadius * (1 - gameFlat)
         border.width: 1
@@ -1518,6 +1545,14 @@ Item {
                     font.features: { "tnum": 1 }
                 }
             }
+        }
+
+        TextMetrics {
+            id: stripTitleMetrics
+            text: Players.title
+            font.family: Theme.font
+            font.pixelSize: 12.5 * pill.s
+            font.weight: Font.Medium
         }
 
         Row {
@@ -2445,8 +2480,47 @@ Item {
         active: false
         anchors.fill: parent
         sourceComponent: Appearance {
-            s: pill.s
+            s: pill.s * pill.settingsScale
             open: pill.appearanceOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+            onRequestSurface: (name) => pill.requestSurface(name)
+        }
+    }
+
+    Loader {
+        id: ldDisplay
+        active: false
+        anchors.fill: parent
+        sourceComponent: DisplaySurface {
+            s: pill.s * pill.settingsScale
+            open: pill.displayOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+            onRequestSurface: (name) => pill.requestSurface(name)
+        }
+    }
+
+    Loader {
+        id: ldTheme
+        active: false
+        anchors.fill: parent
+        sourceComponent: ThemeSurface {
+            s: pill.s * pill.settingsScale
+            open: pill.themeOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+            onRequestSurface: (name) => pill.requestSurface(name)
+        }
+    }
+
+    Loader {
+        id: ldInterface
+        active: false
+        anchors.fill: parent
+        sourceComponent: InterfaceSurface {
+            s: pill.s * pill.settingsScale
+            open: pill.interfaceOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
             onRequestSurface: (name) => pill.requestSurface(name)
@@ -2458,7 +2532,7 @@ Item {
         active: false
         anchors.fill: parent
         sourceComponent: FontPicker {
-            s: pill.s
+            s: pill.s * pill.settingsScale
             open: pill.fontpickerOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()

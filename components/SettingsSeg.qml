@@ -47,8 +47,8 @@ Rectangle {
                 readonly property bool current: seg.value === modelData.value
                 property bool hovered: false
 
-                width: optLabel.implicitWidth + 18 * seg.s
-                height: optLabel.implicitHeight + 12 * seg.s
+                width: optLabel.implicitWidth + 10 * seg.s
+                height: optLabel.implicitHeight + 10 * seg.s
                 radius: 8 * seg.s
                 color: opt.current ? Qt.alpha(Theme.onGlow, 0.16) : (opt.hovered ? Theme.frameBg : "transparent")
                 Behavior on color { ColorAnimation { duration: Motion.fast } }
@@ -59,9 +59,9 @@ Rectangle {
                     text: opt.modelData.label
                     color: opt.current ? Theme.cream : Theme.subtle
                     font.family: Theme.font
-                    font.pixelSize: 10.5 * seg.s
+                    font.pixelSize: 10 * seg.s
                     font.weight: Font.Bold
-                    font.letterSpacing: 0.3 * seg.s
+                    font.letterSpacing: 0.2 * seg.s
                 }
 
                 MouseArea {

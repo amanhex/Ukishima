@@ -3,7 +3,9 @@ BatterySurface BatterySurface.qml
 BtSurface BtSurface.qml
 Calendar Calendar.qml
 Clipboard Clipboard.qml
+DisplaySurface DisplaySurface.qml
 FontPicker FontPicker.qml
+InterfaceSurface InterfaceSurface.qml
 Launcher Launcher.qml
 Link Link.qml
 Media Media.qml
@@ -13,6 +15,7 @@ Osd Osd.qml
 Power Power.qml
 Recorder Recorder.qml
 SysmonSurface SysmonSurface.qml
+ThemeSurface ThemeSurface.qml
 Toast Toast.qml
 Wallpaper Wallpaper.qml
 WifiSurface WifiSurface.qml

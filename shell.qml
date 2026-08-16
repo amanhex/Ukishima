@@ -316,17 +316,14 @@ ShellRoot {
 
             readonly property real gameBarH: 34 * s
 
-            /** Game mode reserves the band even with auto-hide on. The strip notch reserves nothing: it floats over content like a Dynamic Island. */
-            readonly property bool barLives: Flags.gameMode || !Flags.autoHide
-
             screen: modelData
             color: "transparent"
             exclusionMode: ExclusionMode.Normal
-            exclusiveZone: (Flags.mainDisplay === "strip" || Flags.autoHide) ? 0 : (Flags.gameMode ? gameBarH : reservedH)
+            exclusiveZone: Flags.gameMode ? gameBarH : (Flags.autoHide ? 0 : reservedH)
             aboveWindows: true
 
             anchors { top: true; left: true; right: true }
-            implicitHeight: (Flags.mainDisplay === "strip" || Flags.autoHide) ? 0 : (Flags.gameMode ? gameBarH : reservedH)
+            implicitHeight: Flags.gameMode ? gameBarH : (Flags.autoHide ? 0 : reservedH)
 
             mask: emptyReserve
             Region { id: emptyReserve }
@@ -377,7 +374,7 @@ ShellRoot {
 
             anchors { top: true; left: true; right: true; bottom: true }
 
-            mask: monFullscreen ? hiddenRegion : (modal ? fullRegion : (pill.stripBar ? pillRegion : (Flags.autoHide ? (pill.revealSession || pill.transientLive ? revealPillRegion : (pill.expanded ? pillRegion : revealRegion)) : pillRegion)))
+            mask: monFullscreen ? hiddenRegion : (modal ? fullRegion : (Flags.autoHide ? (pill.revealSession || pill.transientLive ? revealPillRegion : (pill.expanded ? pillRegion : revealRegion)) : pillRegion))
             Region { id: hiddenRegion }
 
             /**
@@ -392,7 +389,7 @@ ShellRoot {
              */
             Region {
                 id: revealRegion
-                readonly property real revealW: 420 * pill.s
+                readonly property real revealW: pill.stripBar ? Math.max(420 * pill.s, pill.stripFaceW) : 420 * pill.s
                 readonly property real revealH: 10 * pill.s
                 x: Math.max(0, overlay.width / 2 - revealW / 2)
                 y: 0

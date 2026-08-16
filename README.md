@@ -173,22 +173,4 @@ All paths resolve at runtime relative to this project folder (`Singletons/Config
 - state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, wallpaper state, launcher usage
 - cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — palette JSON, weather, rec thumbs; wallpaper previews under `ukishima-wp-thumbs/`
 
-## Collapsed face
 
-The resting pill has four switchable "main display" modes (Appearance settings → *Main display*, persisted in the flags):
-
-- **Minimal** — the 時 glyph, default.
-- **Classic** — date + time.
-- **System** — weekday, time, active workspace number, keyboard layout and battery status.
-- **Strip** — the pill docks into a compact notch hugging the top edge: square top corners, rounded bottom, sized by its contents (~500–600px on a 1920px display). Media art and title lead (truncated with an ellipsis), then a live audio visualizer, a red recording chip with elapsed time, and the weekday, time, workspace number, keyboard layout and battery. Lower-priority sections fold away as space tightens. It reserves no window space — it floats over content like a Dynamic Island.
-
-The keyboard layout (e.g. `US`, `RU`) follows Hyprland `activelayout` events (`components/KbLayout.qml`).
-
-## Battery notifications
-
-The shell raises libnotify notifications for charge state:
-
-- **Low battery escalates as it drains:** **25%** and **20%** warn once each, then **15%** turns critical and repeats every 10 minutes until you plug in. The latch re-arms when the battery charges or climbs back above 25%, so it never spams within one discharge cycle.
-- **Full battery** notifies once when the battery reports fully charged — so charge-limited systems (e.g. an 80% cut-off) announce at their actual full point rather than a nominal 100%.
-
-Thresholds and the repeat interval are defined in `shell.qml` (`battCheck()` and `battRepeatTimer`) if you want to tune them.

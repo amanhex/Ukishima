@@ -84,6 +84,8 @@ Item {
 
         Text {
             text: srow.name
+            width: parent.width
+            elide: Text.ElideRight
             color: Theme.cream
             font.family: Theme.font
             font.pixelSize: 12.5 * srow.s
