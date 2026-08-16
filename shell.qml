@@ -595,7 +595,7 @@ ShellRoot {
                     screenName: overlay.modelData.name
                     expanded: pill.expanded
                     topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
-                    suppressed: overlay.surfaceOpen || overlay.monFullscreen || pill.held || pill.quickChoosing
+                    suppressed: overlay.surfaceOpen || pill.held || pill.quickChoosing
                         || pill.quickCounting || pill.mode === "game" || (pill.toastActive && Notifs.toastCritical)
                 }
             }
