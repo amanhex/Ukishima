@@ -168,6 +168,15 @@ Item {
     readonly property bool osdActive: osd.flashing
 
     /**
+     * A transient OSD (workspace switch, volume, brightness) that starts while
+     * a non-critical toast is showing retires that toast permanently instead of
+     * covering it and letting it reappear — a covered-and-returned toast reads
+     * as a second notification. Critical toasts are never covered or retired:
+     * the mode ladder gives them priority over the OSD.
+     */
+    onOsdActiveChanged: if (osdActive && toastActive && !Notifs.toastCritical) Notifs.clearPopups()
+
+    /**
      * Quick-record overlays belong only to the focused monitor the keybind
      * targeted, so a single chooser and a single countdown toast appear. The
      * standalone chooser is suppressed while the morphing recorder surface owns the
@@ -260,9 +269,10 @@ Item {
         : (Flags.gameMode ? "game"
         : (quickChoosing ? "quickChoose"
         : (quickCounting ? "quickCount"
+        : (toastActive && Notifs.toastCritical && !held ? "toast"
         : (osdActive && !held ? "osd"
         : (toastActive && !held ? "toast"
-        : (expanded ? "hover" : "rest")))))))
+        : (expanded ? "hover" : "rest"))))))))
 
     /**
      * AppImage drag-install state, live only while a file hovers the resting pill.
@@ -786,7 +796,9 @@ Item {
                 && !quickChoosing && !quickCounting) {
                 revealSession = true;
                 revealTimer.stop();
-            } else if (bootSettled && !revealSession) {
+            } else if (bootSettled && !revealSession && !toastActive) {
+                /* A toast owns the pill; hovering it must not latch an expansion
+                 * underneath, or the pill stays open once the toast is dismissed. */
                 hoverLatch = true;
                 graceTimer.stop();
             }

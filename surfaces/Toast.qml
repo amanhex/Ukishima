@@ -7,11 +7,11 @@ import "../components"
 
 /**
  * Toast content for the morphing pill body: icon tile, app eyebrow, summary
- * with critical ember dot, optional body text and action pills, dismiss glyph
- * on the right. Draws no background of its own; the pill body behind it
- * provides the washi material. Clicking the body jumps to the source app;
- * dismiss and action pills consume their clicks. Auto-expires via
- * Notifs.expireAt unless the notification is critical.
+ * with critical ember dot, optional body text and action pills. Draws no
+ * background of its own; the pill body behind it provides the washi material.
+ * Clicking anywhere dismisses the toast (the notification stays in the inbox);
+ * action pills consume their own clicks. Auto-expires via Notifs.expireAt
+ * unless the notification is critical.
  */
 Item {
     id: root
@@ -42,10 +42,7 @@ Item {
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            Notifs.activateNotif(root.notif);
-            Notifs.removePopup(root.notif);
-        }
+        onClicked: Notifs.removePopup(root.notif)
     }
 
     Rectangle {
@@ -82,34 +79,11 @@ Item {
         }
     }
 
-    Text {
-        id: dismiss
-        anchors.right: parent.right
-        anchors.top: parent.top
-        text: "✕"
-        color: dismissArea.containsMouse ? Theme.cream : Theme.dim
-        font.family: Theme.font
-        font.pixelSize: 11 * root.s
-
-        Behavior on color {
-            ColorAnimation { duration: Motion.fast }
-        }
-
-        MouseArea {
-            id: dismissArea
-            anchors.fill: parent
-            anchors.margins: -6 * root.s
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: Notifs.removePopup(root.notif)
-        }
-    }
-
     Column {
         id: col
         anchors.left: iconTile.right
         anchors.leftMargin: 10 * root.s
-        anchors.right: dismiss.left
+        anchors.right: parent.right
         anchors.rightMargin: 8 * root.s
         anchors.top: parent.top
         spacing: 3 * root.s

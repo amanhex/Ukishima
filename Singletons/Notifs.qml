@@ -19,6 +19,12 @@ Singleton {
     readonly property var tracked: server.trackedNotifications.values
     readonly property int count: tracked.length + history.length
 
+    /** The toast actually shown is the newest popup; critical flags whether it must never be covered. */
+    readonly property bool toastCritical: {
+        var p = popups;
+        return p.length > 0 && p[p.length - 1].urgency === NotificationUrgency.Critical;
+    }
+
     readonly property int unread: {
         var u = 0;
         for (var i = 0; i < tracked.length; i++)
@@ -175,6 +181,17 @@ Singleton {
 
     function removePopup(n) {
         root.popups = root.popups.filter(function(p) { return p !== n; });
+    }
+
+    /**
+     * Drop every pending popup at once. Used when a transient OSD covers a
+     * non-critical toast: the toast is retired permanently instead of
+     * reappearing when the OSD ends and looking like a second notification.
+     * The notification itself stays tracked, so the inbox and unread dot
+     * still show it.
+     */
+    function clearPopups() {
+        root.popups = [];
     }
 
     function toggleExpanded(app) {

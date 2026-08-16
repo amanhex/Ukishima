@@ -341,7 +341,7 @@ ShellRoot {
 
             anchors { top: true; left: true; right: true; bottom: true }
 
-            mask: monFullscreen ? hiddenRegion : (modal ? fullRegion : (Flags.autoHide ? (pill.revealSession ? revealPillRegion : (pill.expanded ? pillRegion : revealRegion)) : pillRegion))
+            mask: monFullscreen ? hiddenRegion : (modal ? fullRegion : (Flags.autoHide ? (pill.revealSession || pill.transientLive ? revealPillRegion : (pill.expanded ? pillRegion : revealRegion)) : pillRegion))
             Region { id: hiddenRegion }
 
             /**
