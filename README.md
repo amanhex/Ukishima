@@ -172,3 +172,12 @@ All paths resolve at runtime relative to this project folder (`Singletons/Config
 
 - state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, wallpaper state, launcher usage
 - cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — palette JSON, weather, rec thumbs; wallpaper previews under `ukishima-wp-thumbs/`
+
+## Battery notifications
+
+The shell raises libnotify notifications for charge state:
+
+- **Low battery escalates as it drains:** **25%** and **20%** warn once each, then **15%** turns critical and repeats every 10 minutes until you plug in. The latch re-arms when the battery charges or climbs back above 25%, so it never spams within one discharge cycle.
+- **Full battery** notifies once when the battery reports fully charged — so charge-limited systems (e.g. an 80% cut-off) announce at their actual full point rather than a nominal 100%.
+
+Thresholds and the repeat interval are defined in `shell.qml` (`battCheck()` and `battRepeatTimer`) if you want to tune them.
