@@ -312,21 +312,21 @@ ShellRoot {
             readonly property real restHeight: 38 * s
 
             /** Trimming the reserved band below the pill's bottom lets windows climb, so App gap sets the pill-to-window air without touching the desktop gaps_out. */
-            readonly property real reservedH: Math.max(0, restHeight + (Flags.mainDisplay === "strip" ? 0 : topGap) - 12 * (1 - Flags.appGap) * s)
+            readonly property real reservedH: Math.max(0, restHeight + topGap - 12 * (1 - Flags.appGap) * s)
 
             readonly property real gameBarH: 34 * s
 
-            /** The strip bar and game mode reserve the full band even with auto-hide on. */
-            readonly property bool barLives: Flags.gameMode || Flags.mainDisplay === "strip" || !Flags.autoHide
+            /** Game mode reserves the band even with auto-hide on. The strip notch reserves nothing: it floats over content like a Dynamic Island. */
+            readonly property bool barLives: Flags.gameMode || !Flags.autoHide
 
             screen: modelData
             color: "transparent"
             exclusionMode: ExclusionMode.Normal
-            exclusiveZone: Flags.gameMode ? gameBarH : (barLives ? reservedH : 0)
+            exclusiveZone: (Flags.mainDisplay === "strip" || Flags.autoHide) ? 0 : (Flags.gameMode ? gameBarH : reservedH)
             aboveWindows: true
 
             anchors { top: true; left: true; right: true }
-            implicitHeight: Flags.gameMode ? gameBarH : (barLives ? reservedH : 0)
+            implicitHeight: (Flags.mainDisplay === "strip" || Flags.autoHide) ? 0 : (Flags.gameMode ? gameBarH : reservedH)
 
             mask: emptyReserve
             Region { id: emptyReserve }

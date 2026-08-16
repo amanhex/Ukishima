@@ -197,6 +197,47 @@ Item {
 
     readonly property real restW: 160 * s
     readonly property real restH: 38 * s
+
+    /**
+     * Strip-face geometry: a compact top-centre notch pill. Its width is
+     * computed explicitly (not from the row's implicit width) so the media
+     * title can be elided to exactly what the budget allows; on a 1920px
+     * screen the content lands around 500-600px wide. Lower-priority sections
+     * (visualizer, then media) fold away first when the budget tightens.
+     */
+    readonly property real stripPad: 20 * s
+    readonly property real stripGap: 16 * s
+    readonly property real stripCap: Math.max(320 * s, Math.min(600 * s, (barWindow ? barWindow.width : 1920 * s) - 60 * s))
+    readonly property real stripArtW: 22 * s
+    readonly property real stripMinTitle: 55 * s
+    readonly property real stripMaxTitle: 220 * s
+
+    readonly property real stripVizW: (Cava.bars * 1.8 + (Cava.bars - 1) * 1.2) * s
+    readonly property real stripRecW: 9 * s + 6 * s + stripRecTime.implicitWidth
+
+    /** Media-side gaps depend only on the visualizer and recorder states. */
+    readonly property int stripMediaGaps: 1 + (Cava.active ? 1 : 0) + (ScreenRec.recording ? 1 : 0) + (Cava.active && ScreenRec.recording ? 1 : 0)
+
+    readonly property bool stripMedia: Players.has && stripRoomForTitle >= stripMinTitle
+    readonly property real stripRoomForTitle: stripCap - 2 * stripPad - stripArtW - stripFixedW
+        - 4 * stripGap - stripMediaGaps * stripGap
+        - (Cava.active ? stripVizW : 0) - (ScreenRec.recording ? stripRecW : 0)
+    readonly property real stripTitleW: stripMedia ? Math.min(stripMaxTitle, Math.max(stripMinTitle, stripRoomForTitle)) : 0
+    readonly property real stripFixedW: stripDay.implicitWidth + stripTime.implicitWidth
+        + stripWs.implicitWidth + stripLay.implicitWidth + stripBat.implicitWidth
+
+    readonly property real stripFaceW: {
+        let w = 2 * stripPad + stripFixedW + 4 * stripGap;
+        if (stripMedia) {
+            w += stripArtW + stripGap + stripTitleW;
+            if (Cava.active) w += stripVizW + stripGap;
+            if (ScreenRec.recording) w += stripRecW + stripGap;
+            w += stripGap;
+        } else if (ScreenRec.recording) {
+            w += stripRecW + stripGap;
+        }
+        return w;
+    }
     readonly property real hoverPad: 20 * s
     readonly property real hoverW: hoverRow.implicitWidth + 2 * hoverPad
     readonly property real hoverH: 58 * s
@@ -541,7 +582,7 @@ Item {
         if (f)
             return f();
         if (stripBar)
-            return Qt.size(barWindow ? barWindow.width : 1920 * s, restH);
+            return Qt.size(Math.max(restW, stripFaceW), restH);
         return Qt.size(Math.max(restW, restRow.implicitWidth + 36 * s), restH);
     }
     readonly property real targetW: targetSize.width
@@ -1304,37 +1345,119 @@ Item {
         Behavior on opacity { NumberAnimation { duration: pill.mode === "rest" ? Motion.fast : Math.round(260 * Motion.mult) } }
 
         /**
-         * Workspace tracker behind the "system" collapsed face and the strip's
-         * left dot cluster. Always alive so the active-workspace number is
-         * current the moment that mode is shown; it is the same hyprctl-driven
-         * source the hover dots use. Rendered only in strip mode.
+         * Workspace tracker behind the "system" and "strip" collapsed faces.
+         * Always alive so the active-workspace number is current the moment
+         * that mode is shown; it is the same hyprctl-driven source the hover
+         * dots use, just without the dots.
          */
         Workspaces {
             id: wsPill
-            visible: pill.stripBar
-            enabled: pill.stripBar
-            anchors.left: parent.left
-            anchors.leftMargin: 18 * pill.s
-            anchors.verticalCenter: parent.verticalCenter
-            width: implicitWidth
-            height: implicitHeight
+            visible: false
+            enabled: false
             screenName: pill.screenName
             s: pill.s
         }
 
         /**
-         * Strip face, right side: the status cluster sits against the right
-         * edge of the full-width bar, with the workspace dots on the left.
+         * Strip face: one compact pill of media + status hanging from the top
+         * edge. Media art and title lead, then a live cava spark, the red
+         * recording chip, and finally weekday, time, workspace, layout and
+         * battery. Sections fold (visualizer, then media) as the width budget
+         * tightens; the row is centred so the pill hugs the screen top like a
+         * notch. Width is pill.stripFaceW, not the row's implicit width, so the
+         * elided title never inflates the pill.
          */
         Row {
-            id: stripRight
+            id: stripFace
             visible: pill.specialView === "" && pill.stripBar
-            anchors.right: parent.right
-            anchors.rightMargin: 18 * pill.s
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 14 * pill.s
+            anchors.centerIn: parent
+            spacing: pill.stripGap
+
+            /** Recording duration in seconds; reset on each start. */
+            property int recSecs: 0
+            readonly property string recTime: {
+                const m = Math.floor(recSecs / 60);
+                const s = recSecs % 60;
+                return (m < 10 ? "0" + m : "" + m) + ":" + (s < 10 ? "0" + s : "" + s);
+            }
+            Timer {
+                interval: 1000
+                repeat: true
+                running: ScreenRec.recording
+                onTriggered: stripFace.recSecs += 1
+            }
+            Connections {
+                target: ScreenRec
+                function onRecordingChanged() { if (ScreenRec.recording) stripFace.recSecs = 0 }
+            }
+
+            Rectangle {
+                id: stripArt
+                anchors.verticalCenter: parent.verticalCenter
+                visible: pill.stripMedia
+                width: pill.stripArtW
+                height: pill.stripArtW
+                radius: 5 * pill.s
+                color: Theme.tileBg
+                clip: true
+                Image {
+                    anchors.fill: parent
+                    source: Players.artUrl
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    visible: status === Image.Ready
+                }
+            }
 
             Text {
+                id: stripTitle
+                anchors.verticalCenter: parent.verticalCenter
+                visible: pill.stripMedia
+                text: Players.title
+                width: pill.stripTitleW
+                elide: Text.ElideRight
+                color: Theme.cream
+                font.family: Theme.font
+                font.pixelSize: 12.5 * pill.s
+                font.weight: Font.Medium
+            }
+
+            MusicBars {
+                id: stripViz
+                anchors.verticalCenter: parent.verticalCenter
+                visible: pill.stripMedia && Cava.active
+                s: pill.s
+                span: 14
+            }
+
+            Row {
+                id: stripRec
+                anchors.verticalCenter: parent.verticalCenter
+                visible: ScreenRec.recording
+                spacing: 6 * pill.s
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 9 * pill.s
+                    height: 9 * pill.s
+                    radius: width / 2
+                    color: Theme.verm
+                }
+
+                Text {
+                    id: stripRecTime
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: stripFace.recTime
+                    color: Theme.cream
+                    font.family: Theme.font
+                    font.pixelSize: 11.5 * pill.s
+                    font.weight: Font.DemiBold
+                    font.features: ({ "tnum": 1 })
+                }
+            }
+
+            Text {
+                id: stripDay
                 anchors.verticalCenter: parent.verticalCenter
                 text: clock.weekday
                 color: Theme.dim
@@ -1343,6 +1466,7 @@ Item {
                 font.weight: Font.DemiBold
             }
             Text {
+                id: stripTime
                 anchors.verticalCenter: parent.verticalCenter
                 text: clock.hhmm
                 color: Theme.cream
@@ -1352,6 +1476,17 @@ Item {
                 font.features: { "tnum": 1 }
             }
             Text {
+                id: stripWs
+                anchors.verticalCenter: parent.verticalCenter
+                text: wsPill.activeWs
+                color: Theme.vermLit
+                font.family: Theme.font
+                font.pixelSize: 12 * pill.s
+                font.weight: Font.DemiBold
+                font.features: { "tnum": 1 }
+            }
+            Text {
+                id: stripLay
                 anchors.verticalCenter: parent.verticalCenter
                 text: kbLayout.code
                 color: Theme.dim
@@ -1360,6 +1495,7 @@ Item {
                 font.weight: Font.DemiBold
             }
             Row {
+                id: stripBat
                 anchors.verticalCenter: parent.verticalCenter
                 visible: Battery.present
                 spacing: 4 * pill.s

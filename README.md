@@ -180,7 +180,7 @@ The resting pill has four switchable "main display" modes (Appearance settings �
 - **Minimal** — the 時 glyph, default.
 - **Classic** — date + time.
 - **System** — weekday, time, active workspace number, keyboard layout and battery status.
-- **Strip** — the pill docks into a full-width bar hugging the top edge of the screen, square corners and a window-reserved band. Workspace dots sit on the left, and the weekday, time, keyboard layout and battery cluster on the right. Fullscreen content still hides it like the other modes.
+- **Strip** — the pill docks into a compact notch hugging the top edge: square top corners, rounded bottom, sized by its contents (~500–600px on a 1920px display). Media art and title lead (truncated with an ellipsis), then a live audio visualizer, a red recording chip with elapsed time, and the weekday, time, workspace number, keyboard layout and battery. Lower-priority sections fold away as space tightens. It reserves no window space — it floats over content like a Dynamic Island.
 
 The keyboard layout (e.g. `US`, `RU`) follows Hyprland `activelayout` events (`components/KbLayout.qml`).
 
