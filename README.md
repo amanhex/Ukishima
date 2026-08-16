@@ -9,9 +9,7 @@ The project is fully self-contained: the config folder holds the QML surfaces, i
 ## Preview
 
 <p align="center">
-<img src="preview/mpv-shot0001.jpg" width="70%" alt="Ukishima preview 1">
-<img src="preview/mpv-shot0008.jpg" width="70%" alt="Ukishima preview 2">
-<img src="preview/mpv-shot0010.jpg" width="70%" alt="Ukishima preview 3">
+<video src="https://github.com/amanhex/Ukishima/releases/download/v1.0.0/Ukishima.mp4" width="70%" controls loop muted autoplay></video>
 </p>
 
 See the [full preview gallery](preview/README.md) for all screenshots.
