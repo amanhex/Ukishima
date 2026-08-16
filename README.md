@@ -4,13 +4,13 @@
 
 Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland built around a single morphing pill at the top of every monitor. Collapsed it is a thin warm-vermillion strip; hover it and it expands in place into a control centre — workspace dots, clock, media, system readouts — and every module grows its own surface out of the pill itself. Nothing ever pops up as a separate panel.
 
-The project is fully self-contained: the config folder holds the QML surfaces, its own scripts and the Hyprland-compat files it generates, so nothing is copied into or sourced from another dotfiles tree.
+The project is fully self-contained. It makes no changes to existing Hyprland config files.
 
 ## Preview
 
 <p align="center">
 <a href="https://youtu.be/Xkld6B5Pke0">
-  <img src="https://img.youtube.com/vi/Xkld6B5Pke0/maxresdefault.jpg" width="70%" alt="Ukishima demo on YouTube">
+  <img src="https://img.youtube.com/vi/Xkld6B5Pke0/maxresdefault.jpg" width="80%" alt="Ukishima demo on YouTube">
 </a>
 </p>
 
@@ -156,21 +156,8 @@ The `""` argument is the monitor — empty means "focused monitor", so no hyprct
 
 Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar`, `media`, `power`, `link`, `battery`, `sysmon`/`system`, `recorder`/`screenrec`/`record`, `quickRecord`, `gameMode`, `peek`, `hide`, `page`, `minimizeWindow`, `restoreWindow`. The `page` handler takes the monitor first (empty = focused) and the surface name second, so surfaces without a dedicated handler open as `qs -c ukishima ipc call ukishima page "" wifi`.
 
-## Layout
-
-All paths resolve at runtime relative to this project folder (`Singletons/Config.qml` self-locates it), so the shell works regardless of where it was launched from:
-
-- shell entry: `shell.qml` (+ the pill body `Pill.qml` at the root)
-- surfaces: `surfaces/` — the panels the pill morphs into
-- components: `components/` — reusable widgets (pill surface base, glyphs, settings kit, …)
-- singletons: `Singletons/` — one per-service singleton (`Config`, `Flags`, `Theme`, `Walls`, `Players`, …)
-- helpers: `lib/` — pure JS (`fuzzy.js`, `calc.js`, `binds.js`, …)
-- scripts: `scripts/` — wallpaper set/thumb/search, palette (`wallpaper.sh`, `wallcolors.py`, …)
-- Hyprland-compat outputs: `modules/*.lua`, `hyprsunset.conf` under this folder
-
 ## State & cache
 
 - state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, wallpaper state, launcher usage
 - cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — palette JSON, weather, rec thumbs; wallpaper previews under `ukishima-wp-thumbs/`
-
 
