@@ -91,6 +91,14 @@ Item {
     readonly property bool expanded: surfaceOpen || held || hoverLatch
 
     /**
+     * The collapsed pill docks into a full-width top bar when the "strip" main
+     * display is picked: flush to the screen edge, square top corners, and its
+     * own full-width face (workspace dots left, status cluster right). The
+     * hover/expanded faces are untouched — only the rest state changes shape.
+     */
+    readonly property bool stripBar: Flags.mainDisplay === "strip"
+
+    /**
      * True when this pill sits on the monitor Hyprland currently has focused.
      * Only used to drop the cursor latch on focus loss: `hidden` itself is
      * central and does not key off monitor focus, so transient (OSD/toast)
@@ -134,7 +142,7 @@ Item {
      * (with its 350ms grace) is what keeps the pill up while the cursor is near
      * it, so a cursor sitting on the strip's edge cannot bounce it.
      */
-    readonly property bool hidden: Flags.autoHide && !revealSession && !expanded && !dragActive
+    readonly property bool hidden: Flags.autoHide && !stripBar && !revealSession && !expanded && !dragActive
         && !transientLive && mode !== "game"
 
     /**
@@ -475,6 +483,7 @@ Item {
             + (Flags.time12h ? " AP" : "")
         readonly property string hhmm: Qt.formatTime(now, timeFormat)
         readonly property string date: loc.toString(now, "ddd d MMM")
+        readonly property string weekday: loc.toString(now, "ddd")
     }
 
     SystemClock {
@@ -529,7 +538,11 @@ Item {
         if (sf)
             return sf.size();
         const f = modeSize[mode];
-        return f ? f() : Qt.size(Math.max(restW, restRow.implicitWidth + 36 * s), restH);
+        if (f)
+            return f();
+        if (stripBar)
+            return Qt.size(barWindow ? barWindow.width : 1920 * s, restH);
+        return Qt.size(Math.max(restW, restRow.implicitWidth + 36 * s), restH);
     }
     readonly property real targetW: targetSize.width
     readonly property real targetH: targetSize.height
@@ -667,7 +680,7 @@ Item {
          * Corner flatness rides the morph curve so docking into the game bar
          * squares the corners as one continuous shape change instead of a snap.
          */
-        property real gameFlat: pill.mode === "game" ? 1 : 0
+        property real gameFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
         Behavior on gameFlat { NumberAnimation { duration: Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
 
         radius: pill.morphRadius
@@ -1290,13 +1303,95 @@ Item {
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: pill.mode === "rest" ? Motion.fast : Math.round(260 * Motion.mult) } }
 
+        /**
+         * Workspace tracker behind the "system" collapsed face and the strip's
+         * left dot cluster. Always alive so the active-workspace number is
+         * current the moment that mode is shown; it is the same hyprctl-driven
+         * source the hover dots use. Rendered only in strip mode.
+         */
+        Workspaces {
+            id: wsPill
+            visible: pill.stripBar
+            enabled: pill.stripBar
+            anchors.left: parent.left
+            anchors.leftMargin: 18 * pill.s
+            anchors.verticalCenter: parent.verticalCenter
+            width: implicitWidth
+            height: implicitHeight
+            screenName: pill.screenName
+            s: pill.s
+        }
+
+        /**
+         * Strip face, right side: the status cluster sits against the right
+         * edge of the full-width bar, with the workspace dots on the left.
+         */
+        Row {
+            id: stripRight
+            visible: pill.specialView === "" && pill.stripBar
+            anchors.right: parent.right
+            anchors.rightMargin: 18 * pill.s
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 14 * pill.s
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: clock.weekday
+                color: Theme.dim
+                font.family: Theme.font
+                font.pixelSize: 12 * pill.s
+                font.weight: Font.DemiBold
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: clock.hhmm
+                color: Theme.cream
+                font.family: Theme.font
+                font.pixelSize: 17 * pill.s
+                font.weight: Font.DemiBold
+                font.features: { "tnum": 1 }
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: kbLayout.code
+                color: Theme.dim
+                font.family: Theme.font
+                font.pixelSize: 12 * pill.s
+                font.weight: Font.DemiBold
+            }
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: Battery.present
+                spacing: 4 * pill.s
+                GlyphIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Battery.charging
+                    width: 11 * pill.s
+                    height: 11 * pill.s
+                    name: "bolt"
+                    color: Battery.low ? Theme.vermLit : Theme.dim
+                    stroke: 1.6
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Battery.pct + "%"
+                    color: Battery.low ? Theme.vermLit : Theme.dim
+                    font.family: Theme.font
+                    font.pixelSize: 12 * pill.s
+                    font.weight: Font.DemiBold
+                    font.features: { "tnum": 1 }
+                }
+            }
+        }
+
         Row {
             id: restRow
+            visible: !pill.stripBar
             anchors.centerIn: parent
             spacing: 9 * pill.s
             Item {
                 id: restKanji
-                visible: pill.specialView === ""
+                visible: pill.specialView === "" && Flags.mainDisplay === "minimal"
                 anchors.verticalCenter: parent.verticalCenter
                 width: kanjiFill.implicitWidth
                 height: kanjiFill.implicitHeight
@@ -1350,7 +1445,7 @@ Item {
                 }
             }
             Text {
-                visible: pill.specialView === ""
+                visible: pill.specialView === "" && Flags.mainDisplay === "minimal"
                 anchors.verticalCenter: parent.verticalCenter
                 text: clock.hhmm
                 color: Theme.cream
@@ -1358,6 +1453,88 @@ Item {
                 font.pixelSize: 16 * pill.s
                 font.weight: Font.DemiBold
                 font.features: { "tnum": 1 }
+            }
+            Text {
+                visible: pill.specialView === "" && Flags.mainDisplay === "classic"
+                anchors.verticalCenter: parent.verticalCenter
+                text: clock.date
+                color: Theme.dim
+                font.family: Theme.font
+                font.pixelSize: 11 * pill.s
+                font.weight: Font.DemiBold
+            }
+            Text {
+                visible: pill.specialView === "" && Flags.mainDisplay === "classic"
+                anchors.verticalCenter: parent.verticalCenter
+                text: clock.hhmm
+                color: Theme.cream
+                font.family: Theme.font
+                font.pixelSize: 16 * pill.s
+                font.weight: Font.DemiBold
+                font.features: { "tnum": 1 }
+            }
+            Text {
+                visible: pill.specialView === "" && Flags.mainDisplay === "system"
+                anchors.verticalCenter: parent.verticalCenter
+                text: clock.weekday
+                color: Theme.dim
+                font.family: Theme.font
+                font.pixelSize: 11 * pill.s
+                font.weight: Font.DemiBold
+            }
+            Text {
+                visible: pill.specialView === "" && Flags.mainDisplay === "system"
+                anchors.verticalCenter: parent.verticalCenter
+                text: clock.hhmm
+                color: Theme.cream
+                font.family: Theme.font
+                font.pixelSize: 15 * pill.s
+                font.weight: Font.DemiBold
+                font.features: { "tnum": 1 }
+            }
+            Text {
+                visible: pill.specialView === "" && Flags.mainDisplay === "system"
+                    && wsPill.activeWs !== ""
+                anchors.verticalCenter: parent.verticalCenter
+                text: wsPill.activeWs
+                color: Theme.vermLit
+                font.family: Theme.font
+                font.pixelSize: 11 * pill.s
+                font.weight: Font.Bold
+                font.features: { "tnum": 1 }
+            }
+            Text {
+                visible: pill.specialView === "" && Flags.mainDisplay === "system"
+                anchors.verticalCenter: parent.verticalCenter
+                text: kbLayout.code
+                color: Theme.dim
+                font.family: Theme.font
+                font.pixelSize: 11 * pill.s
+                font.weight: Font.DemiBold
+            }
+            Row {
+                visible: pill.specialView === "" && Flags.mainDisplay === "system"
+                    && Battery.present
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 3 * pill.s
+                GlyphIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Battery.charging
+                    width: 10 * pill.s
+                    height: 10 * pill.s
+                    name: "bolt"
+                    color: Battery.low ? Theme.vermLit : Theme.dim
+                    stroke: 1.6
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Battery.pct + "%"
+                    color: Battery.low ? Theme.vermLit : Theme.dim
+                    font.family: Theme.font
+                    font.pixelSize: 11 * pill.s
+                    font.weight: Font.DemiBold
+                    font.features: { "tnum": 1 }
+                }
             }
             Text {
                 visible: pill.specialView !== ""
@@ -1369,6 +1546,10 @@ Item {
                 font.weight: Font.DemiBold
             }
         }
+    }
+
+    KbLayout {
+        id: kbLayout
     }
 
     Item {

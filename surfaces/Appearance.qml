@@ -86,6 +86,7 @@ SettingsSurface {
     }
 
     rows: [
+        { item: mainRow, kind: "seg", vals: ["minimal", "classic", "system", "strip"], get: function () { return Flags.mainDisplay; }, set: function (v) { Flags.mainDisplay = v; } },
         { item: timeRow, kind: "seg", vals: [false, true], get: function () { return Flags.time12h; }, set: function (v) { Flags.time12h = v; } },
         { item: secRow, kind: "toggle", get: function () { return Flags.clockSeconds; }, set: function (v) { Flags.clockSeconds = v; } },
         { item: glyphRow, kind: "toggle", get: function () { return Flags.showGlyphs; }, set: function (v) { Flags.showGlyphs = v; } },
@@ -119,6 +120,20 @@ SettingsSurface {
         }
 
         Item { width: 1; height: 12 * root.s }
+
+        SettingsRow {
+            id: mainRow
+            surface: root
+            name: "Main display"
+            icon: "clock"
+
+            SettingsSeg {
+                s: root.s
+                options: [{ label: "Minimal", value: "minimal" }, { label: "Classic", value: "classic" }, { label: "System", value: "system" }, { label: "Strip", value: "strip" }]
+                value: Flags.mainDisplay
+                onPicked: (v) => Flags.mainDisplay = v
+            }
+        }
 
         SettingsRow {
             id: timeRow

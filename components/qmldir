@@ -6,6 +6,7 @@ Filament Filament.qml
 GlyphIcon GlyphIcon.qml
 HeatHold HeatHold.qml
 HFader HFader.qml
+KbLayout KbLayout.qml
 LinkToggle LinkToggle.qml
 Marquee Marquee.qml
 MusicBars MusicBars.qml

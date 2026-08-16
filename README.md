@@ -173,6 +173,17 @@ All paths resolve at runtime relative to this project folder (`Singletons/Config
 - state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, wallpaper state, launcher usage
 - cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — palette JSON, weather, rec thumbs; wallpaper previews under `ukishima-wp-thumbs/`
 
+## Collapsed face
+
+The resting pill has four switchable "main display" modes (Appearance settings → *Main display*, persisted in the flags):
+
+- **Minimal** — the 時 glyph, default.
+- **Classic** — date + time.
+- **System** — weekday, time, active workspace number, keyboard layout and battery status.
+- **Strip** — the pill docks into a full-width bar hugging the top edge of the screen, square corners and a window-reserved band. Workspace dots sit on the left, and the weekday, time, keyboard layout and battery cluster on the right. Fullscreen content still hides it like the other modes.
+
+The keyboard layout (e.g. `US`, `RU`) follows Hyprland `activelayout` events (`components/KbLayout.qml`).
+
 ## Battery notifications
 
 The shell raises libnotify notifications for charge state:
