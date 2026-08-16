@@ -32,13 +32,15 @@ ShellRoot {
     property string peekMon: ""
 
     /**
-     * Battery notification latch state. Fired only on the transition into the
-     * state (UPower is event-driven over D-Bus, so these are change-triggered,
-     * never polled): low when a discharging battery crosses 20%, full when a
-     * plugged-in battery reaches 100%. The latch is re-armed by leaving the
-     * state, so one notification per event, not one per tick.
+     * Battery notification latches, change-triggered by UPower (never polled).
+     * Low battery escalates down the levels — 25% then 20% fire once each as a
+     * normal warning, and 15% opens a critical announcement that repeats every
+     * ten minutes until the battery is plugged in. The latch re-arms when the
+     * battery charges or rises back above 25%. Full fires once when the battery
+     * reports fully charged, so charge-limited systems (e.g. an 80% cut-off)
+     * announce at their actual full point.
      */
-    property bool lowBattNotified: false
+    property int battNotifiedBelow: 100
     property bool fullBattNotified: false
 
     function battNote(urgency, summary, body) {
@@ -46,6 +48,36 @@ ShellRoot {
             ? ["notify-send", "-a", "Ukishima", "-u", urgency, summary, body]
             : ["notify-send", "-a", "Ukishima", summary, body];
         battNoteProc.running = true;
+    }
+
+    /**
+     * One-shot level crossings on the way down, lowest threshold first, so a
+     * battery already below several levels (e.g. booting at 18%) only announces
+     * the most urgent one it has passed — 20% there, never 25% and 20% together.
+     * At or below the critical level the repeat timer takes over.
+     */
+    function battCheck() {
+        if (!Battery.present)
+            return;
+        if (!Battery.discharging || Battery.pct > 25) {
+            root.battNotifiedBelow = 100;
+            root.battRepeatTimer.stop();
+            return;
+        }
+        var levels = [[15, "critical"], [20, "normal"], [25, "normal"]];
+        for (var i = 0; i < levels.length; i++) {
+            if (Battery.pct <= levels[i][0] && levels[i][0] < root.battNotifiedBelow) {
+                root.battNotifiedBelow = levels[i][0];
+                var critical = levels[i][1] === "critical";
+                root.battNote(critical ? "critical" : "normal",
+                    critical ? "Battery critical" : "Low battery",
+                    Battery.pct + "% remaining — plug in your charger"
+                    + (critical ? " now." : " soon."));
+                break;
+            }
+        }
+        if (Battery.pct <= 15 && !root.battRepeatTimer.running)
+            root.battRepeatTimer.start();
     }
 
     function refresh() {
@@ -58,30 +90,31 @@ ShellRoot {
         refresh();
         Devices.restore();
         void GameMode.active;
-        if (Battery.present && Battery.low && !root.lowBattNotified) {
-            root.lowBattNotified = true;
-            root.battNote("critical", "Low battery",
-                Battery.pct + "% remaining — plug in your charger.");
-        }
+        root.battCheck();
     }
 
     Process {
         id: battNoteProc
     }
 
+    Timer {
+        id: battRepeatTimer
+        interval: 10 * 60 * 1000
+        repeat: true
+        onTriggered: {
+            if (!Battery.present || !Battery.discharging || Battery.pct > 15) {
+                stop();
+                return;
+            }
+            root.battNote("critical", "Battery critical",
+                Battery.pct + "% remaining — plug in your charger now.");
+        }
+    }
+
     Connections {
         target: Battery
-        function onLowChanged() {
-            if (!Battery.present)
-                return;
-            if (Battery.low && !root.lowBattNotified) {
-                root.lowBattNotified = true;
-                root.battNote("critical", "Low battery",
-                    Battery.pct + "% remaining — plug in your charger.");
-            } else if (!Battery.low && (Battery.charging || Battery.pct > 25)) {
-                root.lowBattNotified = false;
-            }
-        }
+        function onPctChanged() { root.battCheck(); }
+        function onDischargingChanged() { root.battCheck(); }
         function onFullChanged() {
             if (!Battery.present)
                 return;

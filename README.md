@@ -98,7 +98,7 @@ Also remove any references you added yourself: the `source = ~/.config/quickshel
 From a clone:
 
 ```bash
-git clone https://github.com/amanhex/ukishima ~/.config/quickshell/ukishima
+git clone https://github.com/amanhex/Ukishima ~/.config/quickshell/ukishima
 quickshell --config "$HOME/.config/quickshell/ukishima"
 ```
 
