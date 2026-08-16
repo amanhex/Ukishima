@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import "Singletons"
+import "surfaces"
 
 /**
  * Ukishima top shell. Each monitor carries two layer-shell windows:
@@ -562,7 +563,7 @@ ShellRoot {
                     surface: overlay.surface
                     forcePinned: root.peekMon === overlay.modelData.name
 
-                    opacity: (overlay.monFullscreen && !pill.transientLive) ? 0 : 1
+                    opacity: (overlay.monFullscreen && !pill.transientLive) ? 0 : (osdPopup.active ? 0 : 1)
                     Behavior on opacity {
                         NumberAnimation {
                             duration: Motion.morph
@@ -583,6 +584,19 @@ ShellRoot {
 
                     onRequestSurface: (name) => root.toggleSurface(overlay.modelData.name, name)
                     onRequestClose: root.close()
+                }
+
+                OsdPopup {
+                    id: osdPopup
+                    anchors.top: parent.top
+                    anchors.topMargin: (pill.stripBar || pill.mode === "game") ? 0 : overlay.topGap
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    s: overlay.s
+                    screenName: overlay.modelData.name
+                    expanded: pill.expanded
+                    topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
+                    suppressed: overlay.surfaceOpen || overlay.monFullscreen || pill.held || pill.quickChoosing
+                        || pill.quickCounting || pill.mode === "game" || (pill.toastActive && Notifs.toastCritical)
                 }
             }
 

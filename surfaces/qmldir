@@ -12,6 +12,7 @@ Media Media.qml
 MinimizedTray MinimizedTray.qml
 Mixer Mixer.qml
 Osd Osd.qml
+OsdPopup OsdPopup.qml
 Power Power.qml
 Recorder Recorder.qml
 SysmonSurface SysmonSurface.qml

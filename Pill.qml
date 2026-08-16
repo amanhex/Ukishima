@@ -131,7 +131,7 @@ Item {
      * getting involved, so the pill must let them finish and then retract on
      * its own — transients hold the pill up, but they leave no latch behind.
      */
-    readonly property bool transientLive: osdActive || toastActive || quickChoosing || quickCounting
+    readonly property bool transientLive: toastActive || quickChoosing || quickCounting
 
     /**
      * True when the pill should retract off the top edge: auto-hide is on and
@@ -327,9 +327,8 @@ Item {
         : (quickChoosing ? "quickChoose"
         : (quickCounting ? "quickCount"
         : (toastActive && Notifs.toastCritical && !held ? "toast"
-        : (osdActive && !held ? "osd"
         : (toastActive && !held ? "toast"
-        : (expanded ? "hover" : "rest"))))))))
+        : (expanded ? "hover" : "rest")))))))
 
     /**
      * AppImage drag-install state, live only while a file hovers the resting pill.
@@ -583,7 +582,6 @@ Item {
      * fixed width and sizes its height to the notification.
      */
     readonly property var modeSize: ({
-        osd:   () => Qt.size(osd.desiredW, osd.desiredH),
         toast: () => Qt.size(toastW, toastLoader.item ? toastLoader.item.implicitHeight + 24 * s : restH),
         hover: () => Qt.size(hoverW, hoverH),
         quickChoose: () => Qt.size(quickChooseW, quickChooseH),
@@ -1367,7 +1365,7 @@ Item {
     Item {
         id: rest
         anchors.fill: parent
-        opacity: (pill.expanded || pill.dragActive || pill.mode === "game" || pill.mode === "toast" || pill.mode === "osd" || pill.mode === "quickChoose" || pill.mode === "quickCount") ? 0 : Math.pow(pill.morphCloseness, 1.5)
+        opacity: (pill.expanded || pill.dragActive || pill.mode === "game" || pill.mode === "toast" || pill.mode === "quickChoose" || pill.mode === "quickCount") ? 0 : Math.pow(pill.morphCloseness, 1.5)
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: pill.mode === "rest" ? Motion.fast : Math.round(260 * Motion.mult) } }
 
@@ -2540,23 +2538,19 @@ Item {
         }
     }
 
+    /**
+     * OSD state controller only. The visible OSD now lives in its own
+     * decoupled popup (surfaces/OsdPopup.qml); this instance stays hidden and
+     * just feeds the game-mode volume chip and toast-retire logic.
+     */
     Osd {
         id: osd
-        anchors.fill: parent
-        anchors.topMargin: 12 * pill.s
-        anchors.leftMargin: 18 * pill.s
-        anchors.rightMargin: 18 * pill.s
-        anchors.bottomMargin: 12 * pill.s
         s: pill.s
         screenName: pill.screenName
         suppressed: pill.surfaceOpen || pill.held
         expanded: pill.expanded
-        enabled: pill.mode === "osd"
-        opacity: pill.mode === "osd" ? 1 : 0
-        visible: opacity > 0.01
-        Behavior on opacity {
-            NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
-        }
+        visible: false
+        enabled: false
     }
 
     Loader {
