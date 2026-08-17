@@ -44,21 +44,15 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 | `quickshell` | shell runtime |
 | `hyprctl` | Hyprland IPC (workspaces, monitors, dispatch, reload) |
 | `jq` | JSON parsing in the helper scripts |
-| `notify-send` (libnotify) | desktop notifications |
-| `curl` | weather, wallpaper search / downloads |
-| `python3` | palette generation (`wallcolors.py`) |
 | `magick` (ImageMagick) | wallpaper thumbnails and palette |
 | `awww` + `awww-daemon` | wallpaper backend |
 | `ffmpeg` | video-wallpaper still extraction |
 | `nmcli` (NetworkManager) | wifi + hotspot surface |
-| `bluetoothctl` (bluez) | bluetooth surface |
 | `brightnessctl` or `light` | backlight control |
 | `cava` | music visualiser |
 | `cliphist` + `wl-clipboard` | clipboard history |
 | `slurp` | window/region picker for screen recording |
 | `hyprsunset` | night light |
-| `xdg-open` (xdg-utils) | opening record folder / files |
-| systemd (user) | keep-awake inhibitor, hyprsunset service |
 
 ### Optional, for full functionality
 
