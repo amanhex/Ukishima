@@ -97,8 +97,16 @@ quickshell --config "$HOME/.local/share/quickshell/ukishima"
 
 To auto-launch, add to your Hyprland config:
 
+**hyprlang (.conf)**
+
 ```conf
 exec-once = quickshell --config ~/.local/share/quickshell/ukishima
+```
+
+**Lua**
+
+```lua
+hl.exec_cmd("quickshell --config ~/.local/share/quickshell/ukishima")
 ```
 
 ## Keybinds (IPC)
