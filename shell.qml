@@ -62,7 +62,8 @@ ShellRoot {
             return;
         if (!Battery.discharging || Battery.pct > 25) {
             root.battNotifiedBelow = 100;
-            root.battRepeatTimer.stop();
+            if (root.battRepeatTimer)
+                root.battRepeatTimer.stop();
             return;
         }
         var levels = [[15, "critical"], [20, "normal"], [25, "normal"]];
@@ -150,12 +151,6 @@ ShellRoot {
             + "--object-path /org/freedesktop/Notifications "
             + "--method org.freedesktop.Notifications.Notify "
             + "Pill 0 '' 'Pill updated' \"$b\" '[]' '{}' 5000 >/dev/null 2>&1"]
-    }
-
-    Binding {
-        target: Notifs
-        property: "dnd"
-        value: Flags.dnd
     }
 
     PanelWindow {
