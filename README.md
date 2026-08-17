@@ -76,14 +76,12 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 ## Install
 
 ```bash
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/remote-install.sh | bash
 ```
 
-This copies the project to `~/.local/share/quickshell/ukishima` (override with `UKISHIMA_INSTALL_ROOT`), and reports any missing dependencies. The copy is self-contained.
+This clones the project to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints the keybinds and auto-launch line to add to your Hyprland config. If already installed, it pulls the latest changes instead.
 
 ## Uninstall
-
-Remove the install, state and cache folders:
 
 ```bash
 rm -rf "$HOME/.local/share/quickshell/ukishima"
@@ -93,39 +91,21 @@ rm -rf "$HOME/.cache/ukishima"
 
 ## Launch
 
-From a clone:
-
-```bash
-git clone https://github.com/amanhex/Ukishima ~/.config/quickshell/ukishima
-quickshell --config "$HOME/.config/quickshell/ukishima"
-```
-
-After an `install.sh` install:
-
 ```bash
 quickshell --config "$HOME/.local/share/quickshell/ukishima"
+```
+
+To auto-launch, add to your Hyprland config:
+
+```conf
+exec-once = quickshell --config ~/.local/share/quickshell/ukishima
 ```
 
 ## Keybinds (IPC)
 
 Every surface and action is exposed over quickshell IPC (target `ukishima`). The `""` argument is the monitor — empty means "focused monitor". Bind them in your Hyprland config.
 
-The IPC path depends on how you installed:
-
-| Install method | IPC prefix |
-| --- | --- |
-| Clone to `~/.config/quickshell/ukishima` | `qs -c ukishima` |
-| `install.sh` (copies to `~/.local/share/quickshell/ukishima`) | `qs -p ~/.local/share/quickshell/ukishima` |
-
-**hyprlang (.conf)** — clone install:
-
-```
-bind = SUPER, SHIFT+W, exec, qs -c ukishima ipc call ukishima wallpaper ""
-bind = SUPER, SHIFT+V, exec, qs -c ukishima ipc call ukishima clipboard ""
-bind = SUPER, slash,   exec, qs -c ukishima ipc call ukishima launcher ""
-```
-
-**hyprlang (.conf)** — install.sh:
+**hyprlang (.conf)**
 
 ```
 bind = SUPER, SHIFT+W, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper ""
@@ -133,21 +113,15 @@ bind = SUPER, SHIFT+V, exec, qs -p ~/.local/share/quickshell/ukishima ipc call u
 bind = SUPER, slash,   exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher ""
 ```
 
-**Lua** — clone install:
-
-```lua
-hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs -c ukishima ipc call ukishima wallpaper \"\""))
-hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("qs -c ukishima ipc call ukishima clipboard \"\""))
-hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("qs -c ukishima ipc call ukishima launcher \"\""))
-```
-
-**Lua** — install.sh:
+**Lua**
 
 ```lua
 hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper \"\""))
 hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima clipboard \"\""))
 hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher \"\""))
 ```
+
+If you cloned the repo to `~/.config/quickshell/ukishima` instead, replace `qs -p ~/.local/share/quickshell/ukishima` with `qs -c ukishima`.
 
 Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar`, `media`, `power`, `link`, `battery`, `sysmon`/`system`, `recorder`/`screenrec`/`record`, `quickRecord`, `gameMode`, `peek`, `hide`, `page`, `minimizeWindow`, `restoreWindow`. The `page` handler takes the monitor first (empty = focused) and the surface name second — `qs -c ukishima ipc call ukishima page "" wifi`.
 
