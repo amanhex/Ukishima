@@ -108,9 +108,16 @@ quickshell --config "$HOME/.local/share/quickshell/ukishima"
 
 ## Keybinds (IPC)
 
-Every surface and action is exposed over quickshell IPC (target `ukishima`). The `""` argument is the monitor — empty means "focused monitor". Bind them in your Hyprland config:
+Every surface and action is exposed over quickshell IPC (target `ukishima`). The `""` argument is the monitor — empty means "focused monitor". Bind them in your Hyprland config.
 
-**hyprlang (.conf)**
+The IPC path depends on how you installed:
+
+| Install method | IPC prefix |
+| --- | --- |
+| Clone to `~/.config/quickshell/ukishima` | `qs -c ukishima` |
+| `install.sh` (copies to `~/.local/share/quickshell/ukishima`) | `qs -p ~/.local/share/quickshell/ukishima` |
+
+**hyprlang (.conf)** — clone install:
 
 ```
 bind = SUPER, SHIFT+W, exec, qs -c ukishima ipc call ukishima wallpaper ""
@@ -118,12 +125,28 @@ bind = SUPER, SHIFT+V, exec, qs -c ukishima ipc call ukishima clipboard ""
 bind = SUPER, slash,   exec, qs -c ukishima ipc call ukishima launcher ""
 ```
 
-**Lua**
+**hyprlang (.conf)** — install.sh:
+
+```
+bind = SUPER, SHIFT+W, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper ""
+bind = SUPER, SHIFT+V, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima clipboard ""
+bind = SUPER, slash,   exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher ""
+```
+
+**Lua** — clone install:
 
 ```lua
 hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs -c ukishima ipc call ukishima wallpaper \"\""))
 hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("qs -c ukishima ipc call ukishima clipboard \"\""))
 hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("qs -c ukishima ipc call ukishima launcher \"\""))
+```
+
+**Lua** — install.sh:
+
+```lua
+hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper \"\""))
+hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima clipboard \"\""))
+hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher \"\""))
 ```
 
 Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar`, `media`, `power`, `link`, `battery`, `sysmon`/`system`, `recorder`/`screenrec`/`record`, `quickRecord`, `gameMode`, `peek`, `hide`, `page`, `minimizeWindow`, `restoreWindow`. The `page` handler takes the monitor first (empty = focused) and the surface name second — `qs -c ukishima ipc call ukishima page "" wifi`.
