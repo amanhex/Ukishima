@@ -81,6 +81,12 @@ curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/remote-inst
 
 This clones the project to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints the keybinds and auto-launch line to add to your Hyprland config. If already installed, it pulls the latest changes instead.
 
+**Already installed?** Run the same command above to update, or pull manually:
+
+```bash
+cd ~/.local/share/quickshell/ukishima && git pull
+```
+
 ## Uninstall
 
 ```bash
