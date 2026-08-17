@@ -165,8 +165,10 @@ Singleton {
                         root.located = true;
                         root.writeLoc();
                         root.fetchWeather();
+                    } else {
+                        root.ipProc.running = true;
                     }
-                } catch (e) {}
+                } catch (e) { root.ipProc.running = true; }
             }
         }
     }
