@@ -83,15 +83,13 @@ This copies the project to `~/.local/share/quickshell/ukishima` (override with `
 
 ## Uninstall
 
-There is no uninstall script; remove the install, state and cache folders manually:
+Remove the install, state and cache folders:
 
 ```bash
 rm -rf "$HOME/.local/share/quickshell/ukishima"
 rm -rf "$HOME/.local/state/ukishima"
 rm -rf "$HOME/.cache/ukishima"
 ```
-
-Also remove any references you added yourself: the `source = ~/.config/quickshell/ukishima/modules/*.lua` line in your Hyprland config, the `hyprsunset` user service, and any IPC keybinds.
 
 ## Launch
 
@@ -108,56 +106,29 @@ After an `install.sh` install:
 quickshell --config "$HOME/.local/share/quickshell/ukishima"
 ```
 
-## Hyprland integration
-
-The shell writes its generated files under its own folder (`modules/`, `hyprsunset.conf`). To load the blur layer rule, `source` the generated lua from your Hyprland config:
-
-```conf
-source = ~/.config/quickshell/ukishima/modules/*.lua
-```
-
-Night light runs as a user service (`hyprsunset`) — create `~/.config/systemd/user/hyprsunset.service` pointing at the installed config and enable it once:
-
-```ini
-[Unit]
-Description=Hyprsunset night light
-
-[Service]
-ExecStart=/usr/bin/hyprsunset --config %h/.config/quickshell/ukishima/hyprsunset.conf
-
-[Install]
-WantedBy=default.target
-```
-
-```bash
-systemctl --user enable --now hyprsunset
-```
-
-Ukishima never touches `~/.config/hypr` by default.
-
 ## Keybinds (IPC)
 
-Every surface and action is exposed over quickshell IPC (target `ukishima`), so bind them straight in your Hyprland config. Quickshell 0.3+ provides this through the `qs` CLI — `quickshell-ipc` was the pre-0.3 name and no longer exists:
+Every surface and action is exposed over quickshell IPC (target `ukishima`). The `""` argument is the monitor — empty means "focused monitor". Bind them in your Hyprland config:
 
-```conf
-bind = SUPER, SPACE,  exec, qs -c ukishima ipc call ukishima launcher ""
-bind = SUPER, C,      exec, qs -c ukishima ipc call ukishima clipboard ""
-bind = SUPER, W,      exec, qs -c ukishima ipc call ukishima wallpaper ""
-bind = SUPER, D,      exec, qs -c ukishima ipc call ukishima quickRecord ""
-bind = SUPER, M,      exec, qs -c ukishima ipc call ukishima mixer ""
-bind = SUPER, B,      exec, qs -c ukishima ipc call ukishima battery ""
-bind = SUPER, G,      exec, qs -c ukishima ipc call ukishima gameMode ""
-bind = SUPER, S,      exec, qs -c ukishima ipc call ukishima sysmon ""
-bind = SUPER, L,      exec, qs -c ukishima ipc call ukishima power ""
-bind = SUPER, ESCAPE, exec, qs -c ukishima ipc call ukishima hide
+**hyprlang (.conf)**
+
+```
+bind = SUPER, SHIFT+W, exec, qs -c ukishima ipc call ukishima wallpaper ""
+bind = SUPER, SHIFT+V, exec, qs -c ukishima ipc call ukishima clipboard ""
+bind = SUPER, slash,   exec, qs -c ukishima ipc call ukishima launcher ""
 ```
 
-The `""` argument is the monitor — empty means "focused monitor", so no hyprctl lookup is needed. The `-c ukishima` must match how you launch the shell; running from a different path needs the same selection there, e.g. `qs -p /path/to/ukishima ipc call ukishima clipboard ""`.
+**Lua**
 
-Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar`, `media`, `power`, `link`, `battery`, `sysmon`/`system`, `recorder`/`screenrec`/`record`, `quickRecord`, `gameMode`, `peek`, `hide`, `page`, `minimizeWindow`, `restoreWindow`. The `page` handler takes the monitor first (empty = focused) and the surface name second, so surfaces without a dedicated handler open as `qs -c ukishima ipc call ukishima page "" wifi`.
+```lua
+hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs -c ukishima ipc call ukishima wallpaper \"\""))
+hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("qs -c ukishima ipc call ukishima clipboard \"\""))
+hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("qs -c ukishima ipc call ukishima launcher \"\""))
+```
+
+Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar`, `media`, `power`, `link`, `battery`, `sysmon`/`system`, `recorder`/`screenrec`/`record`, `quickRecord`, `gameMode`, `peek`, `hide`, `page`, `minimizeWindow`, `restoreWindow`. The `page` handler takes the monitor first (empty = focused) and the surface name second — `qs -c ukishima ipc call ukishima page "" wifi`.
 
 ## State & cache
 
 - state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, wallpaper state, launcher usage
 - cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — palette JSON, weather, rec thumbs; wallpaper previews under `ukishima-wp-thumbs/`
-
