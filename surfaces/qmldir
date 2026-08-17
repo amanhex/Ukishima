@@ -18,5 +18,6 @@ Recorder Recorder.qml
 SysmonSurface SysmonSurface.qml
 ThemeSurface ThemeSurface.qml
 Toast Toast.qml
+UpdateSurface UpdateSurface.qml
 Wallpaper Wallpaper.qml
 WifiSurface WifiSurface.qml

@@ -23,7 +23,8 @@ SettingsSurface {
         { item: dispTile, kind: "nav", surface: "display" },
         { item: themeTile, kind: "nav", surface: "theme" },
         { item: fontTile, kind: "nav", surface: "fontpicker" },
-        { item: ifaceTile, kind: "nav", surface: "interface" }
+        { item: ifaceTile, kind: "nav", surface: "interface" },
+        { item: updateTile, kind: "nav", surface: "update" }
     ]
 
     Column {
@@ -96,13 +97,29 @@ SettingsSurface {
             glyph: "面"
             name: "Interface"
             sub: "Scale, motion, auto-hide"
-            last: true
 
             GlyphIcon {
                 width: 16 * root.s
                 height: 16 * root.s
                 name: "chevron-right"
                 color: root.focusRowItem === ifaceTile ? Theme.cream : Theme.iconDim
+                stroke: 1.9
+            }
+        }
+
+        SettingsRow {
+            id: updateTile
+            surface: root
+            glyph: "更"
+            name: "Update"
+            sub: "Pull latest from GitHub"
+            last: true
+
+            GlyphIcon {
+                width: 16 * root.s
+                height: 16 * root.s
+                name: "chevron-right"
+                color: root.focusRowItem === updateTile ? Theme.cream : Theme.iconDim
                 stroke: 1.9
             }
         }
