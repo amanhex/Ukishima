@@ -43,6 +43,8 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 | --- | --- |
 | `quickshell` | shell runtime |
 | `hyprctl` | Hyprland IPC (workspaces, monitors, dispatch, reload) |
+| `upower` | battery status and charge reporting |
+| `bluez` (`bluetoothctl`) | bluetooth surface |
 | `jq` | JSON parsing in the helper scripts |
 | `magick` (ImageMagick) | wallpaper thumbnails and palette |
 | `awww` + `awww-daemon` | wallpaper backend |
