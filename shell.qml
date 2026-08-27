@@ -92,6 +92,7 @@ ShellRoot {
         refresh();
         Devices.restore();
         void GameMode.active;
+        void Dyn.surface;
         root.battCheck();
     }
 
