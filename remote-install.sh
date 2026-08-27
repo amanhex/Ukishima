@@ -7,10 +7,10 @@ INSTALL_ROOT="${HOME}/.local/share/quickshell/ukishima"
 if [ -d "$INSTALL_ROOT" ]; then
   printf '\033[1;33mUkishima is already installed at %s\033[0m\n' "$INSTALL_ROOT"
   printf 'Pulling latest changes...\n'
-  git -C "$INSTALL_ROOT" pull --ff-only || printf '\033[1;33mCould not pull — try removing %s and reinstalling.\033[0m\n' "$INSTALL_ROOT"
+  git -C "$INSTALL_ROOT" pull --ff-only origin master || printf '\033[1;33mCould not pull — try removing %s and reinstalling.\033[0m\n' "$INSTALL_ROOT"
 else
   printf 'Cloning Ukishima...\n'
-  git clone --depth 1 "$REPO" "$INSTALL_ROOT"
+  git clone --depth 1 --branch master "$REPO" "$INSTALL_ROOT"
 fi
 
 warn() { printf '  \033[1;33m%s\033[0m\n' "$*"; }
