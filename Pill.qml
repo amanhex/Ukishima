@@ -1812,38 +1812,47 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 12 * pill.s
 
-                Row {
+                Item {
                     id: weatherGlance
                     anchors.verticalCenter: parent.verticalCenter
                     visible: Weather.ready
-                    spacing: 5 * pill.s
+                    width: weatherRow.implicitWidth
+                    height: weatherRow.implicitHeight
 
-                    HoverHandler {
+                    Row {
+                        id: weatherRow
+                        anchors.centerIn: parent
+                        spacing: 5 * pill.s
+
+                        GlyphIcon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 16 * pill.s
+                            height: 16 * pill.s
+                            name: Weather.glyphFor(Weather.codeNow, Weather.isDay)
+                            color: Theme.subtle
+                            stroke: 1.8
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Weather.tempNow + "°"
+                            color: Theme.subtle
+                            font.family: Theme.font
+                            font.pixelSize: 12.5 * pill.s
+                            font.weight: Font.Medium
+                            font.features: { "tnum": 1 }
+                        }
+                    }
+
+                    MouseArea {
+                        id: weatherArea
+                        anchors.centerIn: parent
+                        width: weatherRow.implicitWidth + 12 * pill.s
+                        height: weatherRow.implicitHeight + 8 * pill.s
+                        hoverEnabled: true
+                        enabled: hover.live
                         cursorShape: Qt.PointingHandCursor
-                        enabled: hover.live
-                    }
-                    TapHandler {
-                        enabled: hover.live
-                        onTapped: pill.requestSurface("weather")
-                    }
-
-                    GlyphIcon {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 16 * pill.s
-                        height: 16 * pill.s
-                        name: Weather.glyphFor(Weather.codeNow, Weather.isDay)
-                        color: Theme.subtle
-                        stroke: 1.8
-                    }
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: Weather.tempNow + "°"
-                        color: Theme.subtle
-                        font.family: Theme.font
-                        font.pixelSize: 12.5 * pill.s
-                        font.weight: Font.Medium
-                        font.features: { "tnum": 1 }
+                        onClicked: pill.requestSurface("weather")
                     }
                 }
 
