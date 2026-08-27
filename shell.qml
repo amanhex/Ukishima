@@ -78,7 +78,7 @@ ShellRoot {
                 break;
             }
         }
-        if (Battery.pct <= 15 && !root.battRepeatTimer.running)
+        if (Battery.pct <= 15 && root.battRepeatTimer && !root.battRepeatTimer.running)
             root.battRepeatTimer.start();
     }
 

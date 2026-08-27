@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell.Io
 import "../Singletons"
 import "../components"
 
@@ -30,6 +31,129 @@ PillSurface {
     readonly property var cellKeys: Sysmon.hasVram ? ["net", "disk", "swap", "vram"] : ["net", "disk", "swap"]
 
     onActiveChanged: Sysmon.open = active
+
+    property bool speedRunning: false
+    property string speedPhase: ""
+    property real speedPing: 0
+    property real speedDown: 0
+    property real speedUp: 0
+    property bool speedDone: false
+    property string speedError: ""
+
+    function fmtSpeed(mbps) {
+        if (mbps >= 1000) return (mbps / 1000).toFixed(1) + " Gbps";
+        return mbps.toFixed(1) + " Mbps";
+    }
+
+    function speedFail(msg) {
+        root.speedError = msg;
+        root.speedRunning = false;
+        root.speedPhase = "";
+        root.speedDone = false;
+        speedPingProc.running = false;
+        speedDlProc.running = false;
+        speedUlProc.running = false;
+    }
+
+    function startSpeed() {
+        if (root.speedRunning) return;
+        root.speedRunning = true;
+        root.speedDone = false;
+        root.speedError = "";
+        root.speedPhase = "ping";
+        root.speedPing = 0;
+        root.speedDown = 0;
+        root.speedUp = 0;
+        speedTimeout.start();
+        speedPingProc.running = true;
+    }
+
+    function stopSpeed() {
+        root.speedRunning = false;
+        root.speedPhase = "";
+        speedTimeout.stop();
+        speedPingProc.running = false;
+        speedDlProc.running = false;
+        speedUlProc.running = false;
+    }
+
+    Process {
+        id: speedPingProc
+        command: ["sh", "-c",
+            "out=$(curl -s -m 6 -o /dev/null -w '%{time_total}' https://speed.cloudflare.com/meta 2>/dev/null); " +
+            "rc=$?; [ \"$rc\" -ne 0 ] && { echo \"__FAIL__\"; exit 0; }; printf '%s' \"$out\""]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var txt = this.text.trim();
+                if (txt === "__FAIL__" || txt.length === 0) {
+                    root.speedFail("No internet connection");
+                    return;
+                }
+                var t = parseFloat(txt) || 0;
+                root.speedPing = Math.round(t * 1000);
+                root.speedPhase = "download";
+                speedDlProc.running = true;
+            }
+        }
+    }
+
+    Process {
+        id: speedDlProc
+        command: ["sh", "-c",
+            "bytes=0; t0=$(date +%s%N); rc=0; " +
+            "while [ $(( ($(date +%s%N) - t0) / 1000000000 )) -lt 5 ]; do " +
+            "b=$(curl -s -m 6 -o /dev/null -w '%{size_download}' 'https://speed.cloudflare.com/__down?bytes=25000000' 2>/dev/null); " +
+            "r=$?; [ \"$r\" -ne 0 ] && { rc=1; break; }; " +
+            "bytes=$((bytes + ${b:-0})); done; " +
+            "[ \"$rc\" -ne 0 ] && { echo \"__FAIL__\"; exit 0; }; " +
+            "awk -v b=\"$bytes\" 'BEGIN { printf \"%.1f\", b / 5 / 125000 }'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var txt = this.text.trim();
+                if (txt === "__FAIL__" || txt.length === 0) {
+                    root.speedFail("Connection lost during download");
+                    return;
+                }
+                var mbps = parseFloat(txt) || 0;
+                root.speedDown = Math.round(mbps * 10) / 10;
+                root.speedPhase = "upload";
+                speedUlProc.running = true;
+            }
+        }
+    }
+
+    Process {
+        id: speedUlProc
+        command: ["sh", "-c",
+            "bytes=0; t0=$(date +%s%N); rc=0; " +
+            "while [ $(( ($(date +%s%N) - t0) / 1000000000 )) -lt 5 ]; do " +
+            "b=$(head -c 25000000 /dev/zero | tr '\\0' 'x' | curl -s -m 6 -o /dev/null -w '%{size_upload}' -X POST --data-binary @- 'https://speed.cloudflare.com/__up' 2>/dev/null); " +
+            "r=$?; [ \"$r\" -ne 0 ] && { rc=1; break; }; " +
+            "bytes=$((bytes + ${b:-0})); done; " +
+            "[ \"$rc\" -ne 0 ] && { echo \"__FAIL__\"; exit 0; }; " +
+            "awk -v b=\"$bytes\" 'BEGIN { printf \"%.1f\", b / 5 / 125000 }'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var txt = this.text.trim();
+                if (txt === "__FAIL__" || txt.length === 0) {
+                    root.speedFail("Connection lost during upload");
+                    return;
+                }
+                var mbps = parseFloat(txt) || 0;
+                root.speedUp = Math.round(mbps * 10) / 10;
+                root.speedPhase = "done";
+                root.speedRunning = false;
+                root.speedDone = true;
+                speedTimeout.stop();
+            }
+        }
+    }
+
+    Timer {
+        id: speedTimeout
+        interval: 45000
+        onTriggered: root.speedFail("Speed test timed out")
+    }
 
     /**
      * The soul ember rests with the 系 header kanji: the kanji is the lantern,
@@ -345,6 +469,148 @@ PillSurface {
                             font.features: { "tnum": 1 }
                         }
                     }
+                }
+            }
+        }
+
+        Item { width: 1; height: 13 * root.s }
+
+        Rectangle {
+            width: parent.width
+            height: 1
+            color: Theme.hair
+        }
+
+        Item { width: 1; height: 13 * root.s }
+
+        // Speed test
+        Rectangle {
+            id: speedBox
+            width: parent.width
+            height: (root.speedError.length > 0 ? 68 : 52) * root.s
+            radius: 10 * root.s
+            color: root.speedRunning ? Qt.alpha(Theme.vermLit, 0.12)
+                : (root.speedError.length > 0 ? Qt.alpha(Theme.verm, 0.12) : Theme.frameBg)
+            border.width: 1
+            border.color: root.speedRunning ? Qt.alpha(Theme.vermLit, 0.3)
+                : (root.speedError.length > 0 ? Qt.alpha(Theme.verm, 0.3) : Theme.frameBorder)
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 10 * root.s
+                spacing: 6 * root.s
+
+                Row {
+                    width: parent.width
+                    spacing: 0
+
+                    // Download
+                    Column {
+                        width: parent.width / 4
+                        spacing: 3 * root.s
+
+                        Text {
+                            text: "↓ DOWN"
+                            color: Theme.faint
+                            font.family: Theme.font
+                            font.pixelSize: 7.5 * root.s
+                            font.weight: Font.Bold
+                            font.capitalization: Font.AllUppercase
+                            font.letterSpacing: 0.9 * root.s
+                        }
+                        Text {
+                            text: root.speedDown > 0 ? root.fmtSpeed(root.speedDown) : "---"
+                            color: root.speedPhase === "download" ? Theme.vermLit : Theme.cream
+                            font.family: Theme.font
+                            font.pixelSize: 13 * root.s
+                            font.weight: Font.ExtraBold
+                            font.features: { "tnum": 1 }
+                        }
+                    }
+
+                    // Ping
+                    Column {
+                        width: parent.width / 4
+                        spacing: 3 * root.s
+
+                        Text {
+                            text: "PING"
+                            color: Theme.faint
+                            font.family: Theme.font
+                            font.pixelSize: 7.5 * root.s
+                            font.weight: Font.Bold
+                            font.capitalization: Font.AllUppercase
+                            font.letterSpacing: 0.9 * root.s
+                        }
+                        Text {
+                            text: root.speedPing > 0 ? root.speedPing + " ms" : "---"
+                            color: root.speedPhase === "ping" ? Theme.vermLit : Theme.cream
+                            font.family: Theme.font
+                            font.pixelSize: 13 * root.s
+                            font.weight: Font.ExtraBold
+                            font.features: { "tnum": 1 }
+                        }
+                    }
+
+                    // Upload
+                    Column {
+                        width: parent.width / 4
+                        spacing: 3 * root.s
+
+                        Text {
+                            text: "↑ UP"
+                            color: Theme.faint
+                            font.family: Theme.font
+                            font.pixelSize: 7.5 * root.s
+                            font.weight: Font.Bold
+                            font.capitalization: Font.AllUppercase
+                            font.letterSpacing: 0.9 * root.s
+                        }
+                        Text {
+                            text: root.speedUp > 0 ? root.fmtSpeed(root.speedUp) : "---"
+                            color: root.speedPhase === "upload" ? Theme.vermLit : Theme.cream
+                            font.family: Theme.font
+                            font.pixelSize: 13 * root.s
+                            font.weight: Font.ExtraBold
+                            font.features: { "tnum": 1 }
+                        }
+                    }
+
+                    // Trigger
+                    Rectangle {
+                        width: parent.width / 4
+                        height: 28 * root.s
+                        radius: 8 * root.s
+                        color: root.speedRunning ? Qt.alpha(Theme.vermLit, 0.15)
+                            : (root.speedError.length > 0 ? Qt.alpha(Theme.verm, 0.15) : Qt.alpha(Theme.cream, 0.06))
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: root.speedRunning ? "..." : "Test"
+                            color: root.speedRunning ? Theme.vermLit : Theme.subtle
+                            font.family: Theme.font
+                            font.pixelSize: 10 * root.s
+                            font.weight: Font.DemiBold
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.speedRunning ? root.stopSpeed() : root.startSpeed()
+                        }
+                    }
+                }
+
+                Text {
+                    visible: root.speedError.length > 0
+                    width: parent.width
+                    text: "⚠  " + root.speedError
+                    color: Theme.vermLit
+                    font.family: Theme.font
+                    font.pixelSize: 10 * root.s
+                    font.weight: Font.DemiBold
+                    wrapMode: Text.WordWrap
+                    elide: Text.ElideRight
                 }
             }
         }
