@@ -87,7 +87,7 @@ SettingsSurface {
 
     Process {
         id: pullProc
-        command: ["git", "-C", Config.configDir, "pull"]
+        command: ["git", "-C", Config.configDir, "pull", "origin", "master"]
         onExited: function (exitCode) {
             root.busy = false;
             if (exitCode === 0) {
