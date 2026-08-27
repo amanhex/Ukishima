@@ -26,6 +26,7 @@ PillSurface {
 
     readonly property var devices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
     readonly property var wifiDev: devices.find(function(d) { return d && d.type === DeviceType.Wifi }) || null
+    readonly property string wifiIface: wifiDev ? (wifiDev.name || "wlan0") : "wlan0"
     readonly property bool wifiOn: (typeof Networking !== "undefined" && Networking) ? Networking.wifiEnabled : false
     readonly property var nets: (wifiDev && wifiDev.networks) ? wifiDev.networks.values : []
     readonly property var netsSorted: nets.slice().sort(function(a, b) {
@@ -63,15 +64,6 @@ PillSurface {
     property string revealedPw: ""
     property bool revealResolved: false
 
-    readonly property string hsCon: "UkishimaHotspot"
-    readonly property string hsIface: wifiDev ? (wifiDev.name || "wlan0") : "wlan0"
-    property string hsName: "Ukishima"
-    property string hsPw: ""
-    property bool hsActive: false
-    property bool hsBusy: false
-    property string hsEdit: ""
-    property string hsDraft: ""
-
     /**
      * Draft of the password being typed for `expandedSsid`. Lives on the root so
      * the field can restore itself from the draft if the keyed list model swaps
@@ -82,7 +74,7 @@ PillSurface {
     property string attemptSsid: ""
     property bool attemptWasKnown: false
 
-    implicitHeight: hsBlock.y + hsBlock.height
+    implicitHeight: listFrame.y + listFrame.height
 
     function isSecured(ssid) {
         var sec = securityMap[ssid];
@@ -246,7 +238,6 @@ PillSurface {
     onActiveChanged: {
         if (active) {
             refresh();
-            refreshHotspot();
             startScan();
         } else {
             stopScan();
@@ -254,7 +245,6 @@ PillSurface {
             connecting = false;
             connSpinTimer.stop();
             connectFailed = false;
-            hsEdit = "";
             hidePassword();
         }
     }
@@ -296,160 +286,6 @@ PillSurface {
     Process {
         id: rescanProc
         command: ["nmcli", "dev", "wifi", "rescan"]
-    }
-
-    /* Keep the hotspot state honest while the surface is open: NM may drop the
-       AP (e.g. a station autoconnect fighting for the radio) after the toggle
-       was handled, so re-query it periodically instead of trusting a stale read. */
-    Timer {
-        id: hsPoll
-        interval: 2000
-        repeat: true
-        running: root.active
-        onTriggered: root.refreshHotspot()
-    }
-
-    /**
-     * Brings the shared AP up with the current name and password, creating the
-     * persistent connection on first use and modifying it on later changes. Name
-     * and password are passed as positional arguments, never spliced into the
-     * shell string, so an odd character cannot break or inject the command.
-     */
-    function applyHotspot() {
-        if (hsBusy || hsPw.length < 8)
-            return;
-        hsBusy = true;
-        hsApplyProc.command = ["sh", "-c",
-            'c="' + hsCon + '"; d="$3"; '
-            + 'for p in $(nmcli -t -f NAME,DEVICE,TYPE connection show | awk -F: -v d="$d" -v c="$c" \'$2==d && $1!=c && $3=="802-11-wireless"{print $1}\'); do '
-            +   'nmcli connection modify "$p" autoconnect no 2>/dev/null || true; '
-            + 'done; '
-            + 'if nmcli -t connection show "$c" >/dev/null 2>&1; then '
-            +   'nmcli connection modify "$c" 802-11-wireless.ssid "$1" 802-11-wireless-security.key-mgmt wpa-psk 802-11-wireless-security.psk "$2"; '
-            + 'else '
-            +   'nmcli connection add type wifi ifname "$d" con-name "$c" autoconnect no 802-11-wireless.ssid "$1" 802-11-wireless.mode ap 802-11-wireless-security.key-mgmt wpa-psk 802-11-wireless-security.psk "$2" ipv4.method shared; '
-            + 'fi; '
-            + 'nmcli connection up "$c"',
-            "sh", hsName, hsPw, hsIface];
-        hsApplyProc.running = true;
-    }
-
-    function stopHotspot() {
-        if (hsBusy)
-            return;
-        hsBusy = true;
-        hsDownProc.running = true;
-    }
-
-    function refreshHotspot() {
-        hsStateProc.running = true;
-        hsReadProc.running = true;
-    }
-
-    /**
-     * Commits an inline name or password edit, ignoring a password shorter than
-     * the 8-character WPA2 minimum. The connection profile is written either
-     * way, so an edit made while the hotspot is down survives a pill restart;
-     * a live hotspot is additionally re-applied so the change takes effect at
-     * once. The NM profile stays the single source of truth for both fields.
-     */
-    function commitHotspotEdit() {
-        if (hsEdit === "name") {
-            if (hsDraft.length)
-                hsName = hsDraft;
-        } else if (hsEdit === "pw") {
-            if (hsDraft.length >= 8)
-                hsPw = hsDraft;
-        }
-        hsEdit = "";
-        if (hsActive)
-            applyHotspot();
-        else
-            saveHotspot();
-    }
-
-    /**
-     * Persists name and password into the PillHotspot profile without
-     * bringing it up, creating the profile on first edit. A missing or short
-     * password is generated here, since a WPA profile with an empty psk would
-     * be broken; the field shows the generated value right away.
-     */
-    function saveHotspot() {
-        if (hsPw.length < 8)
-            hsPw = generatePw();
-        hsSaveProc.command = ["sh", "-c",
-            'c="' + hsCon + '"; '
-            + 'if nmcli -t connection show "$c" >/dev/null 2>&1; then '
-            +   'nmcli connection modify "$c" 802-11-wireless.ssid "$1" 802-11-wireless-security.key-mgmt wpa-psk 802-11-wireless-security.psk "$2"; '
-            + 'else '
-            +   'nmcli connection add type wifi ifname "$3" con-name "$c" autoconnect no 802-11-wireless.ssid "$1" 802-11-wireless.mode ap 802-11-wireless-security.key-mgmt wpa-psk 802-11-wireless-security.psk "$2" ipv4.method shared; '
-            + 'fi',
-            "sh", hsName, hsPw, hsIface];
-        hsSaveProc.running = true;
-    }
-
-    /**
-     * Builds an eight-character WPA2 password from an unambiguous alphabet, used
-     * when the hotspot is switched on before a password has been set.
-     */
-    function generatePw() {
-        var cs = "abcdefghijkmnpqrstuvwxyz23456789";
-        var s = "";
-        for (var i = 0; i < 8; i++)
-            s += cs.charAt(Math.floor(Math.random() * cs.length));
-        return s;
-    }
-
-    Process {
-        id: hsApplyProc
-        onExited: {
-            root.hsBusy = false;
-            root.refreshHotspot();
-        }
-    }
-
-    Process {
-        id: hsSaveProc
-        onExited: root.refreshHotspot()
-    }
-
-    Process {
-        id: hsDownProc
-        command: ["sh", "-c",
-            'c="$1"; d="$2"; '
-            + 'nmcli connection down "$c" 2>/dev/null || true; '
-            + 'for p in $(nmcli -t -f NAME,DEVICE,TYPE connection show | awk -F: -v d="$d" -v c="$c" \'$2==d && $1!=c && $3=="802-11-wireless"{print $1}\'); do '
-            +   'nmcli connection modify "$p" autoconnect yes 2>/dev/null || true; '
-            + 'done; '
-            + 'nmcli device reapply "$d" 2>/dev/null || true; '
-            + 'nmcli dev wifi rescan 2>/dev/null || true',
-            "sh", root.hsCon, root.hsIface]
-        onExited: {
-            root.hsBusy = false;
-            root.refreshHotspot();
-        }
-    }
-
-    Process {
-        id: hsStateProc
-        command: ["sh", "-c", "nmcli -t -f NAME connection show --active | grep -qx \"$1\" && echo on || echo off", "sh", root.hsCon]
-        stdout: StdioCollector {
-            onStreamFinished: root.hsActive = this.text.trim() === "on"
-        }
-    }
-
-    Process {
-        id: hsReadProc
-        command: ["nmcli", "-t", "-s", "-g", "802-11-wireless.ssid,802-11-wireless-security.psk", "connection", "show", root.hsCon]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                var lines = this.text.split("\n");
-                if (lines.length >= 1 && lines[0].length)
-                    root.hsName = lines[0];
-                if (lines.length >= 2 && lines[1].length)
-                    root.hsPw = lines[1];
-            }
-        }
     }
 
     Process {
@@ -497,7 +333,7 @@ PillSurface {
         command: ["sh", "-c",
             "nmcli -t -f ACTIVE,BAND,RATE dev wifi list | awk -F: '$1==\"yes\"{print \"BR \" $2 \" \" $3}'; "
             + "ip -4 -o addr show dev \"$1\" scope global | awk '{split($4,a,\"/\"); print \"IP \" a[1]; exit}'",
-            "sh", root.hsIface]
+            "sh", root.wifiIface]
         stdout: StdioCollector {
             onStreamFinished: {
                 var br = "";
@@ -1120,173 +956,4 @@ PillSurface {
         }
     }
 
-    Item {
-        id: hsBlock
-        anchors.top: listFrame.bottom
-        anchors.topMargin: 8 * root.s
-        anchors.left: parent.left
-        anchors.right: parent.right
-        visible: root.wifiOn
-        height: root.wifiOn ? hsCol.implicitHeight + 9 * root.s : 0
-        clip: true
-
-        Rectangle {
-            id: hsDivider
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: 1
-            color: Theme.hair
-        }
-
-        Column {
-            id: hsCol
-            anchors.top: hsDivider.bottom
-            anchors.topMargin: 9 * root.s
-            anchors.left: parent.left
-            anchors.right: parent.right
-            spacing: 6 * root.s
-
-            component CredRow: Item {
-                id: cr
-                property string field: ""
-                property string label: ""
-                property string value: ""
-                property bool secret: false
-                readonly property bool editing: root.hsEdit === cr.field
-                width: parent ? parent.width : 0
-                height: 22 * root.s
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 8 * root.s
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: cr.label
-                    color: Theme.faint
-                    font.family: Theme.font
-                    font.pixelSize: 9 * root.s
-                    font.weight: Font.Medium
-                    font.capitalization: Font.AllUppercase
-                    font.letterSpacing: 1 * root.s
-                }
-
-                Text {
-                    visible: !cr.editing
-                    anchors.right: parent.right
-                    anchors.rightMargin: 8 * root.s
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: cr.value.length ? cr.value : "tap to set"
-                    color: cr.value.length ? (cr.secret ? Theme.flameCore : Theme.cream) : Theme.faint
-                    font.family: Theme.font
-                    font.pixelSize: 12 * root.s
-                    font.weight: Font.Medium
-                    font.features: { "tnum": 1 }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        anchors.margins: -6 * root.s
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            root.hsDraft = cr.value;
-                            root.hsEdit = cr.field;
-                            Qt.callLater(crField.forceActiveFocus);
-                        }
-                    }
-                }
-
-                TextField {
-                    id: crField
-                    visible: cr.editing
-                    anchors.right: parent.right
-                    anchors.rightMargin: 8 * root.s
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 150 * root.s
-                    horizontalAlignment: TextInput.AlignRight
-                    background: null
-                    padding: 0
-                    color: Theme.cream
-                    font.family: Theme.font
-                    font.pixelSize: 12 * root.s
-                    placeholderText: cr.field === "pw" ? "8+ characters" : "Name"
-                    placeholderTextColor: Theme.faint
-                    selectByMouse: true
-                    selectionColor: Theme.verm
-                    text: cr.editing ? root.hsDraft : ""
-                    onTextEdited: root.hsDraft = text
-                    onAccepted: root.commitHotspotEdit()
-                }
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 34 * root.s
-                radius: 10 * root.s
-                color: root.hsActive ? Theme.frameBg : "transparent"
-
-                GlyphIcon {
-                    id: hsGlyph
-                    anchors.left: parent.left
-                    anchors.leftMargin: 8 * root.s
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 17 * root.s
-                    height: 17 * root.s
-                    name: "hotspot"
-                    color: root.hsActive ? Theme.flameGlow : Theme.iconDim
-                    stroke: 1.7
-                }
-
-                Column {
-                    anchors.left: hsGlyph.right
-                    anchors.leftMargin: 11 * root.s
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 1 * root.s
-
-                    Text {
-                        text: "Hotspot"
-                        color: Theme.cream
-                        font.family: Theme.font
-                        font.pixelSize: 12.5 * root.s
-                        font.weight: Font.DemiBold
-                    }
-                    Text {
-                        text: root.hsBusy ? "…" : (root.hsActive ? "Active" : "Off")
-                        color: root.hsActive ? Theme.flameGlow : Theme.dim
-                        font.family: Theme.font
-                        font.pixelSize: 9.5 * root.s
-                        font.weight: Font.Medium
-                    }
-                }
-
-                LinkToggle {
-                    s: root.s
-                    anchors.right: parent.right
-                    anchors.rightMargin: 8 * root.s
-                    anchors.verticalCenter: parent.verticalCenter
-                    on: root.hsActive
-                    onToggled: {
-                        if (root.hsActive) {
-                            root.stopHotspot();
-                        } else {
-                            if (root.hsPw.length < 8)
-                                root.hsPw = root.generatePw();
-                            root.applyHotspot();
-                        }
-                    }
-                }
-            }
-
-            CredRow {
-                field: "name"
-                label: "Network"
-                value: root.hsName
-            }
-
-            CredRow {
-                field: "pw"
-                label: "Password"
-                value: root.hsPw
-                secret: true
-            }
-        }
-    }
 }
