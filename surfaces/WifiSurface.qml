@@ -298,6 +298,17 @@ PillSurface {
         command: ["nmcli", "dev", "wifi", "rescan"]
     }
 
+    /* Keep the hotspot state honest while the surface is open: NM may drop the
+       AP (e.g. a station autoconnect fighting for the radio) after the toggle
+       was handled, so re-query it periodically instead of trusting a stale read. */
+    Timer {
+        id: hsPoll
+        interval: 2000
+        repeat: true
+        running: root.active
+        onTriggered: root.refreshHotspot()
+    }
+
     /**
      * Brings the shared AP up with the current name and password, creating the
      * persistent connection on first use and modifying it on later changes. Name
@@ -309,11 +320,14 @@ PillSurface {
             return;
         hsBusy = true;
         hsApplyProc.command = ["sh", "-c",
-            'c="' + hsCon + '"; '
+            'c="' + hsCon + '"; d="$3"; '
+            + 'for p in $(nmcli -t -f NAME,DEVICE,TYPE connection show | awk -F: -v d="$d" -v c="$c" \'$2==d && $1!=c && $3=="802-11-wireless"{print $1}\'); do '
+            +   'nmcli connection modify "$p" autoconnect no 2>/dev/null || true; '
+            + 'done; '
             + 'if nmcli -t connection show "$c" >/dev/null 2>&1; then '
             +   'nmcli connection modify "$c" 802-11-wireless.ssid "$1" 802-11-wireless-security.key-mgmt wpa-psk 802-11-wireless-security.psk "$2"; '
             + 'else '
-            +   'nmcli connection add type wifi ifname "$3" con-name "$c" autoconnect no 802-11-wireless.ssid "$1" 802-11-wireless.mode ap 802-11-wireless-security.key-mgmt wpa-psk 802-11-wireless-security.psk "$2" ipv4.method shared; '
+            +   'nmcli connection add type wifi ifname "$d" con-name "$c" autoconnect no 802-11-wireless.ssid "$1" 802-11-wireless.mode ap 802-11-wireless-security.key-mgmt wpa-psk 802-11-wireless-security.psk "$2" ipv4.method shared; '
             + 'fi; '
             + 'nmcli connection up "$c"',
             "sh", hsName, hsPw, hsIface];
@@ -401,7 +415,15 @@ PillSurface {
 
     Process {
         id: hsDownProc
-        command: ["nmcli", "connection", "down", root.hsCon]
+        command: ["sh", "-c",
+            'c="$1"; d="$2"; '
+            + 'nmcli connection down "$c" 2>/dev/null || true; '
+            + 'for p in $(nmcli -t -f NAME,DEVICE,TYPE connection show | awk -F: -v d="$d" -v c="$c" \'$2==d && $1!=c && $3=="802-11-wireless"{print $1}\'); do '
+            +   'nmcli connection modify "$p" autoconnect yes 2>/dev/null || true; '
+            + 'done; '
+            + 'nmcli device reapply "$d" 2>/dev/null || true; '
+            + 'nmcli dev wifi rescan 2>/dev/null || true',
+            "sh", root.hsCon, root.hsIface]
         onExited: {
             root.hsBusy = false;
             root.refreshHotspot();
