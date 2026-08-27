@@ -79,12 +79,15 @@ PillSurface {
     Process {
         id: speedDlProc
         command: ["sh", "-c",
-            "curl -s -o /dev/null -w '%{speed_download}' " +
-            "https://speed.cloudflare.com/__down?bytes=10000000 2>/dev/null || echo '0'"]
+            "bytes=0; t0=$(date +%s%N); " +
+            "while [ $(( ($(date +%s%N) - t0) / 1000000000 )) -lt 5 ]; do " +
+            "b=$(curl -s -o /dev/null -w '%{size_download}' 'https://speed.cloudflare.com/__down?bytes=25000000' 2>/dev/null); " +
+            "bytes=$((bytes + ${b:-0})); done; " +
+            "awk -v b=\"$bytes\" 'BEGIN { printf \"%.1f\", b / 5 / 125000 }'"]
         stdout: StdioCollector {
             onStreamFinished: {
-                var bps = parseFloat(this.text.trim()) || 0;
-                root.speedDown = Math.round(bps * 8 / 100000) / 10;
+                var mbps = parseFloat(this.text.trim()) || 0;
+                root.speedDown = Math.round(mbps * 10) / 10;
                 root.speedPhase = "upload";
                 speedUlProc.running = true;
             }
@@ -94,13 +97,15 @@ PillSurface {
     Process {
         id: speedUlProc
         command: ["sh", "-c",
-            "dd if=/dev/urandom bs=1M count=5 2>/dev/null | " +
-            "curl -s -o /dev/null -w '%{speed_upload}' -X POST -d @- " +
-            "https://speed.cloudflare.com/__up 2>/dev/null || echo '0'"]
+            "bytes=0; t0=$(date +%s%N); " +
+            "while [ $(( ($(date +%s%N) - t0) / 1000000000 )) -lt 5 ]; do " +
+            "b=$(head -c 25000000 /dev/zero | tr '\\0' 'x' | curl -s -o /dev/null -w '%{size_upload}' -X POST --data-binary @- 'https://speed.cloudflare.com/__up' 2>/dev/null); " +
+            "bytes=$((bytes + ${b:-0})); done; " +
+            "awk -v b=\"$bytes\" 'BEGIN { printf \"%.1f\", b / 5 / 125000 }'"]
         stdout: StdioCollector {
             onStreamFinished: {
-                var bps = parseFloat(this.text.trim()) || 0;
-                root.speedUp = Math.round(bps * 8 / 100000) / 10;
+                var mbps = parseFloat(this.text.trim()) || 0;
+                root.speedUp = Math.round(mbps * 10) / 10;
                 root.speedPhase = "done";
                 root.speedRunning = false;
                 root.speedDone = true;
