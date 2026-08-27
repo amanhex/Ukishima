@@ -94,7 +94,7 @@ Row {
                     var addr = chip.modelData.address;
                     if (addr.indexOf("0x") !== 0)
                         addr = "0x" + addr;
-                    Hyprland.dispatch('hl.dsp.window.move({ workspace = ' + root.restoreWorkspace() + ', window = "address:' + addr + '" })');
+                    Hyprland.dispatch('hl.dsp.window.move({ workspace = "' + root.restoreWorkspace() + '", window = "address:' + addr + '" })');
                 }
             }
 

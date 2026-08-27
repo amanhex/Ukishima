@@ -293,7 +293,7 @@ ShellRoot {
             var p = arg.split("|");
             if (p.length < 2 || p[0].length === 0)
                 return;
-            Hyprland.dispatch('hl.dsp.window.move({ workspace = ' + p[1] + ', window = "address:' + p[0] + '" })');
+            Hyprland.dispatch('hl.dsp.window.move({ workspace = "' + p[1] + '", window = "address:' + p[0] + '" })');
         }
     }
 
