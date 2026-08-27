@@ -1,16 +1,19 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import "../Singletons"
 import "../components"
 
 /**
  * 天 WEATHER surface: a live read-out of the Open-Meteo forecast already served
  * by the Weather singleton, so no extra dependency or network hops are added
- * here. Current conditions lead (hero glyph, temperature, humidity), then a
- * 24-hour hourly strip of the next few hours and a five-day daily forecast
- * beneath a hairline. Everything is driven straight off `Weather.hourly` and
- * `Weather.daily`; a not-yet-ready read shows only the header and a dim hint.
+ * here. Current conditions lead (hero glyph, temperature, humidity), then the
+ * next few hours as a slider-free grid and a five-day daily forecast beneath a
+ * hairline. Delegate data is read through `required property var modelData` and
+ * column widths are derived from the container, so nothing reads undefined and
+ * nothing escapes the pill. Before the first fetch lands only the header and a
+ * dim waiting hint are shown.
  */
 PillSurface {
     id: root
@@ -20,7 +23,7 @@ PillSurface {
     mRight: 19
     mBottom: 16
 
-    implicitWidth: Math.max(header.implicitWidth, 252 * s)
+    implicitWidth: 272 * s
     implicitHeight: content.implicitHeight
 
     ameForm: "off"
@@ -63,18 +66,69 @@ PillSurface {
                 }
             }
 
-            Text {
+            Item {
+                id: cityBox
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                text: Weather.city.length ? Weather.city : "Local"
-                color: Theme.dim
-                font.family: Theme.font
-                font.pixelSize: 9.5 * root.s
-                font.weight: Font.DemiBold
-                font.capitalization: Font.AllUppercase
-                font.letterSpacing: 0.8 * root.s
-                elide: Text.ElideRight
-                maximumLineCount: 1
+                width: Math.max(cityText.implicitWidth, cityField.implicitWidth) + 4
+                height: 14 * root.s
+
+                property bool editing: false
+
+                Text {
+                    id: cityText
+                    visible: !cityBox.editing
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Weather.city.length ? Weather.city : "set town"
+                    color: cityArea.containsMouse ? Theme.subtle : Theme.dim
+                    font.family: Theme.font
+                    font.pixelSize: 9.5 * root.s
+                    font.weight: Font.DemiBold
+                    font.capitalization: Font.AllUppercase
+                    font.letterSpacing: 0.8 * root.s
+                    elide: Text.ElideRight
+                }
+                MouseArea {
+                    id: cityArea
+                    visible: !cityBox.editing
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        cityField.text = Flags.weatherCity;
+                        cityBox.editing = true;
+                        cityField.forceActiveFocus();
+                        cityField.selectAll();
+                    }
+                }
+                TextField {
+                    id: cityField
+                    visible: cityBox.editing
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(cityText.implicitWidth, 96 * root.s)
+                    background: null
+                    padding: 0
+                    horizontalAlignment: TextInput.AlignRight
+                    verticalAlignment: TextInput.AlignVCenter
+                    color: Theme.cream
+                    font.family: Theme.font
+                    font.pixelSize: 9.5 * root.s
+                    font.weight: Font.DemiBold
+                    font.capitalization: Font.AllUppercase
+                    font.letterSpacing: 0.8 * root.s
+                    placeholderText: "town"
+                    placeholderTextColor: Theme.faint
+                    selectByMouse: true
+                    selectionColor: Theme.verm
+                    onAccepted: {
+                        Flags.weatherCity = text.trim();
+                        cityBox.editing = false;
+                    }
+                    Keys.onEscapePressed: cityBox.editing = false
+                    onActiveFocusChanged: if (!activeFocus) cityBox.editing = false
+                }
             }
         }
 
@@ -154,10 +208,10 @@ PillSurface {
 
             Column {
                 width: parent.width
-                spacing: 8 * root.s
+                spacing: 7 * root.s
 
                 Text {
-                    text: "NEXT 24H"
+                    text: "NEXT HOURS"
                     color: Theme.faint
                     font.family: Theme.font
                     font.pixelSize: 8.5 * root.s
@@ -166,44 +220,53 @@ PillSurface {
                     font.letterSpacing: 1.2 * root.s
                 }
 
-                Row {
-                    width: parent.width
-                    spacing: 8 * root.s
-                    Repeater {
-                        model: Weather.hourly.slice(0, 8)
-                        Item {
-                            width: (parent.width - parent.spacing * 7) / 8
-                            height: 52 * root.s
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 4 * root.s
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: modelData.hour + "h"
-                                    color: Theme.dim
-                                    font.family: Theme.font
-                                    font.pixelSize: 8.5 * root.s
-                                    font.weight: Font.Medium
-                                    font.features: { "tnum": 1 }
-                                }
-                                GlyphIcon {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    width: 15 * root.s
-                                    height: 15 * root.s
-                                    name: Weather.glyphFor(modelData.code, true)
-                                    color: Theme.iconDim
-                                    stroke: 1.6
-                                }
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: modelData.temp + "°"
-                                    color: Theme.cream
-                                    font.family: Theme.font
-                                    font.pixelSize: 10.5 * root.s
-                                    font.weight: Font.DemiBold
-                                    font.features: { "tnum": 1 }
-                                }
-                            }
+                Repeater {
+                    model: Weather.hourly.slice(0, 6)
+
+                    Row {
+                        id: hourRow
+                        required property var modelData
+                        width: parent.width
+                        height: 24 * root.s
+                        spacing: 8 * root.s
+
+                        Text {
+                            width: 34 * root.s
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: hourRow.modelData.hour + "h"
+                            color: Theme.dim
+                            font.family: Theme.font
+                            font.pixelSize: 9.5 * root.s
+                            font.weight: Font.Medium
+                            font.features: { "tnum": 1 }
+                        }
+                        GlyphIcon {
+                            width: 16 * root.s
+                            height: 16 * root.s
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: Weather.glyphFor(hourRow.modelData.code, true)
+                            color: Theme.iconDim
+                            stroke: 1.7
+                        }
+                        Text {
+                            width: parent.width - 34 * root.s - 16 * root.s - 40 * root.s - 16 * root.s
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Weather.labelFor(hourRow.modelData.code)
+                            color: Theme.subtle
+                            font.family: Theme.font
+                            font.pixelSize: 9.5 * root.s
+                            font.weight: Font.Medium
+                        }
+                        Text {
+                            width: 40 * root.s
+                            anchors.verticalCenter: parent.verticalCenter
+                            horizontalAlignment: Text.AlignRight
+                            text: hourRow.modelData.temp + "°"
+                            color: Theme.cream
+                            font.family: Theme.font
+                            font.pixelSize: 11 * root.s
+                            font.weight: Font.DemiBold
+                            font.features: { "tnum": 1 }
                         }
                     }
                 }
@@ -231,15 +294,18 @@ PillSurface {
 
                 Repeater {
                     model: Weather.daily
+
                     Row {
+                        id: dayRow
+                        required property var modelData
                         width: parent.width
                         height: 26 * root.s
-                        spacing: 8 * root.s
+                        spacing: 6 * root.s
 
                         Text {
                             width: 40 * root.s
                             anchors.verticalCenter: parent.verticalCenter
-                            text: modelData.day
+                            text: dayRow.modelData.day
                             color: Theme.dim
                             font.family: Theme.font
                             font.pixelSize: 10.5 * root.s
@@ -247,31 +313,29 @@ PillSurface {
                             font.capitalization: Font.AllUppercase
                         }
                         GlyphIcon {
-                            width: 15 * root.s
-                            height: 15 * root.s
+                            width: 16 * root.s
+                            height: 16 * root.s
                             anchors.verticalCenter: parent.verticalCenter
-                            name: Weather.glyphFor(modelData.code, true)
+                            name: Weather.glyphFor(dayRow.modelData.code, true)
                             color: Theme.iconDim
-                            stroke: 1.6
+                            stroke: 1.7
                         }
                         Text {
-                            width: 52 * root.s
+                            width: parent.width - 40 * root.s - 16 * root.s - 44 * root.s - 40 * root.s - 18 * root.s
                             anchors.verticalCenter: parent.verticalCenter
-                            text: Weather.labelFor(modelData.code)
+                            text: Weather.labelFor(dayRow.modelData.code)
                             color: Theme.subtle
                             font.family: Theme.font
                             font.pixelSize: 10 * root.s
                             font.weight: Font.Medium
-                        }
-                        Item {
-                            width: parent.width - 40 * root.s - 15 * root.s - 52 * root.s - 44 * root.s - 16 * root.s
-                            height: parent.height
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
                         }
                         Text {
                             width: 44 * root.s
                             anchors.verticalCenter: parent.verticalCenter
                             horizontalAlignment: Text.AlignRight
-                            text: modelData.rh + "%"
+                            text: dayRow.modelData.rh + "%"
                             color: Theme.faint
                             font.family: Theme.font
                             font.pixelSize: 9.5 * root.s
@@ -282,7 +346,7 @@ PillSurface {
                             width: 40 * root.s
                             anchors.verticalCenter: parent.verticalCenter
                             horizontalAlignment: Text.AlignRight
-                            text: modelData.temp + "°"
+                            text: dayRow.modelData.temp + "°"
                             color: Theme.cream
                             font.family: Theme.font
                             font.pixelSize: 11.5 * root.s
