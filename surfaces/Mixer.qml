@@ -518,8 +518,8 @@ PillSurface {
                 width: faderRow.colW
                 s: root.s
                 icon: "sun"
-                subLabel: "Brightness"
-                subPersistent: false
+                subLabel: modelData.label
+                subPersistent: true
                 focused: root.focusIndex === index
                 value: pct / 100
                 valueLabel: pct + "%"
@@ -563,8 +563,8 @@ PillSurface {
                 width: faderRow.colW
                 s: root.s
                 icon: "sun"
-                subLabel: "Brightness"
-                subPersistent: false
+                subLabel: "Built-in"
+                subPersistent: true
                 focused: root.focusIndex === brRep.count
                 value: Devices.backlightPct / 100
                 valueLabel: Devices.backlightPct + "%"
