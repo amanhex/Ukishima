@@ -16,7 +16,6 @@ OsdPopup OsdPopup.qml
 Power Power.qml
 Recorder Recorder.qml
 SysmonSurface SysmonSurface.qml
-SpeedTest SpeedTest.qml
 ThemeSurface ThemeSurface.qml
 Toast Toast.qml
 UpdateSurface UpdateSurface.qml
