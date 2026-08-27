@@ -98,7 +98,7 @@ Singleton {
 
     Process {
         id: ddcDetect
-        command: ["ddcutil", "detect", "--brief"]
+        command: ["sh", "-c", "command -v ddcutil >/dev/null 2>&1 || exit 0; ddcutil detect --brief"]
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
