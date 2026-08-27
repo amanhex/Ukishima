@@ -266,7 +266,6 @@ ShellRoot {
         function gameMode(mon: string): void { Flags.gameMode = !Flags.gameMode; }
         function sysmon(mon: string): void { root.toggleSurface(mon, "sysmon"); }
         function system(mon: string): void { root.toggleSurface(mon, "sysmon"); }
-        function speedtest(mon: string): void { root.toggleSurface(mon, "speedtest"); }
         function clipboard(mon: string): void { root.toggleSurface(mon, "clipboard"); }
         function wallpaper(mon: string): void { root.toggleSurface(mon, "wallpaper"); }
         function media(mon: string): void {

@@ -57,7 +57,6 @@ Item {
     readonly property bool batteryOpen: surface === "battery"
     readonly property bool recorderOpen: surface === "recorder"
     readonly property bool sysmonOpen: surface === "sysmon"
-    readonly property bool speedtestOpen: surface === "speedtest"
     readonly property bool appearanceOpen: surface === "appearance"
     readonly property bool displayOpen: surface === "display"
     readonly property bool themeOpen: surface === "theme"
@@ -316,7 +315,6 @@ Item {
         battery:   { size: () => Qt.size(batteryW, surfaceItem(ldBattery).implicitHeight + 26 * s), ame: () => surfaceItem(ldBattery) },
         recorder:  { size: () => Qt.size(recorderW, surfaceItem(ldRecorder).implicitHeight + 33 * s), ame: () => surfaceItem(ldRecorder) },
         sysmon:    { size: () => Qt.size(sysmonW, surfaceItem(ldSysmon).implicitHeight + 33 * s), ame: () => surfaceItem(ldSysmon) },
-        speedtest: { size: () => Qt.size(sysmonW, surfaceItem(ldSpeedTest).implicitHeight + 33 * s), ame: () => surfaceItem(ldSpeedTest) },
         appearance: { size: () => Qt.size(settingsW, surfaceItem(ldAppearance).implicitHeight + 29 * s), ame: () => surfaceItem(ldAppearance) },
         display:    { size: () => Qt.size(settingsW, surfaceItem(ldDisplay).implicitHeight + 29 * s), ame: () => surfaceItem(ldDisplay) },
         theme:      { size: () => Qt.size(settingsW, surfaceItem(ldTheme).implicitHeight + 29 * s), ame: () => surfaceItem(ldTheme) },
@@ -822,8 +820,6 @@ Item {
             return recorderIcon.mapToItem(pill, recorderIcon.width / 2, recorderIcon.height + drop * 0.55);
         if (soulTarget === "sysmon")
             return sysmonIcon.mapToItem(pill, sysmonIcon.width / 2, sysmonIcon.height + drop * 0.55);
-        if (soulTarget === "speedtest")
-            return speedtestIcon.mapToItem(pill, speedtestIcon.width / 2, speedtestIcon.height + drop * 0.55);
         if (soulTarget === "wallpaper")
             return wallpaperIcon.mapToItem(pill, wallpaperIcon.width / 2, wallpaperIcon.height + drop * 0.55);
         if (soulTarget === "clipboard")
@@ -2177,31 +2173,6 @@ Item {
                 }
 
                 Item {
-                    id: speedtestIcon
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 17 * pill.s
-                    height: 17 * pill.s
-
-                    GlyphIcon {
-                        anchors.fill: parent
-                        name: "gauge"
-                        color: speedtestArea.containsMouse ? Theme.cream : Theme.iconDim
-                        stroke: 1.7
-                    }
-
-                    MouseArea {
-                        id: speedtestArea
-                        anchors.fill: parent
-                        anchors.margins: -6 * pill.s
-                        hoverEnabled: true
-                        enabled: hover.live
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: pill.requestSurface("speedtest")
-                        onContainsMouseChanged: if (containsMouse) pill.soulTarget = "speedtest"
-                    }
-                }
-
-                Item {
                     id: wallpaperIcon
                     anchors.verticalCenter: parent.verticalCenter
                     width: 17 * pill.s
@@ -2499,18 +2470,6 @@ Item {
         sourceComponent: SysmonSurface {
             s: pill.s
             open: pill.sysmonOpen
-            morphCloseness: pill.morphCloseness
-            onRequestClose: pill.requestClose()
-        }
-    }
-
-    Loader {
-        id: ldSpeedTest
-        active: false
-        anchors.fill: parent
-        sourceComponent: SpeedTest {
-            s: pill.s
-            open: pill.speedtestOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
         }

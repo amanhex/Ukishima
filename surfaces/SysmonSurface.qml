@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell.Io
 import "../Singletons"
 import "../components"
 
@@ -30,6 +31,82 @@ PillSurface {
     readonly property var cellKeys: Sysmon.hasVram ? ["net", "disk", "swap", "vram"] : ["net", "disk", "swap"]
 
     onActiveChanged: Sysmon.open = active
+
+    property bool speedRunning: false
+    property string speedPhase: ""
+    property real speedPing: 0
+    property real speedDown: 0
+    property real speedUp: 0
+    property bool speedDone: false
+
+    function fmtSpeed(mbps) {
+        if (mbps >= 1000) return (mbps / 1000).toFixed(1) + " Gbps";
+        return mbps.toFixed(1) + " Mbps";
+    }
+
+    function startSpeed() {
+        if (root.speedRunning) return;
+        root.speedRunning = true;
+        root.speedDone = false;
+        root.speedPhase = "ping";
+        root.speedPing = 0;
+        root.speedDown = 0;
+        root.speedUp = 0;
+        speedPingProc.running = true;
+    }
+
+    function stopSpeed() {
+        root.speedRunning = false;
+        root.speedPhase = "";
+        speedPingProc.running = false;
+        speedDlProc.running = false;
+        speedUlProc.running = false;
+    }
+
+    Process {
+        id: speedPingProc
+        command: ["sh", "-c", "curl -s -o /dev/null -w '%{time_total}' https://speed.cloudflare.com/meta 2>/dev/null || echo '0'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var t = parseFloat(this.text.trim()) || 0;
+                root.speedPing = Math.round(t * 1000);
+                root.speedPhase = "download";
+                speedDlProc.running = true;
+            }
+        }
+    }
+
+    Process {
+        id: speedDlProc
+        command: ["sh", "-c",
+            "curl -s -o /dev/null -w '%{speed_download}' " +
+            "https://speed.cloudflare.com/__down?bytes=10000000 2>/dev/null || echo '0'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var bps = parseFloat(this.text.trim()) || 0;
+                root.speedDown = Math.round(bps * 8 / 100000) / 10;
+                root.speedPhase = "upload";
+                speedUlProc.running = true;
+            }
+        }
+    }
+
+    Process {
+        id: speedUlProc
+        command: ["sh", "-c",
+            "dd if=/dev/urandom bs=1M count=5 2>/dev/null | " +
+            "curl -s -o /dev/null -w '%{speed_upload}' -X POST -d @- " +
+            "https://speed.cloudflare.com/__up 2>/dev/null || echo '0'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var bps = parseFloat(this.text.trim()) || 0;
+                root.speedUp = Math.round(bps * 8 / 100000) / 10;
+                root.speedPhase = "done";
+                root.speedRunning = false;
+                root.speedDone = true;
+            }
+        }
+    }
 
     /**
      * The soul ember rests with the 系 header kanji: the kanji is the lantern,
@@ -344,6 +421,131 @@ PillSurface {
                             font.weight: Font.ExtraBold
                             font.features: { "tnum": 1 }
                         }
+                    }
+                }
+            }
+        }
+
+        Item { width: 1; height: 13 * root.s }
+
+        Rectangle {
+            width: parent.width
+            height: 1
+            color: Theme.hair
+        }
+
+        Item { width: 1; height: 13 * root.s }
+
+        // Speed test
+        Rectangle {
+            id: speedBox
+            width: parent.width
+            height: 52 * root.s
+            radius: 10 * root.s
+            color: root.speedRunning ? Qt.alpha(Theme.vermLit, 0.12) : Theme.frameBg
+            border.width: 1
+            border.color: root.speedRunning ? Qt.alpha(Theme.vermLit, 0.3) : Theme.frameBorder
+
+            Row {
+                anchors.fill: parent
+                anchors.margins: 12 * root.s
+
+                // Download
+                Column {
+                    width: parent.width / 4
+                    spacing: 3 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        text: "↓ DOWN"
+                        color: Theme.faint
+                        font.family: Theme.font
+                        font.pixelSize: 7.5 * root.s
+                        font.weight: Font.Bold
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 0.9 * root.s
+                    }
+                    Text {
+                        text: root.speedDown > 0 ? root.fmtSpeed(root.speedDown) : "---"
+                        color: root.speedPhase === "download" ? Theme.vermLit : Theme.cream
+                        font.family: Theme.font
+                        font.pixelSize: 13 * root.s
+                        font.weight: Font.ExtraBold
+                        font.features: { "tnum": 1 }
+                    }
+                }
+
+                // Ping
+                Column {
+                    width: parent.width / 4
+                    spacing: 3 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        text: "PING"
+                        color: Theme.faint
+                        font.family: Theme.font
+                        font.pixelSize: 7.5 * root.s
+                        font.weight: Font.Bold
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 0.9 * root.s
+                    }
+                    Text {
+                        text: root.speedPing > 0 ? root.speedPing + " ms" : "---"
+                        color: root.speedPhase === "ping" ? Theme.vermLit : Theme.cream
+                        font.family: Theme.font
+                        font.pixelSize: 13 * root.s
+                        font.weight: Font.ExtraBold
+                        font.features: { "tnum": 1 }
+                    }
+                }
+
+                // Upload
+                Column {
+                    width: parent.width / 4
+                    spacing: 3 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        text: "↑ UP"
+                        color: Theme.faint
+                        font.family: Theme.font
+                        font.pixelSize: 7.5 * root.s
+                        font.weight: Font.Bold
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 0.9 * root.s
+                    }
+                    Text {
+                        text: root.speedUp > 0 ? root.fmtSpeed(root.speedUp) : "---"
+                        color: root.speedPhase === "upload" ? Theme.vermLit : Theme.cream
+                        font.family: Theme.font
+                        font.pixelSize: 13 * root.s
+                        font.weight: Font.ExtraBold
+                        font.features: { "tnum": 1 }
+                    }
+                }
+
+                // Trigger
+                Rectangle {
+                    width: parent.width / 4
+                    height: 28 * root.s
+                    radius: 8 * root.s
+                    color: root.speedRunning ? Qt.alpha(Theme.vermLit, 0.15) : Qt.alpha(Theme.cream, 0.06)
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: root.speedRunning ? "..." : (root.speedDone ? "Re-test" : "Test")
+                        color: root.speedRunning ? Theme.vermLit : Theme.subtle
+                        font.family: Theme.font
+                        font.pixelSize: 10 * root.s
+                        font.weight: Font.DemiBold
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.speedRunning ? root.stopSpeed() : root.startSpeed()
                     }
                 }
             }
