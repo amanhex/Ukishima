@@ -23,10 +23,11 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 ## Features
 
 - **Dynamic island** — one morphing pill per monitor, expanding in place with a bead cursor and smooth morph animations.
-- **Surfaces** grown from the pill: launcher, calendar, media, mixer, wallpaper strip + online search, screen recorder, clipboard history, wifi + hotspot, bluetooth, battery, power menu, system monitor, settings (appearance, fonts), OSD and toasts.
+- **Surfaces** grown from the pill: launcher, weather, calendar, media, mixer, wallpaper strip + online search, screen recorder, clipboard history, wifi, bluetooth, battery, power menu, system monitor (with a speed test), notification centre, minimized-window stash, OSD, toasts, and a settings hub (appearance → display, theme, font, interface, update).
 - **Wallpaper system** — `awww` backend with a shuffled bag, per-monitor assignment, animated transitions, video wallpapers (`mpvpaper`), and a live palette that retints the whole UI plus the terminal on every change.
 - **Screen recorder** — `gpu-screen-recorder` with slurp window/region picking, countdown, quality presets, audio, and a recent-clips filmstrip.
-- **Extras** — night light (hyprsunset), clipboard manager (cliphist), music visualiser (cava), game mode, quick-record keybind, keep-awake.
+- **Weather** — Open-Meteo current conditions, hourly and five-day forecast in a dedicated surface, with an editable location (falls back to IP auto-detection).
+- **Extras** — night light (hyprsunset), clipboard manager (cliphist), music visualiser (cava), game mode, quick-record keybind, keep-awake, and an in-app updater that pulls the latest release from GitHub.
 
 ## Requirements
 
@@ -49,7 +50,7 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 | `magick` (ImageMagick) | wallpaper thumbnails and palette |
 | `awww` + `awww-daemon` | wallpaper backend |
 | `ffmpeg` | video-wallpaper still extraction |
-| `nmcli` (NetworkManager) | wifi + hotspot surface |
+| `nmcli` (NetworkManager) | wifi surface |
 | `brightnessctl` or `light` | backlight control |
 | `cava` | music visualiser |
 | `cliphist` + `wl-clipboard` | clipboard history |
@@ -77,7 +78,7 @@ curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/remote-inst
 
 This clones the project to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints the keybinds and auto-launch line to add to your Hyprland config. If already installed, it pulls the latest changes instead.
 
-**Already installed?** Run the same command above to update, or pull manually:
+**Already installed?** Pull updates from the **Update** sub-surface inside the pill's settings (Appearance → Update), run the same command above, or pull manually:
 
 ```bash
 cd ~/.local/share/quickshell/ukishima && git pull
