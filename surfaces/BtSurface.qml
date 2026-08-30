@@ -438,7 +438,6 @@ PillSurface {
                                     anchors.verticalCenter: parent.verticalCenter
                                     visible: devItem.isConnected && devItem.battery >= 0
                                     s: root.s
-                                    kind: "battery"
                                     level: Math.max(0, devItem.battery) / 100
                                 }
 

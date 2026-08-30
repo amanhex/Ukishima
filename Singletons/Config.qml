@@ -8,8 +8,7 @@ import Quickshell
  * so nothing depends on where the shell was launched from or on exported
  * UKISHIMA_* environment variables. Hyprland-compat outputs (generated modules/*,
  * hypridle.conf, hyprsunset.conf and scripts/) all resolve under the same
- * project folder; user state and caches land under the standard XDG dirs in
- * the pill's own namespace.
+ * project folder.
  */
 Singleton {
     id: root
@@ -20,10 +19,7 @@ Singleton {
         return p.length > 1 && p.slice(-1) === "/" ? p.slice(0, -1) : p;
     }
 
-    readonly property string _app: configDir
     readonly property string _hypr: configDir
-    readonly property string _state: root._xdgDir("XDG_STATE_HOME", "/.local/state") + "/ukishima"
-    readonly property string _cache: root._xdgDir("XDG_CACHE_HOME", "/.cache") + "/ukishima"
 
     function _localPath(url) {
         var s = String(url);
@@ -34,18 +30,9 @@ Singleton {
         return s;
     }
 
-    function _xdgDir(name, suffix) {
-        var v = Quickshell.env(name);
-        if (v !== undefined && v !== null && String(v).length > 0)
-            return String(v);
-        return (Quickshell.env("HOME") || "") + suffix;
-    }
-
-    function env(name, fallback) {
-        var v = Quickshell.env(name);
-        if (v !== undefined && v !== null && String(v).length > 0)
-            return String(v);
-        return fallback || "";
+    function hyprPath() {
+        var parts = Array.prototype.slice.call(arguments);
+        return root.join(root._hypr, parts);
     }
 
     function join(base, parts) {
@@ -62,36 +49,5 @@ Singleton {
                 out += "/" + next.replace(/^\//, "");
         }
         return out;
-    }
-
-    function appConfigRoot() { return root._app; }
-    function hyprConfigRoot() { return root._hypr; }
-    function stateRoot() { return root._state; }
-    function cacheRoot() { return root._cache; }
-
-    function hyprPath() {
-        var parts = Array.prototype.slice.call(arguments);
-        if (parts.length > 0 && parts[0] === root._hypr)
-            return root.join(root._hypr, parts.slice(1));
-        return root.join(root._hypr, parts);
-    }
-
-    function scriptPath(name) {
-        return root.hyprPath(root._hypr, "scripts", name);
-    }
-
-    function statePath() {
-        var base = arguments.length > 0 ? arguments[0] : root._state;
-        return root.join(base, Array.prototype.slice.call(arguments, 1));
-    }
-
-    function cachePath() {
-        var base = arguments.length > 0 ? arguments[0] : root._cache;
-        return root.join(base, Array.prototype.slice.call(arguments, 1));
-    }
-
-    function appPath() {
-        var base = arguments.length > 0 ? arguments[0] : root._app;
-        return root.join(base, Array.prototype.slice.call(arguments, 1));
     }
 }

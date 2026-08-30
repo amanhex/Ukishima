@@ -798,7 +798,13 @@ Item {
             GradientStop { position: 1.0; color: Qt.alpha(Theme.cardBot, Flags.pillOpacity) }
         }
 
-        layer.enabled: !pill.morphing
+        /**
+         * The live drop shadow keeps an offscreen render of the whole body on
+         * every monitor. Drag it off entirely while the pill is auto-hidden
+         * off-screen (nobody sees the shadow there) — the layer's FBO and the
+         * per-frame update only exist while the pill is actually visible.
+         */
+        layer.enabled: !pill.morphing && !pill.hidden
         layer.effect: MultiEffect {
             shadowEnabled: true
             shadowColor: Qt.rgba(0, 0, 0, Theme.shadowOpacity)
@@ -1303,6 +1309,7 @@ Item {
                 Image {
                     anchors.fill: parent
                     source: Players.artUrl
+                    sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     visible: status === Image.Ready
@@ -1465,6 +1472,7 @@ Item {
                 Image {
                     anchors.fill: parent
                     source: Players.artUrl
+                    sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     visible: status === Image.Ready
@@ -2347,22 +2355,10 @@ Item {
     /**
      * Morphing surfaces, one latch-once Loader each (see surfaceItem). Eager,
      * they dominated startup and per-monitor RAM; now a surface is built
-     * synchronously on its first open and kept. Each loader fills the pill so
-     * the PillSurface inside anchors exactly as it did as a direct child.
-     *
-     * The hot trio preloads shortly after startup: the mixer needs its Pipewire
-     * trackers bound before it looks right, so a cold first open visibly popped
-     * faders in. Startup itself stays light.
+     * synchronously on its first open and kept, so nothing is retained for
+     * surfaces the user never opens. Each loader fills the pill so the
+     * PillSurface inside anchors exactly as it did as a direct child.
      */
-    Timer {
-        interval: 2500
-        running: true
-        onTriggered: {
-            ldMixer.active = true;
-            ldMedia.active = true;
-            ldLink.active = true;
-        }
-    }
 
     Loader {
         id: ldMixer
