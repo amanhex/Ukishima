@@ -543,11 +543,11 @@ PillSurface {
     /**
      * Kind filter and fit-mode as two Dropdowns sharing one click-away scrim;
      * the filter chip is a mini label showing the current bucket, the fit chip
-     * a scaling glyph. Moving the cursor or picking runs through the Dropdown's
-     * sliding selection bar (glide-eased, so arrow presses feel planted instead
-     * of crossfaded). Picking the fit persists to flags and refits the
-     * wallpapers in place: stills are re-imaged through aww with the new
-     * --resize (no wave), videos respawn with matching mpv scaling.
+     * a scaling glyph; opening tints the chip's own icon/label instead of an
+     * overlay, and the current row in the menu is the vermilion legend.
+     * Picking the fit persists to flags and refits the wallpapers in place:
+     * stills are re-imaged through aww with the new --resize (no wave), videos
+     * respawn with matching mpv scaling.
      */
     Dropdown {
         id: filterRow
