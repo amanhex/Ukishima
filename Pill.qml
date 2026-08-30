@@ -574,8 +574,8 @@ Item {
     readonly property bool wallpaperWh: pill.wallpaperOpen && ldWall.item !== null && ldWall.item.whSource
 
     /**
-     * Route the first printable keystroke over the open wallpaper strip into a
-     * DuckDuckGo search seeded with that character. Not used in wallhaven mode,
+     * Route the first printable keystroke over the open wallpaper strip into
+     * the name filter seeded with that character. Not used in wallhaven mode,
      * where the persistent field is clicked and typed into instead. No-op unless
      * the wallpaper surface is open.
      */
