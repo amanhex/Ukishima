@@ -63,6 +63,14 @@ PillSurface {
     property bool whSource: false
     property var wallResults: []
     property int whPage: 1
+    /** Wallhaven sort bucket: hot (default), latest, top, views, random, favorites. */
+    property string whSort: "hot"
+    readonly property string whSortLabel: {
+        var m = { hot: "Hot", latest: "Latest", top: "Top", random: "Random", favorites: "Top Liked" };
+        return m[root.whSort] || "Hot";
+    }
+    /** The chip/dropdown occupying the slot left of the wallhaven chip: the sort dropdown while browsing, else the kind filter. */
+    readonly property Item whSlot: root.whSource ? whSortRow : filterRow
 
     /** Inline folder edit in the header: true while the path field holds focus. */
     property bool editingDir: false
@@ -105,11 +113,12 @@ PillSurface {
      * a time, driven by the chip clicks; keyboard input is routed through
      * `menuMove`/`menuPick`/`menuClose` to whichever is open.
      */
-    readonly property bool menuOpen: filterRow.open || dFit.open
+    readonly property bool menuOpen: filterRow.open || whSortRow.open || dFit.open
 
     function toggleMenu(m) {
         var was = m.open;
         filterRow.open = false;
+        whSortRow.open = false;
         dFit.open = false;
         m.open = !was;
     }
@@ -117,6 +126,8 @@ PillSurface {
     function menuMove(dir) {
         if (dFit.open)
             dFit.moveSel(dir);
+        else if (whSortRow.open)
+            whSortRow.moveSel(dir);
         else if (filterRow.open)
             filterRow.moveSel(dir);
     }
@@ -124,12 +135,15 @@ PillSurface {
     function menuPick() {
         if (dFit.open)
             dFit.pickSel();
+        else if (whSortRow.open)
+            whSortRow.pickSel();
         else if (filterRow.open)
             filterRow.pickSel();
     }
 
     function menuClose() {
         filterRow.open = false;
+        whSortRow.open = false;
         dFit.open = false;
     }
 
@@ -336,7 +350,7 @@ PillSurface {
      * pickton then re-fetches so a stale chunk never lingers.
      */
     function refreshWallhaven(page) {
-        searchProc.command = ["bash", root.searchScript, "whsearch", root.query, page !== undefined ? page : root.whPage];
+        searchProc.command = ["bash", root.searchScript, "whsearch", root.query, page !== undefined ? page : root.whPage, root.whSort];
         searchProc.running = true;
     }
 
@@ -432,6 +446,7 @@ PillSurface {
         hintDwell.restart();
     } else if (!root.active) {
         filterRow.open = false;
+        whSortRow.open = false;
         dFit.open = false;
         searching = false;
         query = "";
@@ -638,8 +653,8 @@ PillSurface {
         anchors.topMargin: 8 * root.s
         anchors.left: parent.left
         anchors.leftMargin: 20 * root.s
-        anchors.right: parent.right
-        anchors.rightMargin: filterRow.width + 60 * root.s
+        anchors.right: whChip.left
+        anchors.rightMargin: 6 * root.s
         s: root.s
         kanji: "探"
         placeholder: root.whSource ? "Search wallhaven tags" : "Search wallpapers"
@@ -682,12 +697,49 @@ PillSurface {
         anchors.rightMargin: 8 * root.s
         z: 55
         s: root.s
+        // Wallhaven serves stills only, so the all/still/live filter is moot there.
+        visible: !root.whSource
         options: [{ label: "all", value: "all" }, { label: "still", value: "still" }, { label: "live", value: "motion" }]
         value: root.kindFilter
         title: "Filter"
         desc: "Show every, still-only or live-only wallpaper"
         onChipClicked: root.toggleMenu(filterRow)
         onPicked: (v) => root.kindFilter = v
+    }
+
+    /**
+     * Wallhaven sort dropdown, shown only while browsing: swaps the all/still/
+     * live filter (meaningless there) for wallhaven's own sorting buckets.
+     * Picking one re-fetches the current page from its start.
+     */
+    Dropdown {
+        id: whSortRow
+        anchors.top: parent.top
+        anchors.topMargin: 9 * root.s
+        anchors.right: dFit.left
+        anchors.rightMargin: 8 * root.s
+        z: 55
+        s: root.s
+        visible: root.whSource
+        options: [
+            { label: "Hot", value: "hot" },
+            { label: "Latest", value: "latest" },
+            { label: "Top", value: "top" },
+            { label: "Random", value: "random" },
+            { label: "Top Liked", value: "favorites" }
+        ]
+        value: root.whSort
+        title: "Sort: " + root.whSortLabel
+        desc: "How wallhaven orders the browse feed"
+        onChipClicked: root.toggleMenu(whSortRow)
+        onPicked: (v) => {
+            root.whSort = v;
+            root.whPage = 1;
+            root.wallResults = [];
+            root.focusIndex = 0;
+            root.pos = 0;
+            root.refreshWallhaven(1);
+        }
     }
 
     /**
@@ -699,12 +751,13 @@ PillSurface {
         id: whChip
         anchors.top: parent.top
         anchors.topMargin: 9 * root.s
-        anchors.right: filterRow.left
+        anchors.right: root.whSlot.left
         anchors.rightMargin: 8 * root.s
         z: 55
         width: 22 * root.s
         height: 22 * root.s
         radius: height / 2
+        color: "transparent"
 
         GlyphIcon {
             id: whGlyph
@@ -1036,6 +1089,11 @@ PillSurface {
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     smooth: true
+                    // Remote (wallhaven) thumbs must not linger in QPixmapCache:
+                    // they're fetched on demand and dropped as soon as the tile
+                    // scrolls out, so paging or closing never piles up memory.
+                    // Local file thumbs keep the cache for snappy re-scrolling.
+                    cache: !tile.remote
                 }
 
                 Rectangle {

@@ -56,24 +56,31 @@ PYEOF
 
 # Wallhaven browse/search. An empty query returns the default hot (toplist)
 # feed — clicking the strip's wallhaven chip lands there; a query refines it as
-# a most-favorited search. The API serves ready-made thumbs, so results are
-# URLs handed straight to QML Image: nothing is downloaded or cached until a
-# pick.
+# a most-favorited search. The third arg picks the sorting bucket (hot, latest,
+# top, random, favorites); with a query, favorites is implied unless
+# overridden. The API serves ready-made thumbs, so results are URLs handed
+# straight to QML Image: nothing is downloaded or cached until a pick.
 whsearch() {
-    local query="${1:-}" page="${2:-1}"
+    local query="${1:-}" page="${2:-1}" want="${3:-}"
     case "$page" in
         ''|*[!0-9]*) page=1 ;;
     esac
 
     local enc sort extra raw
     enc=$(jq -rn --arg q "$query" '$q|@uri') || { printf '[]\n'; return 0; }
-    # Searched results are ordered by most-favorited (the closest the wallhaven
-    # API has to "popular"); the default browse feed is the hot toplist.
     sort="favorites"
     extra=""
-    if [ -z "$query" ]; then
-        sort="toplist"
-        extra="topRange=1M&"
+    case "$want" in
+        latest)    sort="date_added" ;;
+        top)       sort="toplist";   extra="topRange=1y&" ;;
+        random)    sort="random" ;;
+        favorites) sort="favorites" ;;
+    esac
+    # Hot is the default browse bucket: toplist over the last month. The selected
+    # sort is honoured even for browse; a typed query still implies favorites
+    # unless the sort dropdown explicitly overrides it.
+    if [ -z "$want" ] || [ "$want" = "hot" ]; then
+        sort="toplist"; extra="topRange=1M&"
     fi
     raw=$(curl -s --max-time 15 -A "$UA" \
         "https://wallhaven.cc/api/v1/search?${query:+q=${enc}&}sorting=${sort}&${extra}order=desc&page=${page}") \
@@ -203,7 +210,7 @@ download() {
 
 case "${1:-}" in
     search)   search "${2:-}" "${3:-all}" ;;
-    whsearch) whsearch "${2:-}" "${3:-1}" ;;
+    whsearch) whsearch "${2:-}" "${3:-1}" "${4:-}" ;;
     download) download "${2:-}" ;;
     *)        printf '[]\n'; exit 0 ;;
 esac
