@@ -54,6 +54,44 @@ except Exception:
 PYEOF
 }
 
+# Wallhaven browse/search. An empty query returns the default hot (toplist)
+# feed — clicking the strip's wallhaven chip lands there; a query refines it as
+# a most-favorited search. The API serves ready-made thumbs, so results are
+# URLs handed straight to QML Image: nothing is downloaded or cached until a
+# pick.
+whsearch() {
+    local query="${1:-}" page="${2:-1}"
+    case "$page" in
+        ''|*[!0-9]*) page=1 ;;
+    esac
+
+    local enc sort extra raw
+    enc=$(jq -rn --arg q "$query" '$q|@uri') || { printf '[]\n'; return 0; }
+    # Searched results are ordered by most-favorited (the closest the wallhaven
+    # API has to "popular"); the default browse feed is the hot toplist.
+    sort="favorites"
+    extra=""
+    if [ -z "$query" ]; then
+        sort="toplist"
+        extra="topRange=1M&"
+    fi
+    raw=$(curl -s --max-time 15 -A "$UA" \
+        "https://wallhaven.cc/api/v1/search?${query:+q=${enc}&}sorting=${sort}&${extra}order=desc&page=${page}") \
+        || { printf '[]\n'; return 0; }
+    [ -n "$raw" ] || { printf '[]\n'; return 0; }
+
+    printf '%s' "$raw" | jq -c '
+        .data // []
+        | map({
+            image: .path,
+            thumb: (.thumbs.large // .thumbs.original // ""),
+            w: (.dimension_x // 0),
+            h: (.dimension_y // 0)
+          })
+        | map(select(.image != null and .image != ""))
+    ' 2>/dev/null || printf '[]\n'
+}
+
 search() {
     local query="${1:-}" kind="${2:-all}"
     [ -n "$query" ] || { printf '[]\n'; return 0; }
@@ -103,16 +141,28 @@ download() {
     wpdir=$(jq -r '.wallpaperDir // ""' "$flags" 2>/dev/null || echo "")
     [ -n "$wpdir" ] || wpdir=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-dir" 2>/dev/null || true)
     [ -n "$wpdir" ] || wpdir="$HOME/Pictures/Wallpapers"
-    dir="$wpdir/downloads"
-    mkdir -p "$dir"
+    # Every pick lands directly in the collection root so it joins the shuffle
+    # bag; wallhaven keeps its id, moewalls/DDG get stamped names. No subfolder
+    # is ever created, so browsing never leaves an empty downloads/ dir behind.
 
     case "$url" in
         https://go.moewalls.com/download.php*)
             fn=$(curl -fsI --max-time 20 -A "$UA" -e "https://moewalls.com/" "$url" \
                 | grep -oiP 'filename=\K[^"\r\n;]+' | head -1 | tr -d '/\\')
             [ -n "$fn" ] || fn="moewalls-$(date +%s).mp4"
-            out="$dir/$fn"
+            out="$wpdir/$fn"
             curl -fsL --max-time 600 -A "$UA" -e "https://moewalls.com/" -o "$out" "$url" || exit 1
+            [ -s "$out" ] || exit 1
+            printf '%s\n' "$out"
+            exit 0
+            ;;
+        https://w.wallhaven.cc/*)
+            # Picked wallhaven wallpaper lands in the collection root itself so
+            # it joins the shuffle bag; the filename keeps the wallhaven id.
+            fn=$(basename "$url" | tr -d '/\\')
+            [ -n "$fn" ] || exit 1
+            out="$wpdir/$fn"
+            curl -fsL --max-time 600 -A "$UA" -o "$out" "$url" || exit 1
             [ -s "$out" ] || exit 1
             printf '%s\n' "$out"
             exit 0
@@ -137,7 +187,7 @@ download() {
         *)    ext=png ;;
     esac
 
-    out="$dir/ddg-$(date +%s)-${RANDOM}.${ext}"
+    out="$wpdir/ddg-$(date +%s)-${RANDOM}.${ext}"
 
     if [ "$ext" = "png" ] && [ "$fmt" != "PNG" ]; then
         magick "${tmp}[0]" -strip "png:$tmp.out" 2>/dev/null || exit 1
@@ -153,6 +203,7 @@ download() {
 
 case "${1:-}" in
     search)   search "${2:-}" "${3:-all}" ;;
+    whsearch) whsearch "${2:-}" "${3:-1}" ;;
     download) download "${2:-}" ;;
     *)        printf '[]\n'; exit 0 ;;
 esac

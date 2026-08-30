@@ -485,10 +485,14 @@ Item {
 
     readonly property bool wallpaperSearching: pill.wallpaperOpen && ldWall.item !== null && ldWall.item.searching
 
+    /** True while the strip is in wallhaven browse mode, where search is manual (click field, type, Enter). */
+    readonly property bool wallpaperWh: pill.wallpaperOpen && ldWall.item !== null && ldWall.item.whSource
+
     /**
      * Route the first printable keystroke over the open wallpaper strip into a
-     * DuckDuckGo search seeded with that character. No-op unless the wallpaper
-     * surface is open.
+     * DuckDuckGo search seeded with that character. Not used in wallhaven mode,
+     * where the persistent field is clicked and typed into instead. No-op unless
+     * the wallpaper surface is open.
      */
     function wallpaperType(ch) {
         if (pill.wallpaperOpen && ldWall.item)

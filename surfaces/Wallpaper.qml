@@ -24,15 +24,22 @@ import "../components"
  * DuckDuckGo image search: a search field reveals at the top, the strip swaps
  * its model from local files to remote results (debounced fetch through
  * wallpaper-search.sh), and selecting a result downloads it, applies it and
- * returns to the local strip. Escape, an emptied query or a finished pick all
- * fall back to the local view.
+ * returns to the local strip. A wallpaper glyph chip beside the kind filter
+ * toggles wallhaven browse instead: click it and the strip shows the default
+ * wallhaven feed. Wallhaven search is manual — click the persistent search
+ * field, type a tag, and press Enter to refine. Wallhaven thumbs are
+ * wallhaven's own thumb CDN URLs handed directly to QML Image, so nothing is
+ * stored on disk until a pick downloads the full file into the wallpaper
+ * directory. Escape, an emptied query or a finished pick all fall back to the
+ * local view.
  *
- * The header carries two chips. Left of the refresh control a scaling-glyph
+ * The header carries three chips. Left of the refresh control a scaling-glyph
  * chip opens the fit dropdown (Cover / Contain / Stretch / Center), persisted
  * to flags and applied in place so the wallpapers on screen rescale without a
  * transition; to its left a label chip opens the kind filter (all / still /
- * live) for the strip. Each dropdown is keyboard-driven: arrows move the
- * sliding selection bar, Return picks, Escape closes just the menu.
+ * live) for the strip; to its left a wallpaper glyph toggles wallhaven
+ * browse. Dropdowns are keyboard-driven: arrows move the sliding selection
+ * bar, Return picks, Escape closes just the menu.
  */
 PillSurface {
     id: root
@@ -47,6 +54,15 @@ PillSurface {
     property bool searching: false
     property string query: ""
     property var ddgResults: []
+
+    /**
+     * Wallhaven browse mode: when on, the strip shows wallhaven results (the
+     * default feed with no query, refined by typing); when off, the local strip
+     * with DuckDuckGo as the type-to-search engine.
+     */
+    property bool whSource: false
+    property var wallResults: []
+    property int whPage: 1
 
     /** Inline folder edit in the header: true while the path field holds focus. */
     property bool editingDir: false
@@ -181,7 +197,9 @@ PillSurface {
      * a populated query in search mode shows remote results, anything else the
      * local snapshot.
      */
-    readonly property var items: (searching && query.length > 0) ? ddgResults : localItems
+    readonly property var items: root.whSource
+        ? root.wallResults
+        : ((searching && query.length > 0) ? ddgResults : localItems)
     readonly property int itemCount: items.length
 
     /**
@@ -296,14 +314,92 @@ PillSurface {
     /**
      * Leave search mode and fall back to the local strip, re-centring on the
      * wallpaper currently on screen. Used by Escape, an emptied query and a
-     * completed download.
+     * completed download. In wallhaven browse mode it instead reloads the
+     * default feed, since the strip never left wallhaven.
      */
     function exitSearch() {
         searching = false;
         query = "";
         ddgResults = [];
         searchField.text = "";
-        centerOnCurrent();
+        if (root.whSource) {
+            root.wallResults = [];
+            root.refreshWallhaven();
+        } else {
+            centerOnCurrent();
+        }
+    }
+
+    /**
+     * (Re)load a wallhaven page. `query` refines a tag search (empty = default
+     * feed), `page` selects the chunk. Results replace the whole strip; a
+     * pickton then re-fetches so a stale chunk never lingers.
+     */
+    function refreshWallhaven(page) {
+        searchProc.command = ["bash", root.searchScript, "whsearch", root.query, page !== undefined ? page : root.whPage];
+        searchProc.running = true;
+    }
+
+    /**
+     * Chevron paging for wallhaven. Clears the current chunk and loads the next
+     * or previous one, resetting focus to the start.
+     */
+    function whPageMove(dir) {
+        if (!root.whSource || dlProc.running)
+            return;
+        var next = root.whPage + dir;
+        if (next < 1)
+            return;
+        root.whPage = next;
+        root.wallResults = [];
+        root.focusIndex = 0;
+        root.pos = 0;
+        root.refreshWallhaven(next);
+    }
+
+    /**
+     * Wallhaven search fired on Enter in the field: fetch the page for the
+     * typed query now (wallhaven search is manual — no live keystroke search),
+     * resetting focus and page to the top. Field focus is then released so the
+     * following Enter applies the focused wallpaper instead of re-searching.
+     */
+    function searchWallhavenNow() {
+        if (!root.whSource)
+            return;
+        root.whPage = 1;
+        root.wallResults = [];
+        root.focusIndex = 0;
+        root.pos = 0;
+        root.refreshWallhaven(1);
+        searchField.input.focus = false;
+    }
+
+    /**
+     * Wallhaven chip toggle. Turning it on quits any DDG search and loads the
+     * default wallhaven feed; turning it off restores the local strip.
+     */
+    function toggleWallhaven() {
+        root.menuClose();
+        if (root.whSource) {
+            root.whSource = false;
+            root.wallResults = [];
+            if (root.searching)
+                root.exitSearch();
+            else
+                root.centerOnCurrent();
+        } else {
+            if (root.searching) {
+                root.searching = false;
+                root.query = "";
+                root.ddgResults = [];
+                searchField.text = "";
+            }
+            root.whSource = true;
+            root.wallResults = [];
+            root.focusIndex = 0;
+            root.pos = 0;
+            root.refreshWallhaven();
+        }
     }
 
     /**
@@ -325,18 +421,30 @@ PillSurface {
         query = "";
         ddgResults = [];
         searchField.text = "";
-        centerOnCurrent();
+        if (root.whSource) {
+            focusIndex = 0;
+            pos = 0;
+            refreshWallhaven();
+        } else {
+            centerOnCurrent();
+        }
         hintShown = false;
         hintDwell.restart();
     } else if (!root.active) {
         filterRow.open = false;
         dFit.open = false;
+        searching = false;
+        query = "";
+        ddgResults = [];
+        searchField.text = "";
+        wallResults = [];
+        whSource = false;
     }
 
     Connections {
         target: Walls
         function onEntriesChanged() {
-            if (!root.searching && root.focusIndex >= Walls.count)
+            if (!root.whSource && !root.searching && root.focusIndex >= Walls.count)
                 root.focusIndex = Math.max(0, Walls.count - 1);
         }
 
@@ -345,10 +453,11 @@ PillSurface {
          * data actually lands, so a wallpaper changed (or thumbs regenerated)
          * while the switcher was closed shows up instead of leaving the stale
          * previous pick focused. Skipped while a search query is up, since the
-         * strip is showing remote results then.
+         * strip is showing remote results then, and in wallhaven mode so
+         * applying a wallpaper never yanks the browse strip away.
          */
         function onRefreshDone() {
-            if (root.active && !(root.searching && root.query.length > 0))
+            if (root.active && !root.whSource && !(root.searching && root.query.length > 0))
                 root.centerOnCurrent();
         }
     }
@@ -461,6 +570,10 @@ PillSurface {
         id: debounce
         interval: 350
         onTriggered: {
+            if (root.whSource) {
+                root.refreshWallhaven();
+                return;
+            }
             if (root.query.length === 0) {
                 root.ddgResults = [];
                 return;
@@ -482,7 +595,10 @@ PillSurface {
                 } catch (e) {
                     out = [];
                 }
-                root.ddgResults = out;
+                if (root.whSource)
+                    root.wallResults = out;
+                else
+                    root.ddgResults = out;
                 root.focusIndex = 0;
                 root.pos = 0;
             }
@@ -502,7 +618,13 @@ PillSurface {
                 failed = "";
                 Walls.refresh();
                 Walls.apply(savedPath);
-                root.exitSearch();
+                if (root.whSource) {
+                    // Stay on the current wallhaven results and drop field focus
+                    // so the next Enter picks again instead of re-searching.
+                    searchField.input.focus = false;
+                } else {
+                    root.exitSearch();
+                }
             } else {
                 failed = target;
             }
@@ -513,27 +635,30 @@ PillSurface {
     SearchField {
         id: searchField
         anchors.top: parent.top
-        anchors.topMargin: 6 * root.s
+        anchors.topMargin: 8 * root.s
         anchors.left: parent.left
         anchors.leftMargin: 20 * root.s
         anchors.right: parent.right
         anchors.rightMargin: filterRow.width + 60 * root.s
         s: root.s
         kanji: "探"
-        placeholder: "Search wallpapers"
-        visible: root.searching
-        enabled: root.searching
+        placeholder: root.whSource ? "Search wallhaven tags" : "Search wallpapers"
+        visible: root.searching || root.whSource
+        enabled: root.searching || root.whSource
         horizontalNav: true
         z: 30
         onTextChanged: {
             root.query = text;
-            debounce.restart();
+            if (!root.whSource)
+                debounce.restart();
         }
         onMoved: (d) => root.move(d)
-        onAccepted: root.activate()
+        onAccepted: root.whSource ? root.searchWallhavenNow() : root.activate()
         onDismissed: root.exitSearch()
         onKeyPressed: (e) => {
-            if (e.key === Qt.Key_Backspace && root.query.length <= 1 && searchField.input.selectedText.length === 0) {
+            if (!root.whSource
+                && e.key === Qt.Key_Backspace && root.query.length <= 1
+                && searchField.input.selectedText.length === 0) {
                 root.exitSearch();
                 e.accepted = true;
             }
@@ -565,6 +690,53 @@ PillSurface {
         onPicked: (v) => root.kindFilter = v
     }
 
+    /**
+     * Wallhaven browse chip, mirroring the Dropdown chip: toggling lights the
+     * wallpaper glyph and loads the default wallhaven feed; typing the query
+     * then refines it. A second click returns to the local strip.
+     */
+    Rectangle {
+        id: whChip
+        anchors.top: parent.top
+        anchors.topMargin: 9 * root.s
+        anchors.right: filterRow.left
+        anchors.rightMargin: 8 * root.s
+        z: 55
+        width: 22 * root.s
+        height: 22 * root.s
+        radius: height / 2
+
+        GlyphIcon {
+            id: whGlyph
+            anchors.centerIn: parent
+            width: 13 * root.s
+            height: 13 * root.s
+            name: "wallpaper"
+            color: root.whSource ? Theme.vermLit : Theme.iconDim
+            stroke: 1.8
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
+        }
+
+        HoverHandler {
+            id: whChipHover
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.toggleWallhaven()
+        }
+
+        Tooltip {
+            placement: "below"
+            align: "right"
+            title: "Wallhaven"
+            desc: root.whSource
+                ? "Browsing wallhaven — click to return to local"
+                : "Click to browse wallhaven wallpapers"
+            show: whChipHover.hovered
+        }
+    }
     Dropdown {
         id: dFit
         anchors.top: parent.top
@@ -686,7 +858,7 @@ PillSurface {
         anchors.right: filterRow.left
         anchors.rightMargin: 12 * root.s
         height: 30 * root.s
-        visible: !root.searching
+        visible: !root.searching && !root.whSource
         z: 30
 
         Text {
@@ -760,7 +932,7 @@ PillSurface {
         anchors.leftMargin: 20 * root.s
         anchors.verticalCenter: parent.verticalCenter
         z: 0
-        visible: Flags.showGlyphs && !root.searching
+        visible: Flags.showGlyphs && !root.searching && !root.whSource
         text: "壁"
         color: Theme.ghost
         opacity: 0.55
@@ -1114,6 +1286,8 @@ PillSurface {
         anchors.centerIn: parent
         visible: root.itemCount === 0 && !searchProc.running
         text: {
+            if (root.whSource)
+                return root.query.length ? "no wallhaven results" : "no wallhaven wallpapers";
             if (root.searching && root.query.length)
                 return "no results";
             if (root.kindFilter === "motion")
@@ -1125,6 +1299,72 @@ PillSurface {
         color: Theme.faint
         font.family: Theme.font
         font.pixelSize: 10.5 * root.s
+    }
+
+    /**
+     * Wallhaven chunk paging: a prev/next chevron at each strip edge. Each press
+     * drops the current results and loads the neighbouring page (first seen or
+     * missed), so nothing accumulates and the strip never grows unboundedly.
+     * Hidden unless the strip is in wallhaven browse mode.
+     */
+    Rectangle {
+        id: whPrev
+        anchors.left: parent.left
+        anchors.leftMargin: 8 * root.s
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.whSource && root.whPage > 1
+        z: 40
+        width: 22 * root.s
+        height: 22 * root.s
+        radius: height / 2
+        color: whPrevHover.hovered ? Theme.frameBg : "transparent"
+
+        GlyphIcon {
+            anchors.centerIn: parent
+            width: 12 * root.s
+            height: 12 * root.s
+            name: "chevron-left"
+            color: whPrevHover.hovered ? Theme.vermLit : Theme.iconDim
+            stroke: 2
+        }
+
+        HoverHandler { id: whPrevHover }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.whPageMove(-1)
+        }
+    }
+
+    Rectangle {
+        id: whNext
+        anchors.right: parent.right
+        anchors.rightMargin: 8 * root.s
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.whSource
+        z: 40
+        width: 22 * root.s
+        height: 22 * root.s
+        radius: height / 2
+        color: whNextHover.hovered ? Theme.frameBg : "transparent"
+
+        GlyphIcon {
+            anchors.centerIn: parent
+            width: 12 * root.s
+            height: 12 * root.s
+            name: "chevron-right"
+            color: whNextHover.hovered ? Theme.vermLit : Theme.iconDim
+            stroke: 2
+        }
+
+        HoverHandler { id: whNextHover }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.whPageMove(1)
+        }
     }
 
     Text {
@@ -1188,7 +1428,7 @@ PillSurface {
         anchors.bottomMargin: 9 * root.s
         width: hintLegend.width
         height: hintLegend.height
-        visible: root.itemCount > 0 && !root.searching
+        visible: root.itemCount > 0 && !root.searching && !root.whSource
         opacity: (root.hintShown || root.monHover.length > 0) ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: Motion.standard } }
 
