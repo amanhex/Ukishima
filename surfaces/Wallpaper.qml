@@ -430,6 +430,7 @@ PillSurface {
     }
 
     onActiveChanged: if (active) {
+        Walls.warm();
         searching = false;
         editingDir = false;
         query = "";
@@ -830,12 +831,12 @@ PillSurface {
     }
 
     /**
-     * Refresh control, top-right. The only trigger for the thumbnail pipeline:
-     * re-runs the whole thing, so missing previews are generated and stale ones
-     * regenerated on demand. Opening the strip never refreshes; what is shown
-     * is the last snapshot until this is clicked. The glyph spins while the
-     * pipeline is in flight and the strip re-centres on the current wallpaper
-     * when it lands.
+     * Refresh control, top-right. A full re-run of the thumbnail pipeline:
+     * missing previews are generated and stale ones regenerated on demand. The
+     * strip also warms itself on open (Walls.warm) so a fresh shell or a wiped
+     * cache fills in without a click; this button is the force-refresh. The
+     * glyph spins while the pipeline is in flight and the strip re-centres on
+     * the current wallpaper when it lands.
      */
     Rectangle {
         id: refreshBtn

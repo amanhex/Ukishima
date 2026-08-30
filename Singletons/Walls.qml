@@ -20,9 +20,12 @@ import Quickshell.Io
  * to the ukishima-wallpaper-dir state file on its last run, then
  * ~/Pictures/Wallpapers for a first boot before wallpaper.sh init has run.
  *
- * The pipeline never runs on its own: it is triggered only by the wallpaper
- * strip's refresh button or an explicit folder change, never when the strip
- * opens, so thumbnails are generated strictly on demand.
+ * The pipeline is triggered by the wallpaper strip's refresh button, an
+ * explicit folder change, or the strip's own warm-up on open: an empty
+ * snapshot refreshes fully, otherwise a single `[ -s ]` probe on the newest
+ * entry's thumb decides whether any previews are missing and only then
+ * rebuilds. A warm snapshot (list + thumbs intact) costs one ~10ms stat on
+ * open instead of a full rebuild on every visit.
  *
  * Thumbs live in per-folder subdirectories of the ukishima-wp-thumbs cache, each
  * keyed by the md5 of its wallpaper folder's path. Files sharing a basename
@@ -97,6 +100,50 @@ Singleton {
         resolveProc.running = true;
     }
 
+    /**
+     * Strip-opening warm-up. On a fresh shell the snapshot is empty and the
+     * refresh button was the only way to fill it, so the first open showed
+     * nothing until a manual refresh. Opening the strip now runs the pipeline
+     * on its own just when it is actually needed: an empty snapshot refreshes
+     * fully, otherwise one cheap `[ -s ]` probe on the newest entry's thumb
+     * decides whether any previews are missing (e.g. the cache was cleared)
+     * and only then rebuilds. A warm snapshot costs a single ~10ms stat.
+     *
+     * `warmRequested` latches the request so a rapid double activation (surface
+     * rewiring during the open morph) cannot stack a second pipeline on the
+     * first; it only clears once the listing actually lands or the probe finds
+     * the previews intact.
+     */
+    property bool warmRequested: false
+
+    function warm() {
+        if (warmRequested)
+            return;
+        if (resolveProc.running || thumbProc.running || listProc.running || stateProc.running)
+            return;
+        if (entries.length === 0) {
+            warmRequested = true;
+            refresh();
+            return;
+        }
+        if (probeProc.running)
+            return;
+        warmRequested = true;
+        probeProc.command = ["sh", "-c", "[ -s \"$1\" ]", "_", entries[0].thumb];
+        probeProc.running = true;
+    }
+
+    Process {
+        id: probeProc
+        onExited: function(exitCode) {
+            if (exitCode !== 0) {
+                root.refresh();
+            } else {
+                root.warmRequested = false;
+            }
+        }
+    }
+
     Process {
         id: resolveProc
         onExited: thumbProc.running = true
@@ -151,7 +198,7 @@ Singleton {
     Process {
         id: listProc
         command: ["sh", "-c",
-            "key=$(printf %s \"$1\" | md5sum | cut -d' ' -f1); "
+            "key=$(printf %s \"${1%/}\" | md5sum | cut -d' ' -f1); "
             + "find \"$1\" -type f \\( -iname '*.jpg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.webp' -o -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' \\) -printf '%T@\\t%p\\n' | sort -rn "
             + "| awk -F'\\t' -v c=\"$2$key\" '{ n = split($2, p, \"/\"); printf \"%s\\t%s\\t%s\\n\", $1, $2, c \"/\" p[n] \".png\" }'",
             "_", root.wpDir, root.thumbDir]
@@ -187,6 +234,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 root.current = this.text.trim();
+                root.warmRequested = false;
                 if (root.pending) {
                     root.pending = false;
                     Qt.callLater(root.refresh);

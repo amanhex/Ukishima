@@ -30,6 +30,23 @@ Item {
     property var barWindow
     property string surface: ""
 
+    /**
+     * Tail retention: a closed surface keeps its object tree alive for this
+     * long in case it reopens, so a double-toggle or a quick return is still
+     * instant. Once the tail expires the Loader is deactivated and the whole
+     * tree is reclaimed, so surfaces you don't come back to stop costing RAM.
+     */
+    readonly property real unloadTailMs: 30000
+    property string prevSurface: ""
+
+    onSurfaceChanged: {
+        if (pill.prevSurface.length > 0 && pill.prevSurface !== pill.surface) {
+            const f = pill.loaders[pill.prevSurface];
+            if (f) pill.scheduleUnload(f());
+        }
+        pill.prevSurface = pill.surface;
+    }
+
     property bool hovered: false
     /**
      * True while a reveal interaction is in flight: the pointer touched the
@@ -286,10 +303,13 @@ Item {
      * fires mid-evaluation (that read-then-write would be a binding loop). The
      * write is idempotent and the Loader loads synchronously, so a first open
      * reads the real implicitHeight in the same evaluation and the morph target
-     * is exact. Nothing ever deactivates a loaded surface.
+     * is exact. When a surface leaves, scheduleUnload arms the tail; opening
+     * it again before the tail fires cancels the drop, so only surfaces that
+     * stay closed actually unload.
      */
     function surfaceItem(ld) {
         ld.active = true;
+        pill.cancelUnload(ld);
         return ld.item;
     }
 
@@ -324,6 +344,71 @@ Item {
         fontpicker: { size: () => Qt.size(fontpickerW, surfaceItem(ldFontpicker).implicitHeight + 29 * s), ame: () => surfaceItem(ldFontpicker) },
         update:     { size: () => Qt.size(settingsW, surfaceItem(ldUpdate).implicitHeight + 29 * s), ame: () => surfaceItem(ldUpdate) }
     })
+
+    /**
+     * Loader lookup by surface name, as thunks so the map never pins a loader
+     * before it is built. The unload machinery keeps every closed surface
+     * resident for `unloadTailMs`, then drops it — so opening a surface pays
+     * its build cost once, and re-opening within the tail is instant.
+     */
+    readonly property var loaders: ({
+        calendar:   () => ldCalendar,
+        weather:    () => ldWeather,
+        launcher:   () => ldLauncher,
+        clipboard:  () => ldClip,
+        wallpaper:  () => ldWall,
+        power:      () => ldPower,
+        media:      () => ldMedia,
+        mixer:      () => ldMixer,
+        link:       () => ldLink,
+        wifi:       () => ldWifi,
+        bt:         () => ldBt,
+        battery:    () => ldBattery,
+        recorder:   () => ldRecorder,
+        sysmon:     () => ldSysmon,
+        appearance: () => ldAppearance,
+        display:    () => ldDisplay,
+        theme:      () => ldTheme,
+        interface:  () => ldInterface,
+        fontpicker: () => ldFontpicker,
+        update:     () => ldUpdate
+    })
+
+    property var unloadPending: []
+
+    /**
+     * Arm (or keep armed) the tail for a closed surface. Any active surfaces
+     * in the pending list are dropped together when the timer fires.
+     */
+    function scheduleUnload(ld) {
+        if (!ld) return;
+        if (unloadPending.indexOf(ld) < 0)
+            unloadPending.push(ld);
+        unloadTimer.restart();
+    }
+
+    function cancelUnload(ld) {
+        if (!ld) return;
+        var i = unloadPending.indexOf(ld);
+        if (i >= 0) {
+            unloadPending.splice(i, 1);
+            if (unloadPending.length === 0)
+                unloadTimer.stop();
+        }
+    }
+
+    Timer {
+        id: unloadTimer
+        interval: pill.unloadTailMs
+        repeat: false
+        onTriggered: {
+            for (var i = 0; i < unloadPending.length; i++) {
+                if (unloadPending[i])
+                    unloadPending[i].active = false;
+            }
+            unloadPending = [];
+        }
+    }
 
     readonly property string mode: dragActive ? "dragOver"
         : (surfaceOpen && surfaces[surface] !== undefined ? surface
@@ -2392,11 +2477,13 @@ Item {
     }
 
     /**
-     * Morphing surfaces, one latch-once Loader each (see surfaceItem). Eager,
+     * Morphing surfaces, one tail-unloaded Loader each (see surfaceItem). Eager,
      * they dominated startup and per-monitor RAM; now a surface is built
-     * synchronously on its first open and kept, so nothing is retained for
-     * surfaces the user never opens. Each loader fills the pill so the
-     * PillSurface inside anchors exactly as it did as a direct child.
+     * synchronously on its first open, kept for unloadTailMs after it stops
+     * being open, then dropped — so nothing is retained for surfaces the user
+     * never opens, and closed ones don't linger past the tail. Each loader
+     * fills the pill so the PillSurface inside anchors exactly as it did as a
+     * direct child.
      */
 
     Loader {
