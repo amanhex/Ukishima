@@ -20,14 +20,13 @@ import "../components"
  * file (press-and-hold confirm, same as the clipboard wipe); progress sweeps
  * along the thumb's lower edge and drains on early release.
  *
- * Typing any printable character while the strip is open drops it into a
- * DuckDuckGo image search: a search field reveals at the top, the strip swaps
- * its model from local files to remote results (debounced fetch through
- * wallpaper-search.sh), and selecting a result downloads it, applies it and
- * returns to the local strip. A wallpaper glyph chip beside the kind filter
- * toggles wallhaven browse instead: click it and the strip shows the default
- * wallhaven feed. Wallhaven search is manual — click the persistent search
- * field, type a tag, and press Enter to refine. Wallhaven thumbs are
+ * Typing any printable character while the strip is open reveals a filter
+ * field and narrows the local list to wallpapers whose name contains what you
+ * type — nothing leaves the machine. A wallpaper glyph chip beside the kind
+ * filter toggles wallhaven browse instead: click it and the strip shows the
+ * default wallhaven feed; there the persistent search field is clicked,
+ * given a tag, and Enter refines — the same manual semantics as before.
+ * Wallhaven thumbs are
  * wallhaven's own thumb CDN URLs handed directly to QML Image, so nothing is
  * stored on disk until a pick downloads the full file into the wallpaper
  * directory. Escape, an emptied query or a finished pick all fall back to the
@@ -48,17 +47,17 @@ PillSurface {
 
     /**
      * Search mode. While off the strip browses local files and bare keys are
-     * watched for the first printable character; while on the search field is
-     * shown, holds focus and the strip renders remote results for `query`.
+     * watched for the first printable character; while on the filter field is
+     * shown, holds focus and the strip narrows the local list to names matching
+     * the query.
      */
     property bool searching: false
     property string query: ""
-    property var ddgResults: []
 
     /**
      * Wallhaven browse mode: when on, the strip shows wallhaven results (the
-     * default feed with no query, refined by typing); when off, the local strip
-     * with DuckDuckGo as the type-to-search engine.
+     * default feed with no query; the search field refines it on Enter); when
+     * off, the local strip with type-to-filter narrowing the snapshot in place.
      */
     property bool whSource: false
     property var wallResults: []
@@ -78,8 +77,8 @@ PillSurface {
     /**
      * Kind filter shared by both views: "all", "still" or "motion". Locally it
      * splits the snapshot by extension (gif and video files count as motion);
-     * in search mode it steers the DDG request (gif type filter) so the chips
-     * act as one control everywhere.
+     * in wallhaven browse mode the chip is hidden, so it only ever narrows the
+     * local list.
      */
     property string kindFilter: "all"
 
@@ -193,27 +192,39 @@ PillSurface {
     }
 
     /**
+     * Type-to-filter view: the local snapshot narrowed to entries whose name
+     * contains the query (case-insensitive). Pure binding over in-memory data —
+     * typing never goes online in local mode.
+     */
+    readonly property var localFilter: {
+        var q = root.query.trim().toLowerCase();
+        var out = [];
+        if (q.length === 0)
+            return out;
+        for (var i = 0; i < root.localItems.length; i++) {
+            if (root.localItems[i].name.toLowerCase().indexOf(q) >= 0)
+                out.push(root.localItems[i]);
+        }
+        return out;
+    }
+
+    /**
      * Re-centre after a filter switch. Deferred with callLater because this
      * handler fires before dependent bindings refresh, so a direct call would
      * still see the previous filter's list and park the strip on an index the
      * new list does not have.
      */
-    onKindFilterChanged: {
-        if (searching && query.length > 0)
-            debounce.restart();
-        else
-            Qt.callLater(centerOnCurrent);
-    }
+    onKindFilterChanged: Qt.callLater(centerOnCurrent)
 
     /**
      * Active model and its select handler. The strip, navigation and empty
      * states all read these so the local and search views share one code path:
-     * a populated query in search mode shows remote results, anything else the
-     * local snapshot.
+     * wallhaven browse shows its fetched results, a non-empty query in local
+     * mode the name-filtered snapshot, anything else the local list.
      */
     readonly property var items: root.whSource
         ? root.wallResults
-        : ((searching && query.length > 0) ? ddgResults : localItems)
+        : ((searching && query.length > 0) ? root.localFilter : localItems)
     readonly property int itemCount: items.length
 
     /**
@@ -334,7 +345,6 @@ PillSurface {
     function exitSearch() {
         searching = false;
         query = "";
-        ddgResults = [];
         searchField.text = "";
         if (root.whSource) {
             root.wallResults = [];
@@ -373,9 +383,10 @@ PillSurface {
 
     /**
      * Wallhaven search fired on Enter in the field: fetch the page for the
-     * typed query now (wallhaven search is manual — no live keystroke search),
-     * resetting focus and page to the top. Field focus is then released so the
-     * following Enter applies the focused wallpaper instead of re-searching.
+     * typed query now (wallhaven search is manual — click the field, type a
+     * tag, press Enter), resetting focus and page to the top. Field focus is
+     * then released so a following Enter applies the focused wallpaper instead
+     * of re-searching.
      */
     function searchWallhavenNow() {
         if (!root.whSource)
@@ -405,7 +416,6 @@ PillSurface {
             if (root.searching) {
                 root.searching = false;
                 root.query = "";
-                root.ddgResults = [];
                 searchField.text = "";
             }
             root.whSource = true;
@@ -417,9 +427,10 @@ PillSurface {
     }
 
     /**
-     * Begin a search seeded with the first typed character and move keyboard
-     * focus to the field so the rest of the query lands there. shell.qml routes
-     * the opening keystroke here and hands focus back when the search ends.
+     * Begin a name filter seeded with the first typed character and move
+     * keyboard focus to the field so the rest of the query lands there.
+     * shell.qml routes the opening keystroke here and hands focus back when the
+     * filter ends.
      */
     function startSearch(ch) {
         searching = true;
@@ -434,7 +445,6 @@ PillSurface {
         searching = false;
         editingDir = false;
         query = "";
-        ddgResults = [];
         searchField.text = "";
         if (root.whSource) {
             focusIndex = 0;
@@ -451,7 +461,6 @@ PillSurface {
         dFit.open = false;
         searching = false;
         query = "";
-        ddgResults = [];
         searchField.text = "";
         wallResults = [];
         whSource = false;
@@ -468,8 +477,8 @@ PillSurface {
          * The launch refresh and any later one re-centre the strip once their
          * data actually lands, so a wallpaper changed (or thumbs regenerated)
          * while the switcher was closed shows up instead of leaving the stale
-         * previous pick focused. Skipped while a search query is up, since the
-         * strip is showing remote results then, and in wallhaven mode so
+         * previous pick focused. Skipped while a name filter is up, since the
+         * strip is showing only matches then, and in wallhaven mode so
          * applying a wallpaper never yanks the browse strip away.
          */
         function onRefreshDone() {
@@ -535,8 +544,6 @@ PillSurface {
     property var dimsCache: ({})
 
     readonly property string focusedLocalPath: {
-        if (searching && query.length > 0)
-            return "";
         if (focusIndex < 0 || focusIndex >= itemCount)
             return "";
         var e = items[focusIndex];
@@ -582,23 +589,6 @@ PillSurface {
         }
     }
 
-    Timer {
-        id: debounce
-        interval: 350
-        onTriggered: {
-            if (root.whSource) {
-                root.refreshWallhaven();
-                return;
-            }
-            if (root.query.length === 0) {
-                root.ddgResults = [];
-                return;
-            }
-            searchProc.command = ["bash", root.searchScript, "search", root.query, root.kindFilter];
-            searchProc.running = true;
-        }
-    }
-
     Process {
         id: searchProc
         stdout: StdioCollector {
@@ -613,10 +603,10 @@ PillSurface {
                 }
                 if (root.whSource)
                     root.wallResults = out;
-                else
-                    root.ddgResults = out;
-                root.focusIndex = 0;
-                root.pos = 0;
+                if (root.whSource) {
+                    root.focusIndex = 0;
+                    root.pos = 0;
+                }
             }
         }
     }
@@ -658,16 +648,12 @@ PillSurface {
         anchors.rightMargin: 6 * root.s
         s: root.s
         kanji: "探"
-        placeholder: root.whSource ? "Search wallhaven tags" : "Search wallpapers"
+        placeholder: root.whSource ? "Search wallhaven tags" : "Filter wallpapers"
         visible: root.searching || root.whSource
         enabled: root.searching || root.whSource
         horizontalNav: true
         z: 30
-        onTextChanged: {
-            root.query = text;
-            if (!root.whSource)
-                debounce.restart();
-        }
+        onTextChanged: root.query = text
         onMoved: (d) => root.move(d)
         onAccepted: root.whSource ? root.searchWallhavenNow() : root.activate()
         onDismissed: root.exitSearch()
@@ -1348,7 +1334,7 @@ PillSurface {
             if (root.whSource)
                 return root.query.length ? "no wallhaven results" : "no wallhaven wallpapers";
             if (root.searching && root.query.length)
-                return "no results";
+                return "no wallpapers match";
             if (root.kindFilter === "motion")
                 return "no live wallpapers yet";
             if (root.kindFilter === "still")

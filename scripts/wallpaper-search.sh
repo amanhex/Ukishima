@@ -80,7 +80,11 @@ whsearch() {
     # sort is honoured even for browse; a typed query still implies favorites
     # unless the sort dropdown explicitly overrides it.
     if [ -z "$want" ] || [ "$want" = "hot" ]; then
-        sort="toplist"; extra="topRange=1M&"
+        if [ -n "$query" ]; then
+            sort="favorites"; extra=""
+        else
+            sort="toplist"; extra="topRange=1M&"
+        fi
     fi
     raw=$(curl -s --max-time 15 -A "$UA" \
         "https://wallhaven.cc/api/v1/search?${query:+q=${enc}&}sorting=${sort}&${extra}order=desc&page=${page}") \
