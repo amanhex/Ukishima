@@ -24,9 +24,10 @@ import "../components"
  * field and narrows the local list to wallpapers whose name contains what you
  * type — nothing leaves the machine. A wallpaper glyph chip beside the kind
  * filter toggles wallhaven browse instead: click it and the strip shows the
- * default wallhaven feed; there the persistent search field is clicked,
- * given a tag, and Enter refines — the same manual semantics as before.
- * Wallhaven thumbs are
+ * default wallhaven feed. Wallhaven typing behaves like the local filter —
+ * bare keys seed and focus the persistent search field, Backspace returns to
+ * it after a finished search — and Enter fires the tag search. Wallhaven
+ * thumbs are
  * wallhaven's own thumb CDN URLs handed directly to QML Image, so nothing is
  * stored on disk until a pick downloads the full file into the wallpaper
  * directory. Escape, an emptied query or a finished pick all fall back to the
@@ -60,6 +61,8 @@ PillSurface {
      * off, the local strip with type-to-filter narrowing the snapshot in place.
      */
     property bool whSource: false
+    /** True while the wallhaven search field holds keyboard focus; shell.qml routes bare keys to the field only while it's false. */
+    readonly property bool whTyping: searchField.input.activeFocus
     property var wallResults: []
     property int whPage: 1
     /** Wallhaven sort bucket: hot (default), latest, top, views, random, favorites. */
@@ -438,6 +441,42 @@ PillSurface {
         pos = 0;
         searchField.text = ch;
         Qt.callLater(searchField.input.forceActiveFocus);
+    }
+
+    /**
+     * Keystroke routing for the wallhaven field, mirroring local search: a
+     * printable character typed anywhere over the open strip pulls focus into
+     * the field and inserts it at the caret, so the first key seeds an empty
+     * query and any later key continues one. shell.qml hands the opening key
+     * here when the field does not hold focus (whTyping); the rest of the query
+     * then types through the focused field untouched.
+     */
+    function whTypeChar(ch) {
+        const inp = searchField.input;
+        const pos = Math.min(inp.cursorPosition, inp.text.length);
+        if (!inp.activeFocus)
+            inp.forceActiveFocus();
+        inp.text = inp.text.slice(0, pos) + ch + inp.text.slice(pos);
+        inp.cursorPosition = pos + ch.length;
+    }
+
+    /**
+     * Backspace routed into the field the same way: after Enter ran a search,
+     * the field has dropped focus so the next Enter applies a wallpaper; a
+     * Backspace pulls focus back and trims the query instead, ready to search
+     * again.
+     */
+    function whBackspace() {
+        const inp = searchField.input;
+        const pos = Math.min(inp.cursorPosition, inp.text.length);
+        if (!inp.activeFocus)
+            inp.forceActiveFocus();
+        if (pos > 0) {
+            inp.text = inp.text.slice(0, pos - 1) + inp.text.slice(pos);
+            inp.cursorPosition = pos - 1;
+        } else {
+            inp.cursorPosition = 0;
+        }
     }
 
     onActiveChanged: if (active) {

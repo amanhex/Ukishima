@@ -570,14 +570,36 @@ Item {
 
     readonly property bool wallpaperSearching: pill.wallpaperOpen && ldWall.item !== null && ldWall.item.searching
 
-    /** True while the strip is in wallhaven browse mode, where search is manual (click field, type, Enter). */
+    /** True while the strip is browsing wallhaven; bare keys go into its search. */
     readonly property bool wallpaperWh: pill.wallpaperOpen && ldWall.item !== null && ldWall.item.whSource
+
+    /** True while the wallhaven search field holds keyboard focus, so keys type straight into it. */
+    readonly property bool wallpaperWhTyping: pill.wallpaperOpen && ldWall.item !== null && ldWall.item.whTyping
+
+    /**
+     * Route a printable keystroke into the wallhaven search field, mirroring
+     * the local name filter: focus the field and insert the character. No-op
+     * unless the wallpaper surface is open and browsing wallhaven.
+     */
+    function wallpaperWhType(ch) {
+        if (pill.wallpaperOpen && ldWall.item)
+            ldWall.item.whTypeChar(ch);
+    }
+
+    /**
+     * Route a Backspace into the wallhaven field the same way, so a search can
+     * be re-edited right after Enter applied a wallpaper. No-op unless the
+     * wallpaper surface is open and browsing wallhaven.
+     */
+    function wallpaperWhBackspace() {
+        if (pill.wallpaperOpen && ldWall.item)
+            ldWall.item.whBackspace();
+    }
 
     /**
      * Route the first printable keystroke over the open wallpaper strip into
-     * the name filter seeded with that character. Not used in wallhaven mode,
-     * where the persistent field is clicked and typed into instead. No-op unless
-     * the wallpaper surface is open.
+     * the name filter seeded with that character. No-op unless the wallpaper
+     * surface is open and not browsing wallhaven.
      */
     function wallpaperType(ch) {
         if (pill.wallpaperOpen && ldWall.item)

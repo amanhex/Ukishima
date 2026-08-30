@@ -525,6 +525,18 @@ ShellRoot {
                         }
                         return;
                     }
+                    if (pill.wallpaperWh && !pill.wallpaperWhTyping) {
+                        if (e.key === Qt.Key_Backspace) {
+                            pill.wallpaperWhBackspace();
+                            e.accepted = true;
+                            return;
+                        }
+                        if (e.text.length === 1 && e.text > " ") {
+                            pill.wallpaperWhType(e.text);
+                            e.accepted = true;
+                            return;
+                        }
+                    }
                     if (pill.wallpaperOpen && !pill.wallpaperSearching && !pill.wallpaperWh
                         && e.text.length === 1 && e.text > " ") {
                         pill.wallpaperType(e.text);
