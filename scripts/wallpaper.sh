@@ -3,6 +3,8 @@ set -euo pipefail
 
 flags_file="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima/flags.json"
 WPDIR=$(jq -r '.wallpaperDir // ""' "$flags_file" 2>/dev/null || echo "")
+FIT=$(jq -r '.wallpaperFit // "crop"' "$flags_file" 2>/dev/null || echo crop)
+case "$FIT" in no|crop|fit|stretch) ;; *) FIT=crop ;; esac
 if [ -z "$WPDIR" ]; then
     # No explicit folder set: adopt an existing collection in the usual spots.
     # Two or more images counts as a collection, a single stray file does not,
@@ -22,12 +24,25 @@ STATE="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper"
 MAP="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-map"
 BAG="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-bag"
 STILL="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-still.png"
+FIT_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-fit"
 WLOG="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima/wallcolors.log"
 
 is_video() {
     case "${1##*.}" in
         [Mm][Pp]4|[Ww][Ee][Bb][Mm]|[Mm][Kk][Vv]|[Mm][Oo][Vv]) return 0 ;;
         *) return 1 ;;
+    esac
+}
+
+# Fit intent mapped to mpv flags (videos have no awww --resize): cover zooms
+# with panscan, contain letterboxes, stretch distorts, center stays native, all
+# mirroring what aww's --resize does for stills.
+opts_for_fit() {
+    case "$FIT" in
+        no)      printf '%s' "no-audio loop-file=inf hwdec=auto video-unscaled=yes panscan=0" ;;
+        fit)     printf '%s' "no-audio loop-file=inf hwdec=auto panscan=0" ;;
+        stretch) printf '%s' "no-audio loop-file=inf hwdec=auto keepaspect=no panscan=0" ;;
+        *)       printf '%s' "no-audio loop-file=inf hwdec=auto panscan=1.0" ;;
     esac
 }
 
@@ -142,6 +157,7 @@ apply_visual() {
             ;;
     esac
     awww img ${oflag[@]+"${oflag[@]}"} "$show" \
+        --resize "$FIT" \
         --transition-type wave \
         --transition-angle 30 \
         --transition-wave "60,30" \
@@ -149,16 +165,19 @@ apply_visual() {
         --transition-step 90
     if [ "$show" != "$pic" ] && ! is_video "$pic"; then
         sleep 0.9
-        awww img ${oflag[@]+"${oflag[@]}"} "$pic" --transition-type none
+        awww img ${oflag[@]+"${oflag[@]}"} "$pic" --resize "$FIT" --transition-type none
     fi
 }
 
 # The desired video set comes from the map, collapsed to one '*' instance when
 # every output plays the same file so a shared video decodes once. The running
 # instances are compared first and the kill/respawn skipped on a match, so
-# changing one monitor's still never restarts the other monitor's video.
+# changing one monitor's still never restarts the other monitor's video. The mpv
+# scaling follows the fit flag: a fit change keeps the same pics, but the stored
+# fit diverging from the running one forces the respawn so the videos re-arm
+# under the new options.
 sync_videos() {
-    local desired="" actual="" o pic outs n_out n_vid
+    local desired="" actual="" o pic outs n_out n_vid VOPTS
     outs=$(outputs)
     for o in $outs; do
         pic=$(map_get "$o")
@@ -172,6 +191,26 @@ sync_videos() {
     fi
     desired=$(printf '%s' "$desired" | sort)
     actual=$(pgrep -ax mpvpaper 2>/dev/null | awk '{ print $(NF-1) "\t" $NF }' | sort || true)
+    # When the desired set is the collapsed shared instance ('*'), fold the
+    # running set to the same shape whenever every running video is that same
+    # file: mpvpaper only reports real output names, so without this a shared
+    # video would restart on every sync even though nothing changed.
+    if [ "$(printf '%s' "$desired" | head -n1 | cut -f1)" = "*" ] \
+        && [ "$(printf '%s' "$actual" | cut -f2 | sort -u | wc -l)" = 1 ] \
+        && [ -n "$(printf '%s' "$actual" | cut -f2 | head -n1)" ]; then
+        actual="*"$'\t'"$(printf '%s' "$actual" | cut -f2 | sort -u)"
+    fi
+    VOPTS=$(opts_for_fit)
+    if pgrep -x mpvpaper >/dev/null 2>&1 && [ "$(cat "$FIT_STATE" 2>/dev/null || true)" != "$VOPTS" ]; then
+        pkill -x mpvpaper 2>/dev/null || true
+        for _ in $(seq 1 10); do
+            pgrep -x mpvpaper >/dev/null 2>&1 || break
+            sleep 0.1
+        done
+        actual=""
+    fi
+    mkdir -p "$(dirname "$FIT_STATE")"
+    printf '%s\n' "$VOPTS" > "$FIT_STATE.tmp" && mv "$FIT_STATE.tmp" "$FIT_STATE"
     [ "$desired" = "$actual" ] && return 0
     if pgrep -x mpvpaper >/dev/null 2>&1; then
         pkill -x mpvpaper 2>/dev/null || true
@@ -184,7 +223,7 @@ sync_videos() {
     sleep 0.8
     while IFS=$'\t' read -r o pic; do
         [ -n "$o" ] || continue
-        setsid -f mpvpaper -p -o "no-audio loop-file=inf hwdec=auto panscan=1.0" "$o" "$pic" >/dev/null 2>&1
+        setsid -f mpvpaper -p -o "$VOPTS" "$o" "$pic" >/dev/null 2>&1
     done <<< "$desired"
 }
 
@@ -229,6 +268,25 @@ map_has_video() {
     return 1
 }
 
+# Refit without re-animating: unlike apply_visual's wave, a fit-mode change
+# re-images the current stills with --transition-type none so toggling the
+# strip's fit control rescales the screen in place. Videos briefly show their
+# first frame again, then sync_videos restarts them under the new mpv scaling.
+silent_reapply() {
+    local o pic st
+    for o in $(outputs); do
+        pic=$(map_get "$o")
+        [ -n "$pic" ] && [ -f "$pic" ] || pic=$(cat "$STATE" 2>/dev/null || true)
+        [ -n "$pic" ] && [ -f "$pic" ] || continue
+        if is_video "$pic"; then
+            st="$STILL"
+            [ -n "$o" ] && st="${STILL%.png}-$o.png"
+            make_still "$pic" "$st" && pic="$st"
+        fi
+        awww img --outputs "$o" --resize "$FIT" --transition-type none "$pic" >/dev/null 2>&1 || true
+    done
+}
+
 restore_all() {
     local o pic any=false
     for o in $(outputs); do
@@ -269,6 +327,17 @@ elif [ "$cmd" = "set" ]; then
     [ -f "$pic" ] || exit 1
     target="${3:-}"
     [ "$target" = "all" ] && target=""
+elif [ "$cmd" = "fit" ]; then
+    mode="${2:-crop}"
+    case "$mode" in no|crop|fit|stretch) ;; *) mode=crop ;; esac
+    if command -v jq >/dev/null 2>&1; then
+        jq --arg v "$mode" '.wallpaperFit = $v' "$flags_file" > "$flags_file.tmp" 2>/dev/null \
+            && mv "$flags_file.tmp" "$flags_file" || true
+    fi
+    FIT="$mode"
+    silent_reapply
+    sync_videos
+    exit 0
 else
     scope=$(jq -r '.randomScope // "all"' "$flags_file" 2>/dev/null || echo all)
     if [ "$scope" = "cursor" ]; then

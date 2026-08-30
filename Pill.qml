@@ -495,6 +495,35 @@ Item {
             ldWall.item.startSearch(ch);
     }
 
+    readonly property bool wallpaperMenuOpen: pill.wallpaperOpen && ldWall.item !== null && ldWall.item.menuOpen
+
+    /**
+     * Move the open wallpaper dropdown's cursor by `dir` rows. No-op unless a
+     * dropdown (filter or fit) is open.
+     */
+    function wallpaperMenuMove(dir) {
+        if (pill.wallpaperMenuOpen)
+            ldWall.item.menuMove(dir);
+    }
+
+    /**
+     * Pick the open wallpaper dropdown's currently keyed row. No-op unless a
+     * dropdown is open.
+     */
+    function wallpaperMenuPick() {
+        if (pill.wallpaperMenuOpen)
+            ldWall.item.menuPick();
+    }
+
+    /**
+     * Close any open wallpaper dropdown without picking, so Escape backs out
+     * of just the menu rather than the whole strip.
+     */
+    function wallpaperMenuClose() {
+        if (pill.wallpaperMenuOpen)
+            ldWall.item.menuClose();
+    }
+
     /**
      * Slide the open power surface's keyboard focus by `dir` tiles; +1 is right
      * and -1 is left. No-op unless the power surface is open.

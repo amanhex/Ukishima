@@ -13,6 +13,7 @@ MusicBars MusicBars.qml
 PillSurface PillSurface.qml
 ScrubValue ScrubValue.qml
 SearchField SearchField.qml
+Dropdown Dropdown.qml
 SettingsHeader SettingsHeader.qml
 SettingsRow SettingsRow.qml
 SettingsSeg SettingsSeg.qml
