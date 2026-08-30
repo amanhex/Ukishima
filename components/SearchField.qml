@@ -26,7 +26,12 @@ Item {
     signal dismissed()
     signal keyPressed(var event)
 
-    height: 30 * s
+    // The root hugs the field's content height so the glyph, text, placeholder
+    // and cursor all share one baseline, instead of each anchoring to a taller
+    // box that drags them low. Heighting from the font metric keeps every
+    // verticalCenter consistent with the typed text.
+    readonly property real fieldLine: field.implicitHeight
+    height: fieldLine + 2
 
     Text {
         id: glyph
@@ -38,26 +43,45 @@ Item {
         color: Theme.dim
         font.family: Theme.fontJp
         font.weight: Font.Medium
-        font.pixelSize: 16 * root.s
+        font.pixelSize: 13 * root.s
     }
 
     TextField {
         id: field
-        anchors.verticalCenter: parent.verticalCenter
         anchors.left: glyph.right
         anchors.leftMargin: Flags.showGlyphs ? 10 * root.s : 0
         anchors.right: counter.left
         anchors.rightMargin: 10 * root.s
+        anchors.verticalCenter: parent.verticalCenter
+        height: fieldLine
         background: null
         padding: 0
+        verticalAlignment: TextInput.AlignVCenter
         color: Theme.cream
         font.family: Theme.font
-        font.pixelSize: 15 * root.s
+        font.pixelSize: 12.5 * root.s
         placeholderText: root.placeholder
         placeholderTextColor: Theme.faint
         selectByMouse: true
         selectionColor: Theme.verm
-        cursorDelegate: Item {}
+        cursorDelegate: Item {
+            width: 2 * root.s
+            height: parent.height
+
+            property bool blinkOn: true
+            Timer {
+                interval: 530
+                repeat: true
+                running: field.activeFocus
+                onTriggered: parent.blinkOn = !parent.blinkOn
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                color: Theme.cream
+                opacity: parent.blinkOn ? 1 : 0
+            }
+        }
         Keys.onUpPressed: root.moved(-1)
         Keys.onDownPressed: root.moved(1)
         Keys.onPressed: (e) => {
@@ -75,17 +99,6 @@ Item {
                 e.accepted = true;
             }
         }
-    }
-
-    Rectangle {
-        anchors.left: field.left
-        anchors.right: field.right
-        anchors.top: field.bottom
-        anchors.topMargin: 2 * root.s
-        height: 1
-        color: Theme.faint
-        opacity: field.activeFocus ? 0.7 : 0
-        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
     }
 
     Text {

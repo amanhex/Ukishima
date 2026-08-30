@@ -526,7 +526,7 @@ ShellRoot {
                         }
                         return;
                     }
-                    if (pill.wallpaperOpen && !pill.wallpaperSearching
+                    if (pill.wallpaperOpen && !pill.wallpaperSearching && !pill.wallpaperWh
                         && e.text.length === 1 && e.text > " ") {
                         pill.wallpaperType(e.text);
                         e.accepted = true;
