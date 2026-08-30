@@ -17,17 +17,8 @@ Rectangle {
     property var value
     signal picked(var value)
 
-    /**
-     * When `flushLeft`, the control shifts left by the first option's text inset
-     * so that text lines up with x=0 of where the control is placed, rather than
-     * the pill edge sitting there.
-     */
-    property bool flushLeft: false
-
     readonly property real pad: 1
-    readonly property real edgePad: seg.pad + 9 * seg.s
 
-    x: seg.flushLeft ? -seg.edgePad : 0
     width: pills.implicitWidth + 2 * pad
     height: pills.implicitHeight + 2 * pad
     radius: 9 * seg.s
