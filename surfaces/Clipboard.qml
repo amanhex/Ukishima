@@ -278,6 +278,7 @@ PillSurface {
                     clip: true
 
                     Image {
+                        id: thumbImg
                         anchors.fill: parent
                         anchors.margins: 1
                         source: thumbTile.visible ? "file://" + row.entry.thumb : ""
@@ -287,6 +288,7 @@ PillSurface {
                         asynchronous: true
                         cache: false
                         smooth: true
+                        onStatusChanged: if (thumbImg.status === Image.Error) thumbImg.source = ""
                     }
                 }
 

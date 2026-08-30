@@ -12,11 +12,12 @@ import "../Singletons"
  * current mode plus a chevron. The host owns open/close coordination via
  * `chipClicked` and the `open` property; selection emits `picked(value)`.
  *
- * Selection motion is a single rounded bar that slides between rows on
- * `selIndex` — keyboard moves and pointer hover both target it, so the
- * highlight glides instead of crossfading per row. `moveSel()`, `pickSel()`
- * and the chip are the keyboard/pointer entry points; the modal click-away
- * scrim lives in the host surface so it can cover the whole strip.
+ * Active option is the vermilion legend with the flame tick; a second tone
+ * marks the row the cursor or pointer is on (`selIndex`) — keyboard moves and
+ * pointer hover both tint it, so the selection reads as a colour change, never
+ * a cover. `moveSel()`, `pickSel()` and the chip are the keyboard/pointer
+ * entry points; the modal click-away scrim lives in the host surface so it can
+ * cover the whole strip.
  */
 Item {
     id: root
@@ -73,12 +74,8 @@ Item {
         width: iconGlyph.visible ? root.chipH : chipLabel.implicitWidth + 15 * root.s
         height: root.chipH
         radius: height / 2
-        color: root.open ? Qt.alpha(Theme.onGlow, 0.18)
-            : (chipHover.hovered ? Theme.frameBg : "transparent")
-        border.width: 1
-        border.color: root.open ? Qt.alpha(Theme.onGlow, 0.5)
-            : (chipHover.hovered ? Theme.hairSoft : "transparent")
-        Behavior on color { ColorAnimation { duration: Motion.fast } }
+        color: "transparent"
+        border.width: 0
 
         GlyphIcon {
             id: iconGlyph
@@ -100,7 +97,7 @@ Item {
             Text {
                 id: chipLabel
                 text: root.curLabel
-                color: root.open ? Theme.cream : Theme.subtle
+                color: root.open ? Theme.vermLit : Theme.subtle
                 font.family: Theme.font
                 font.pixelSize: 10 * root.s
                 font.weight: Font.DemiBold
@@ -172,20 +169,6 @@ Item {
             border.width: 1
             border.color: Theme.frameBorder
 
-            Rectangle {
-                id: selBar
-                x: 2 * root.s
-                y: 2 * root.s + root.selIndex * root.rowH
-                width: card.width - 4 * root.s
-                height: root.rowH
-                radius: 7 * root.s
-                color: Qt.alpha(Theme.onGlow, 0.16)
-                border.width: 1
-                border.color: Qt.alpha(Theme.onGlow, 0.28)
-                Behavior on y { NumberAnimation { duration: Motion.glide; easing.type: Motion.easeStandard } }
-                Behavior on width { NumberAnimation { duration: Motion.glide; easing.type: Motion.easeStandard } }
-            }
-
             Column {
                 anchors.fill: parent
                 anchors.margins: 2 * root.s
@@ -221,10 +204,12 @@ Item {
                             anchors.leftMargin: 16 * root.s
                             anchors.verticalCenter: parent.verticalCenter
                             text: row.modelData.label
-                            color: row.index === root.selIndex || row.current ? Theme.cream : Theme.subtle
+                            color: row.current ? Theme.vermLit
+                                : (row.index === root.selIndex ? Theme.cream : Theme.subtle)
                             font.family: Theme.font
                             font.pixelSize: 10.5 * root.s
-                            font.weight: row.index === root.selIndex || row.current ? Font.Bold : Font.Medium
+                            font.weight: row.current ? Font.Bold
+                                : (row.index === root.selIndex ? Font.DemiBold : Font.Medium)
                         }
 
                         HoverHandler {
