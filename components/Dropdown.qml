@@ -42,7 +42,7 @@ Item {
 
     readonly property string curLabel: curIndex >= 0 ? options[curIndex].label : ""
 
-    readonly property real rowH: 26 * root.s
+    readonly property real rowH: 21 * root.s
     readonly property real chipH: 22 * root.s
 
     property int selIndex: Math.max(0, curIndex)

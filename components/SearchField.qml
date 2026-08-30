@@ -78,7 +78,7 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                color: Theme.cream
+                color: Theme.vermLit
                 opacity: parent.blinkOn ? 1 : 0
             }
         }
