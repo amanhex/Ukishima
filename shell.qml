@@ -475,7 +475,9 @@ ShellRoot {
                     onHoveredChanged: if (enabled) pill.hovered = hovered
                 }
                 Keys.onEscapePressed: {
-                    if (pill.quickChoosing) {
+                    if (pill.wallpaperMenuOpen) {
+                        pill.wallpaperMenuClose();
+                    } else if (pill.quickChoosing) {
                         ScreenRec.quickChoosing = false;
                         ScreenRec.quickScreenChoosing = false;
                     } else {
@@ -483,20 +485,24 @@ ShellRoot {
                     }
                 }
                 Keys.onUpPressed: (e) => {
-                    e.accepted = pill.mixerStep(1) || pill.recorderStep(5) || pill.settingsMove(-1);
+                    if (pill.wallpaperMenuOpen) { pill.wallpaperMenuMove(-1); e.accepted = true; }
+                    else e.accepted = pill.mixerStep(1) || pill.recorderStep(5) || pill.settingsMove(-1);
                 }
                 Keys.onDownPressed: (e) => {
-                    e.accepted = pill.mixerStep(-1) || pill.recorderStep(-5) || pill.settingsMove(1);
+                    if (pill.wallpaperMenuOpen) { pill.wallpaperMenuMove(1); e.accepted = true; }
+                    else e.accepted = pill.mixerStep(-1) || pill.recorderStep(-5) || pill.settingsMove(1);
                 }
                 Keys.onLeftPressed: (e) => {
-                    if (pill.mixerOpen) { pill.mixerFocusMove(-1); e.accepted = true; }
+                    if (pill.wallpaperMenuOpen) { e.accepted = true; }
+                    else if (pill.mixerOpen) { pill.mixerFocusMove(-1); e.accepted = true; }
                     else if (pill.wallpaperOpen) { pill.wallpaperMove(-1); e.accepted = true; }
                     else if (pill.powerOpen) { pill.powerMove(-1); e.accepted = true; }
                     else if (pill.recorderOpen) { e.accepted = pill.recorderStep(-5); }
                     else if (pill.settingsLike) { pill.settingsAdjust(-1); e.accepted = true; }
                 }
                 Keys.onRightPressed: (e) => {
-                    if (pill.mixerOpen) { pill.mixerFocusMove(1); e.accepted = true; }
+                    if (pill.wallpaperMenuOpen) { e.accepted = true; }
+                    else if (pill.mixerOpen) { pill.mixerFocusMove(1); e.accepted = true; }
                     else if (pill.wallpaperOpen) { pill.wallpaperMove(1); e.accepted = true; }
                     else if (pill.powerOpen) { pill.powerMove(1); e.accepted = true; }
                     else if (pill.recorderOpen) { e.accepted = pill.recorderStep(5); }
@@ -511,6 +517,15 @@ ShellRoot {
                  * is swallowed for everything else so a held key never re-fires.
                  */
                 Keys.onPressed: (e) => {
+                    if (pill.wallpaperMenuOpen) {
+                        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) {
+                            if (!e.isAutoRepeat) pill.wallpaperMenuPick();
+                            e.accepted = true;
+                        } else if (e.text.length === 1) {
+                            e.accepted = true;
+                        }
+                        return;
+                    }
                     if (pill.wallpaperOpen && !pill.wallpaperSearching
                         && e.text.length === 1 && e.text > " ") {
                         pill.wallpaperType(e.text);

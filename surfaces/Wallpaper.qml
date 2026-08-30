@@ -26,6 +26,13 @@ import "../components"
  * wallpaper-search.sh), and selecting a result downloads it, applies it and
  * returns to the local strip. Escape, an emptied query or a finished pick all
  * fall back to the local view.
+ *
+ * The header carries two chips. Left of the refresh control a scaling-glyph
+ * chip opens the fit dropdown (Cover / Contain / Stretch / Center), persisted
+ * to flags and applied in place so the wallpapers on screen rescale without a
+ * transition; to its left a label chip opens the kind filter (all / still /
+ * live) for the strip. Each dropdown is keyboard-driven: arrows move the
+ * sliding selection bar, Return picks, Escape closes just the menu.
  */
 PillSurface {
     id: root
@@ -51,6 +58,64 @@ PillSurface {
      * act as one control everywhere.
      */
     property string kindFilter: "all"
+
+    /**
+     * Fit candidates for the fit dropdown. `value` is the awww --resize token,
+     * `label` what the strip shows, `desc` the chip tooltip gloss.
+     */
+    readonly property var fitOptions: [
+        { label: "Cover", value: "crop", desc: "Fill the screen, cropping overflow" },
+        { label: "Contain", value: "fit", desc: "Fit the whole image" },
+        { label: "Stretch", value: "stretch", desc: "Stretch to fill" },
+        { label: "Center", value: "no", desc: "Native size, centered" }
+    ]
+
+    readonly property string fitLabel: {
+        for (var i = 0; i < fitOptions.length; i++)
+            if (String(fitOptions[i].value) === String(Flags.wallpaperFit))
+                return fitOptions[i].label;
+        return "Cover";
+    }
+
+    readonly property string fitDesc: {
+        for (var i = 0; i < fitOptions.length; i++)
+            if (String(fitOptions[i].value) === String(Flags.wallpaperFit))
+                return fitOptions[i].desc;
+        return "";
+    }
+
+    /**
+     * Shared dropdown coordination: at most one menu (filter or fit) is open at
+     * a time, driven by the chip clicks; keyboard input is routed through
+     * `menuMove`/`menuPick`/`menuClose` to whichever is open.
+     */
+    readonly property bool menuOpen: filterRow.open || dFit.open
+
+    function toggleMenu(m) {
+        var was = m.open;
+        filterRow.open = false;
+        dFit.open = false;
+        m.open = !was;
+    }
+
+    function menuMove(dir) {
+        if (dFit.open)
+            dFit.moveSel(dir);
+        else if (filterRow.open)
+            filterRow.moveSel(dir);
+    }
+
+    function menuPick() {
+        if (dFit.open)
+            dFit.pickSel();
+        else if (filterRow.open)
+            filterRow.pickSel();
+    }
+
+    function menuClose() {
+        filterRow.open = false;
+        dFit.open = false;
+    }
 
     function isMotion(path) {
         return /\.(gif|mp4|webm|mkv|mov)$/i.test(path);
@@ -263,6 +328,9 @@ PillSurface {
         centerOnCurrent();
         hintShown = false;
         hintDwell.restart();
+    } else if (!root.active) {
+        filterRow.open = false;
+        dFit.open = false;
     }
 
     Connections {
@@ -313,7 +381,7 @@ PillSurface {
         id: prevDebounce
         interval: 250
         onTriggered: {
-            if (root.focusedPreviewUrl === "")
+            if (!root.active || root.focusedPreviewUrl === "")
                 return;
             prevFetch.url = root.focusedPreviewUrl;
             prevFetch.command = ["bash", "-c",
@@ -356,6 +424,8 @@ PillSurface {
         id: dimsDebounce
         interval: 320
         onTriggered: {
+            if (!root.active)
+                return;
             var p = root.focusedLocalPath;
             if (p === "" || root.dimsCache[p] !== undefined)
                 return;
@@ -375,7 +445,11 @@ PillSurface {
             onStreamFinished: {
                 var t = this.text.trim();
                 if (t.length && dimsProc.path.length) {
-                    var c = Object.assign({}, root.dimsCache);
+                    /** Bounded probe cache: drop the whole map once it outgrows a
+                     *  session's worth of entries so a huge folder never grows it
+                     *  without limit. */
+                    var c = Object.keys(root.dimsCache).length > 400
+                        ? {} : Object.assign({}, root.dimsCache);
                     c[dimsProc.path] = t;
                     root.dimsCache = c;
                 }
@@ -466,76 +540,67 @@ PillSurface {
         }
     }
 
-    component FilterChip: Item {
-        id: fchip
-
-        property string kind: ""
-        property string label: ""
-
-        width: fchipText.implicitWidth + 17 * root.s
-        height: parent ? parent.height : 0
-
-        Text {
-            id: fchipText
-            anchors.centerIn: parent
-            text: fchip.label
-            color: root.kindFilter === fchip.kind ? Theme.cream : Theme.faint
-            font.family: Theme.font
-            font.pixelSize: 9.5 * root.s
-            font.weight: Font.DemiBold
-            font.letterSpacing: 0.4 * root.s
-            Behavior on color { ColorAnimation { duration: Motion.fast } }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.kindFilter = fchip.kind
-        }
+    /**
+     * Kind filter and fit-mode as two Dropdowns sharing one click-away scrim;
+     * the filter chip is a mini label showing the current bucket, the fit chip
+     * a scaling glyph. Moving the cursor or picking runs through the Dropdown's
+     * sliding selection bar (glide-eased, so arrow presses feel planted instead
+     * of crossfaded). Picking the fit persists to flags and refits the
+     * wallpapers in place: stills are re-imaged through aww with the new
+     * --resize (no wave), videos respawn with matching mpv scaling.
+     */
+    Dropdown {
+        id: filterRow
+        anchors.top: parent.top
+        anchors.topMargin: 9 * root.s
+        anchors.right: dFit.left
+        anchors.rightMargin: 8 * root.s
+        z: 55
+        s: root.s
+        options: [{ label: "all", value: "all" }, { label: "still", value: "still" }, { label: "live", value: "motion" }]
+        value: root.kindFilter
+        title: "Filter"
+        desc: "Show every, still-only or live-only wallpaper"
+        onChipClicked: root.toggleMenu(filterRow)
+        onPicked: (v) => root.kindFilter = v
     }
 
-    /**
-     * Kind filter as one inset capsule with a sliding highlight, matching the
-     * pill's segmented controls instead of three loose outlined chips.
-     */
-    Rectangle {
-        id: filterRow
+    Dropdown {
+        id: dFit
         anchors.top: parent.top
         anchors.topMargin: 9 * root.s
         anchors.right: refreshBtn.left
         anchors.rightMargin: 8 * root.s
-        z: 40
-        width: segRow.implicitWidth + 6 * root.s
-        height: 22 * root.s
-        radius: height / 2
-        color: Theme.frameBg
-        border.width: 1
-        border.color: Theme.hairSoft
-
-        readonly property Item currentChip: root.kindFilter === "all" ? chipAll : (root.kindFilter === "still" ? chipStill : chipLive)
-
-        Rectangle {
-            anchors.verticalCenter: parent.verticalCenter
-            height: parent.height - 4 * root.s
-            radius: height / 2
-            x: segRow.x + filterRow.currentChip.x + 2 * root.s
-            width: filterRow.currentChip.width - 4 * root.s
-            color: Qt.alpha(Theme.onGlow, 0.18)
-            border.width: 1
-            border.color: Qt.alpha(Theme.onGlow, 0.45)
-            Behavior on x { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
-            Behavior on width { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+        z: 55
+        s: root.s
+        glyph: "scaling"
+        options: root.fitOptions
+        value: Flags.wallpaperFit
+        title: "Fit: " + root.fitLabel
+        desc: "How the wallpaper fills the screen — " + root.fitDesc
+        onChipClicked: root.toggleMenu(dFit)
+        onPicked: (v) => {
+            Flags.wallpaperFit = v;
+            Walls.applyFit(v);
         }
+    }
 
-        Row {
-            id: segRow
-            anchors.left: parent.left
-            anchors.leftMargin: 3 * root.s
-            height: parent.height
+    /**
+     * Click-away scrim while either dropdown is open. Transparent and modal:
+     * the first click anywhere outside the card dismisses it, then that spot
+     * can be clicked again for its real job.
+     */
+    Rectangle {
+        id: menuScrim
+        anchors.fill: parent
+        z: 50
+        visible: root.menuOpen && root.active
+        enabled: root.menuOpen && root.active
+        color: "transparent"
 
-            FilterChip { id: chipAll; kind: "all"; label: "all" }
-            FilterChip { id: chipStill; kind: "still"; label: "still" }
-            FilterChip { id: chipLive; kind: "motion"; label: "live" }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.menuClose()
         }
     }
 

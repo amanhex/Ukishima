@@ -15,10 +15,22 @@ key=$(printf %s "$wpdir" | md5sum | cut -d' ' -f1)
 dir="$cache/$key"
 mkdir -p "$dir"
 
-for f in "$dir"/*.png; do
-    [ -e "$f" ] || continue
-    base="$(basename "$f" .png)"
-    [ -n "$(find "$wpdir" -type f -name "$base" -print -quit)" ] || rm -f "$f"
+# Prune thumbs whose source no longer exists, in one pass: the old per-thumb
+# `find` spawned a process per file, which dominated the whole refresh on big
+# folders. Basenames of the current sources and of every cached thumb are
+# collected once each and diffed, so a rename/delete anywhere in the folder is
+# caught with two finds instead of one per file.
+src_list="$(mktemp)"
+have_list="$(mktemp)"
+trap 'rm -f "$src_list" "$have_list"' EXIT
+find "$wpdir" -type f \( \
+    -iname '*.jpg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.webp' \
+    -o -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' \
+\) -printf '%f\n' | sort -u > "$src_list"
+find "$dir" -maxdepth 1 -type f -name '*.png' -printf '%f\n' \
+    | sed 's/\.png$//' | sort -u > "$have_list"
+comm -23 "$have_list" "$src_list" | while IFS= read -r base; do
+    rm -f "$dir/$base.png"
 done
 
 find "$wpdir" -type f \( -iname '*.jpg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.webp' -o -iname '*.mp4' -o -iname '*.webm' -o -iname '*.mkv' -o -iname '*.mov' \) | while IFS= read -r src; do

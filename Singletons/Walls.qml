@@ -215,4 +215,34 @@ Singleton {
             stateProc.running = true;
         }
     }
+
+    /**
+     * Fit-mode change: wallpaper.sh "fit <mode>" (no transition, no palette
+     * run) re-images the current stills through aww with the new --resize and
+     * respawns videos with matching mpv scaling. Fast enough that rapid clicks
+     * are rare, but the same one-slot latch as apply() keeps the last pick from
+     * being dropped while an earlier one still runs.
+     */
+    property string queuedFit: ""
+
+    function applyFit(mode) {
+        if (fitProc.running) {
+            queuedFit = mode;
+            return;
+        }
+        fitProc.command = ["bash", root.setScript, "fit", mode];
+        fitProc.running = true;
+    }
+
+    Process {
+        id: fitProc
+        onExited: {
+            if (root.queuedFit.length) {
+                var next = root.queuedFit;
+                root.queuedFit = "";
+                fitProc.command = ["bash", root.setScript, "fit", next];
+                fitProc.running = true;
+            }
+        }
+    }
 }

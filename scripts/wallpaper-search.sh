@@ -82,9 +82,7 @@ search() {
 
     printf '%s' "$raw" | jq -c --arg kind "$kind" '
         (.results // [])
-        | if $kind == "motion" then map(select(.image // "" | test("\\.gif(\\?|$)"; "i")))
-          elif $kind == "still" then map(select(.image // "" | test("\\.gif(\\?|$)"; "i") | not))
-          else . end
+        | if $kind == "still" then map(select(.image // "" | test("\\.gif(\\?|$)"; "i") | not)) else . end
         | map({
             image: .image,
             thumb: (.thumbnail // .image),
