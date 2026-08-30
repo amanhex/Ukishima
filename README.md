@@ -87,10 +87,12 @@ cd ~/.local/share/quickshell/ukishima && git pull
 ## Uninstall
 
 ```bash
-rm -rf "$HOME/.local/share/quickshell/ukishima"
-rm -rf "$HOME/.local/state/ukishima"
-rm -rf "$HOME/.cache/ukishima"
+curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/uninstall.sh | bash
 ```
+
+Removes the program files, all state (`~/.local/state/ukishima*`) and all caches (`~/.cache/ukishima*`, `~/.cache/cliphist-thumbs`, `~/.cache/pill`), and stops any running instance.
+
+You still need to remove the `exec-once` auto-launch line and the SUPER keybinds you added to your Hyprland config, and uninstall any dependencies you installed only for Ukishima (see [Dependencies](#dependencies)).
 
 ## Launch
 
@@ -138,5 +140,5 @@ Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar
 
 ## State & cache
 
-- state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, wallpaper state, launcher usage
-- cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — palette JSON, weather, rec thumbs; wallpaper previews under `ukishima-wp-thumbs/`
+- state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, gamemode snapshot; wallpaper selection lives in sibling files `~/.local/state/ukishima-wallpaper*`
+- cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — palette JSON, rec thumbs; wallpaper previews under `ukishima-wp-thumbs/`, clipboard previews under `cliphist-thumbs/`, weather location under `pill/`
