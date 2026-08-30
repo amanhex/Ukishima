@@ -1353,9 +1353,48 @@ Item {
          * chip on the bar's right, since the full OSD face is parked behind
          * game mode in the mode ladder. Notifications stay suppressed.
          */
-        Row {
+        Rectangle {
+            id: exitChip
             anchors.right: parent.right
-            anchors.rightMargin: 18 * pill.s
+            anchors.rightMargin: 14 * pill.s
+            anchors.verticalCenter: parent.verticalCenter
+            width: 26 * pill.s
+            height: 26 * pill.s
+            radius: 8 * pill.s
+            color: exitHover.hovered ? Theme.frameBg : Qt.alpha(Theme.tileBg, 0.45)
+            border.width: 1
+            border.color: exitHover.hovered ? Qt.alpha(Theme.onGlow, 0.5) : Theme.border
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
+
+            GlyphIcon {
+                anchors.centerIn: parent
+                width: 15 * pill.s
+                height: 15 * pill.s
+                name: "gamepad"
+                color: exitHover.hovered ? Theme.vermLit : Theme.iconDim
+                stroke: 1.7
+            }
+            HoverHandler {
+                id: exitHover
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Flags.gameMode = false
+            }
+            Tooltip {
+                s: pill.s
+                placement: "below"
+                align: "right"
+                title: "Exit game mode"
+                desc: "Restore the desktop"
+                show: exitHover.hovered
+            }
+        }
+
+        Row {
+            anchors.right: exitChip.left
+            anchors.rightMargin: 9 * pill.s
             anchors.verticalCenter: parent.verticalCenter
             spacing: 9 * pill.s
             opacity: osd.flashing && (osd.kind === "volume" || osd.kind === "brightness" || osd.kind === "mic") ? 1 : 0
