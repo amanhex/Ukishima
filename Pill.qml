@@ -33,19 +33,29 @@ Item {
     /**
      * Tail retention: a closed surface keeps its object tree alive for this
      * long in case it reopens, so a double-toggle or a quick return is still
-     * instant. Once the tail expires the Loader is deactivated and the whole
+     * instant. Every closed surface runs its own countdown (keyed by surface
+     * name in `closedAt`), so closing one surface never extends another's
+     * tail. Once a countdown expires the Loader is deactivated and the whole
      * tree is reclaimed, so surfaces you don't come back to stop costing RAM.
      */
     readonly property real unloadTailMs: 30000
     property string prevSurface: ""
 
+    /**
+     * Every surface that has stopped being open, keyed by surface name, with
+     * the epoch ms it closed. `surfaceItem` drops the entry when the surface
+     * reopens (that *is* the "reset the timer and wait again" of the tail);
+     * the sweep timer unloads each entry once its own tail has elapsed.
+     */
+    property var closedAt: ({})
+
     onSurfaceChanged: {
-        if (pill.prevSurface.length > 0 && pill.prevSurface !== pill.surface) {
-            const f = pill.loaders[pill.prevSurface];
-            if (f) pill.scheduleUnload(f());
-        }
+        if (pill.prevSurface.length > 0 && pill.prevSurface !== pill.surface)
+            pill.scheduleUnload(pill.prevSurface);
         pill.prevSurface = pill.surface;
     }
+
+    Component.onCompleted: Surfaces.register(pill)
 
     property bool hovered: false
     /**
@@ -297,19 +307,24 @@ Item {
 
     /**
      * Latch-once lazy load. Every surface sleeps in an inactive Loader until its
-     * first open; the size and ame thunks below resolve items through here. The
-     * ordering is the trick: flip `active` before any read of the loader, so the
-     * calling binding never has the loader registered as a dep when the flip
-     * fires mid-evaluation (that read-then-write would be a binding loop). The
-     * write is idempotent and the Loader loads synchronously, so a first open
-     * reads the real implicitHeight in the same evaluation and the morph target
-     * is exact. When a surface leaves, scheduleUnload arms the tail; opening
-     * it again before the tail fires cancels the drop, so only surfaces that
-     * stay closed actually unload.
+     * first open; the size and ame thunks below resolve items through here by
+     * surface name. The ordering is the trick: flip `active` before any read of
+     * the loader, so the calling binding never has the loader registered as a
+     * dep when the flip fires mid-evaluation (that read-then-write would be a
+     * binding loop). The write is idempotent and the Loader loads synchronously,
+     * so a first open reads the real implicitHeight in the same evaluation and
+     * the morph target is exact. When a surface leaves, scheduleUnload starts
+     * its own tail; opening it again before the tail fires cancels the drop, so
+     * only surfaces that stay closed actually unload.
      */
-    function surfaceItem(ld) {
+    function surfaceItem(name) {
+        if (!pill.loaders[name])
+            return null;
+        const ld = pill.loaders[name]();
+        if (!ld)
+            return null;
         ld.active = true;
-        pill.cancelUnload(ld);
+        pill.cancelUnload(name);
         return ld.item;
     }
 
@@ -323,26 +338,26 @@ Item {
      * no parallel ternary chains to keep in lockstep.
      */
     readonly property var surfaces: ({
-        calendar:  { size: () => { const it = surfaceItem(ldCalendar); return Qt.size((it.implicitWidth > 0 ? it.implicitWidth : 282 * s) + 36 * s, it.implicitHeight + 32 * s); }, ame: () => surfaceItem(ldCalendar) },
-        weather:   { size: () => { const it = surfaceItem(ldWeather); return Qt.size((it.implicitWidth > 0 ? it.implicitWidth : 282 * s) + 36 * s, it.implicitHeight + 32 * s); }, ame: () => surfaceItem(ldWeather) },
-        launcher:  { size: () => { surfaceItem(ldLauncher); return Qt.size(launcherW, launcherH); }, ame: () => surfaceItem(ldLauncher) },
-        clipboard: { size: () => { surfaceItem(ldClip); return Qt.size(clipboardW, clipboardH); }, ame: () => surfaceItem(ldClip) },
-        wallpaper: { size: () => { surfaceItem(ldWall); return Qt.size(wallpaperW, wallpaperH); }, ame: () => null },
-        power:     { size: () => { surfaceItem(ldPower); return Qt.size(powerW, powerH); }, ame: () => surfaceItem(ldPower) },
-        media:     { size: () => { surfaceItem(ldMedia); return Qt.size(mediaW, mediaH); }, ame: () => surfaceItem(ldMedia) },
-        mixer:     { size: () => Qt.size(93 * Math.max(4, surfaceItem(ldMixer).faderCount) * s, mixerH), ame: () => surfaceItem(ldMixer) },
-        link:      { size: () => { const it = surfaceItem(ldLink); return Qt.size(it.desiredW, it.implicitHeight + 26 * s); }, ame: () => surfaceItem(ldLink) },
-        wifi:      { size: () => Qt.size(wifiW, surfaceItem(ldWifi).implicitHeight + 26 * s), ame: () => surfaceItem(ldWifi) },
-        bt:        { size: () => Qt.size(btW, surfaceItem(ldBt).implicitHeight + 26 * s), ame: () => surfaceItem(ldBt) },
-        battery:   { size: () => Qt.size(batteryW, surfaceItem(ldBattery).implicitHeight + 26 * s), ame: () => surfaceItem(ldBattery) },
-        recorder:  { size: () => Qt.size(recorderW, surfaceItem(ldRecorder).implicitHeight + 33 * s), ame: () => surfaceItem(ldRecorder) },
-        sysmon:    { size: () => Qt.size(sysmonW, surfaceItem(ldSysmon).implicitHeight + 33 * s), ame: () => surfaceItem(ldSysmon) },
-        appearance: { size: () => Qt.size(settingsW, surfaceItem(ldAppearance).implicitHeight + 29 * s), ame: () => surfaceItem(ldAppearance) },
-        display:    { size: () => Qt.size(settingsW, surfaceItem(ldDisplay).implicitHeight + 29 * s), ame: () => surfaceItem(ldDisplay) },
-        theme:      { size: () => Qt.size(settingsW, surfaceItem(ldTheme).implicitHeight + 29 * s), ame: () => surfaceItem(ldTheme) },
-        interface:  { size: () => Qt.size(settingsW, surfaceItem(ldInterface).implicitHeight + 29 * s), ame: () => surfaceItem(ldInterface) },
-        fontpicker: { size: () => Qt.size(fontpickerW, surfaceItem(ldFontpicker).implicitHeight + 29 * s), ame: () => surfaceItem(ldFontpicker) },
-        update:     { size: () => Qt.size(settingsW, surfaceItem(ldUpdate).implicitHeight + 29 * s), ame: () => surfaceItem(ldUpdate) }
+        calendar:  { size: () => { const it = surfaceItem("calendar"); return Qt.size((it.implicitWidth > 0 ? it.implicitWidth : 282 * s) + 36 * s, it.implicitHeight + 32 * s); }, ame: () => surfaceItem("calendar") },
+        weather:   { size: () => { const it = surfaceItem("weather"); return Qt.size((it.implicitWidth > 0 ? it.implicitWidth : 282 * s) + 36 * s, it.implicitHeight + 32 * s); }, ame: () => surfaceItem("weather") },
+        launcher:  { size: () => { surfaceItem("launcher"); return Qt.size(launcherW, launcherH); }, ame: () => surfaceItem("launcher") },
+        clipboard: { size: () => { surfaceItem("clipboard"); return Qt.size(clipboardW, clipboardH); }, ame: () => surfaceItem("clipboard") },
+        wallpaper: { size: () => { surfaceItem("wallpaper"); return Qt.size(wallpaperW, wallpaperH); }, ame: () => null },
+        power:     { size: () => { surfaceItem("power"); return Qt.size(powerW, powerH); }, ame: () => surfaceItem("power") },
+        media:     { size: () => { surfaceItem("media"); return Qt.size(mediaW, mediaH); }, ame: () => surfaceItem("media") },
+        mixer:     { size: () => Qt.size(93 * Math.max(4, surfaceItem("mixer").faderCount) * s, mixerH), ame: () => surfaceItem("mixer") },
+        link:      { size: () => { const it = surfaceItem("link"); return Qt.size(it.desiredW, it.implicitHeight + 26 * s); }, ame: () => surfaceItem("link") },
+        wifi:      { size: () => Qt.size(wifiW, surfaceItem("wifi").implicitHeight + 26 * s), ame: () => surfaceItem("wifi") },
+        bt:        { size: () => Qt.size(btW, surfaceItem("bt").implicitHeight + 26 * s), ame: () => surfaceItem("bt") },
+        battery:   { size: () => Qt.size(batteryW, surfaceItem("battery").implicitHeight + 26 * s), ame: () => surfaceItem("battery") },
+        recorder:  { size: () => Qt.size(recorderW, surfaceItem("recorder").implicitHeight + 33 * s), ame: () => surfaceItem("recorder") },
+        sysmon:    { size: () => Qt.size(sysmonW, surfaceItem("sysmon").implicitHeight + 33 * s), ame: () => surfaceItem("sysmon") },
+        appearance: { size: () => Qt.size(settingsW, surfaceItem("appearance").implicitHeight + 29 * s), ame: () => surfaceItem("appearance") },
+        display:    { size: () => Qt.size(settingsW, surfaceItem("display").implicitHeight + 29 * s), ame: () => surfaceItem("display") },
+        theme:      { size: () => Qt.size(settingsW, surfaceItem("theme").implicitHeight + 29 * s), ame: () => surfaceItem("theme") },
+        interface:  { size: () => Qt.size(settingsW, surfaceItem("interface").implicitHeight + 29 * s), ame: () => surfaceItem("interface") },
+        fontpicker: { size: () => Qt.size(fontpickerW, surfaceItem("fontpicker").implicitHeight + 29 * s), ame: () => surfaceItem("fontpicker") },
+        update:     { size: () => Qt.size(settingsW, surfaceItem("update").implicitHeight + 29 * s), ame: () => surfaceItem("update") }
     })
 
     /**
@@ -374,40 +389,77 @@ Item {
         update:     () => ldUpdate
     })
 
-    property var unloadPending: []
+    /**
+     * Arm a closed surface's own tail. Only surfaces that are actually loaded
+     * are tracked, so a name can never sit in the map pointing at an inactive
+     * loader. Reopening the surface before the tail elapses has already called
+     * cancelUnload by the time this could re-fire, so the countdown restarts
+     * on the next close — "open again before 30s, stay alive".
+     */
+    function scheduleUnload(name) {
+        if (!name || !pill.loaders[name])
+            return;
+        const ld = pill.loaders[name]();
+        if (!ld || !ld.active)
+            return;
+        pill.closedAt[name] = Date.now();
+        sweepTimer.start();
+    }
+
+    function cancelUnload(name) {
+        if (!name)
+            return;
+        delete pill.closedAt[name];
+        if (Object.keys(pill.closedAt).length === 0)
+            sweepTimer.stop();
+    }
 
     /**
-     * Arm (or keep armed) the tail for a closed surface. Any active surfaces
-     * in the pending list are dropped together when the timer fires.
+     * Periodic sweep. Each closed surface keeps its own timestamp, so every one
+     * is dropped independently once its own tail has elapsed; unloading one
+     * never shortens or lengthens another's countdown.
      */
-    function scheduleUnload(ld) {
-        if (!ld) return;
-        if (unloadPending.indexOf(ld) < 0)
-            unloadPending.push(ld);
-        unloadTimer.restart();
-    }
-
-    function cancelUnload(ld) {
-        if (!ld) return;
-        var i = unloadPending.indexOf(ld);
-        if (i >= 0) {
-            unloadPending.splice(i, 1);
-            if (unloadPending.length === 0)
-                unloadTimer.stop();
-        }
-    }
-
     Timer {
-        id: unloadTimer
-        interval: pill.unloadTailMs
-        repeat: false
+        id: sweepTimer
+        interval: 1000
+        repeat: true
+        running: false
         onTriggered: {
-            for (var i = 0; i < unloadPending.length; i++) {
-                if (unloadPending[i])
-                    unloadPending[i].active = false;
+            var now = Date.now();
+            var names = Object.keys(pill.closedAt);
+            var keeps = false;
+            for (var i = 0; i < names.length; i++) {
+                var name = names[i];
+                if (now - pill.closedAt[name] >= pill.unloadTailMs) {
+                    const fn = pill.loaders[name];
+                    const ld = fn ? fn() : null;
+                    if (ld && ld.active)
+                        ld.active = false;
+                    delete pill.closedAt[name];
+                } else {
+                    keeps = true;
+                }
             }
-            unloadPending = [];
+            if (!keeps)
+                sweepTimer.stop();
         }
+    }
+
+    /**
+     * Drop every closed surface now, regardless of how much of its tail is
+     * left. The open surface is never in `closedAt`, so it is untouched. This
+     * is what the unloadAll IPC routes to every pill.
+     */
+    function unloadClosedSurfaces() {
+        var names = Object.keys(pill.closedAt);
+        for (var i = 0; i < names.length; i++) {
+            const fn = pill.loaders[names[i]];
+            const ld = fn ? fn() : null;
+            if (ld && ld.active)
+                ld.active = false;
+            delete pill.closedAt[names[i]];
+        }
+        sweepTimer.stop();
     }
 
     readonly property string mode: dragActive ? "dragOver"
@@ -2501,10 +2553,10 @@ Item {
     /**
      * Morphing surfaces, one tail-unloaded Loader each (see surfaceItem). Eager,
      * they dominated startup and per-monitor RAM; now a surface is built
-     * synchronously on its first open, kept for unloadTailMs after it stops
-     * being open, then dropped — so nothing is retained for surfaces the user
-     * never opens, and closed ones don't linger past the tail. Each loader
-     * fills the pill so the PillSurface inside anchors exactly as it did as a
+     * synchronously on its first open, kept for one private unloadTailMs countdown
+     * after it stops being open, then dropped — so nothing is retained for surfaces
+     * the user never opens, and closed ones don't linger past their own tail. Each
+     * loader fills the pill so the PillSurface inside anchors exactly as it did as a
      * direct child.
      */
 

@@ -275,6 +275,13 @@ ShellRoot {
         function peek(mon: string): void { root.peek(mon); }
         function hide(): void { root.close(); }
 
+        /**
+         * Memory saver door: drop every closed surface on every monitor right
+         * away, regardless of how much of its 30s tail is left. The open
+         * surface is never touched; reopening a dropped surface rebuilds it.
+         */
+        function unloadAll(): void { Surfaces.unloadClosed(); }
+
         /** Opens any surface by name, settings sub-pages included; dev and scripting door. */
         function page(mon: string, name: string): void { root.toggleSurface(mon, name); }
 
