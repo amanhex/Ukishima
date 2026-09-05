@@ -503,6 +503,13 @@ PillSurface {
         searchField.text = "";
         wallResults = [];
         whSource = false;
+        // Release the decode/format caches a browsing session piled up so
+        // they don't linger between close and the unload sweep. All of these
+        // are cheaply rebuilt when the surface reopens (Walls.warm() refreshes
+        // the thumb snapshot, previews re-fetch on demand), so dropping them
+        // on every close only costs a short re-warm if the user comes back.
+        dimsCache = {};
+        previewFile = "";
     }
 
     Connections {
@@ -1115,11 +1122,16 @@ PillSurface {
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     smooth: true
-                    // Remote (wallhaven) thumbs must not linger in QPixmapCache:
-                    // they're fetched on demand and dropped as soon as the tile
-                    // scrolls out, so paging or closing never piles up memory.
-                    // Local file thumbs keep the cache for snappy re-scrolling.
-                    cache: !tile.remote
+                    // Every thumb is decoded straight from disk (or the remote thumb CDN) and
+                    // never cached in the process-global image cache. Wallhaven
+                    // thumbs are fetched on demand and must not linger; local
+                    // ones re-decode from the on-disk ukishima-wp-thumbs cache
+                    // when a tile scrolls back in. Caching them would pin up to
+                    // a wall's worth of decoded 512px frames in RAM for the whole
+                    // session — even after this surface unloads — which is exactly
+                    // the hog unloading exists to reclaim. Asynchronous decode
+                    // keeps re-scroll snappy.
+                    cache: false
                 }
 
                 Rectangle {
