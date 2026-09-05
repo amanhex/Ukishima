@@ -414,9 +414,11 @@ PillSurface {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     width: Math.max(0, parent.width - 18 * root.s)
-                    text: "↓ " + root.fmtNet(root.netDown) + "  ↑ " + root.fmtNet(root.netUp)
+                    text: (root.netDown <= 0.001 && root.netUp <= 0.001)
+                        ? "Not connected"
+                        : "↓ " + root.fmtNet(root.netDown) + "  ↑ " + root.fmtNet(root.netUp)
                     elide: Text.ElideRight
-                    color: Theme.cream
+                    color: (root.netDown <= 0.001 && root.netUp <= 0.001) ? Theme.subtle : Theme.cream
                     font.family: Theme.font
                     font.pixelSize: 10 * root.s
                     font.features: { "tnum": 1 }
