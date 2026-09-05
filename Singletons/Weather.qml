@@ -14,8 +14,10 @@ import Quickshell.Io
  *
  * Everything is async through `Process` + `curl`, mirroring how Sysmon and Devices
  * fetch, so startup never blocks on a slow or absent connection. Every JSON parse
- * is guarded: a partial body or network blip leaves the last good values in place
- * and `ready` simply stays false until the first clean fetch lands.
+ * is guarded: a partial body or network blip leaves the last good values in place.
+ * The last successful forecast is also cached to disk, so the instant the deferred
+ * singleton arms on first hover the glance renders instantly from cache and the
+ * fresh fetch lands ~1 second later in the background.
  *
  * Conditions render as on-brand kanji rather than icons — 晴 clear, 曇 cloud,
  * 雨 rain, 雪 snow, 霧 fog, 雷 thunder, 月 a clear night — keyed off the WMO weather
@@ -38,6 +40,14 @@ Singleton {
     property real lat: 0
     property real lon: 0
     property bool located: false
+
+    /**
+     * Set the first time any weather UI is demanded (pill expands / a surface
+     * opens). Until then nothing touches the network: the chip renders from the
+     * disk cache, and the 20-minute refresh stays silent. This keeps the
+     * always-built chip layout-stable and instant from the first frame.
+     */
+    property bool needed: false
 
     /**
      * Maps a WMO weather code to its on-brand kanji. Clear skies show 月 at night
@@ -82,17 +92,60 @@ Singleton {
         locCache.setText(JSON.stringify({ city: root.city, lat: root.lat, lon: root.lon }));
     }
 
+    /**
+     * Persists the last good forecast so a fresh session shows conditions instantly
+     * instead of a blank chip while the first fetch runs.
+     */
+    function writeWeather() {
+        weatherCache.setText(JSON.stringify({
+            tempNow: root.tempNow,
+            codeNow: root.codeNow,
+            humidity: root.humidity,
+            isDay: root.isDay,
+            ts: Date.now()
+        }));
+    }
+
+    /**
+     * Applies the cached forecast synchronously (blockLoading) at instantiation.
+     * No network is touched; the in-flight fetch overwrites these within ~1 s.
+     */
+    function loadWeatherCache() {
+        try {
+            var c = JSON.parse(weatherCache.text());
+            if (c && typeof c.codeNow === "number") {
+                root.tempNow = c.tempNow || 0;
+                root.codeNow = c.codeNow;
+                root.humidity = c.humidity || 0;
+                root.isDay = c.isDay !== false;
+                root.ready = true;
+            }
+        } catch (e) {}
+    }
+
     function fetchWeather() {
-        if (!located || wxProc.running)
+        if (!root.needed || !located || wxProc.running)
             return;
         wxProc.running = true;
     }
 
+    /** First weather demand arms the network path (loads fresh data on hover). */
+    onNeededChanged: {
+        if (root.needed) {
+            if (root.located)
+                root.fetchWeather();
+            else
+                root.locate();
+        }
+    }
+
     /**
-     * Loads cached coordinates synchronously (blockLoading) and fetches at once;
-     * an absent or malformed cache falls through to a fresh location lookup.
+     * Loads cached coordinates synchronously (blockLoading) but defers location
+     * lookup and the forecast fetch until `needed` (first hover / surface open).
+     * The cached forecast already made `ready` true, so the arm shows instantly.
      */
     Component.onCompleted: {
+        root.loadWeatherCache();
         try {
             var c = JSON.parse(locCache.text());
             if (c && typeof c.lat === "number" && typeof c.lon === "number") {
@@ -100,11 +153,8 @@ Singleton {
                 root.lat = c.lat;
                 root.lon = c.lon;
                 root.located = true;
-                root.fetchWeather();
-                return;
             }
         } catch (e) {}
-        root.locate();
     }
 
     FileView {
@@ -114,8 +164,17 @@ Singleton {
         printErrors: false
     }
 
+    FileView {
+        id: weatherCache
+        path: root.cacheDir + "/weather-cache.json"
+        blockLoading: true
+        printErrors: false
+    }
+
     /** Resolve coordinates: geocode the manual city override, else fall back to IP. */
     function locate() {
+        if (!root.needed)
+            return;
         if (Flags.weatherCity && Flags.weatherCity.trim().length > 0)
             geoProc.running = true;
         else
@@ -221,6 +280,7 @@ Singleton {
                     root.hourly = rows;
                     root.daily = days;
                     root.ready = true;
+                    root.writeWeather();
                 } catch (e) {}
             }
         }
