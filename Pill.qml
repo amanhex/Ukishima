@@ -145,6 +145,16 @@ Item {
     readonly property bool expanded: surfaceOpen || held || hoverLatch
 
     /**
+     * First expansion (hover, latch, held, or any surface) marks weather as
+     * actually wanted, so its refresh/fetch network work starts only then. The
+     * chip itself is always built and renders the cached forecast instantly.
+     */
+    onExpandedChanged: {
+        if (pill.expanded)
+            Weather.needed = true;
+    }
+
+    /**
      * The collapsed pill becomes a compact top-centre capsule when the "strip"
      * main display is picked: it docks flush against the top screen edge, so
      * its top corners square off while the bottom corners stay rounded — the
@@ -1663,20 +1673,6 @@ Item {
         Behavior on opacity { NumberAnimation { duration: pill.mode === "rest" ? Motion.fast : Math.round(260 * Motion.mult) } }
 
         /**
-         * Workspace tracker behind the "system" and "strip" collapsed faces.
-         * Always alive so the active-workspace number is current the moment
-         * that mode is shown; it is the same hyprctl-driven source the hover
-         * dots use, just without the dots.
-         */
-        Workspaces {
-            id: wsPill
-            visible: false
-            enabled: false
-            screenName: pill.screenName
-            s: pill.s
-        }
-
-        /**
          * Strip face: one compact pill of media + status hanging from the top
          * edge. Media art and title lead, then a live cava spark, the red
          * recording chip, and finally weekday, time, workspace, layout and
@@ -1684,6 +1680,11 @@ Item {
          * tightens; the row is centred so the pill hugs the screen top like a
          * notch. Width is pill.stripFaceW, not the row's implicit width, so the
          * elided title never inflates the pill.
+         *
+         * The active-workspace number is served by the hover `ws` instance
+         * (Phase 4 dedupe): it is always alive, so the number is current the
+         * moment this mode is shown, and its `enabled: hover.live` only gates
+         * the dot MouseAreas, never its hyprctl watcher.
          */
         Row {
             id: stripFace
@@ -1797,7 +1798,7 @@ Item {
             Text {
                 id: stripWs
                 anchors.verticalCenter: parent.verticalCenter
-                text: wsPill.activeWs
+                text: ws.activeWs
                 color: Theme.vermLit
                 font.family: Theme.font
                 font.pixelSize: 12 * pill.s
@@ -1957,9 +1958,9 @@ Item {
             }
             Text {
                 visible: pill.specialView === "" && Flags.mainDisplay === "system"
-                    && wsPill.activeWs !== ""
+                    && ws.activeWs !== ""
                 anchors.verticalCenter: parent.verticalCenter
-                text: wsPill.activeWs
+                text: ws.activeWs
                 color: Theme.vermLit
                 font.family: Theme.font
                 font.pixelSize: 11 * pill.s
