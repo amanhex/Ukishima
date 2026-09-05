@@ -136,7 +136,7 @@ hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("qs -p ~/.local/share/qui
 
 If you cloned the repo to `~/.config/quickshell/ukishima` instead, replace `qs -p ~/.local/share/quickshell/ukishima` with `qs -c ukishima`.
 
-Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar`, `media`, `power`, `link`, `battery`, `sysmon`/`system`, `recorder`/`screenrec`/`record`, `quickRecord`, `gameMode`, `peek`, `hide`, `unloadAll`, `page`, `minimizeWindow`, `restoreWindow`. `unloadAll` drops every closed surface on every monitor immediately (the open one is left alone; closed surfaces normally unload themselves 30s after being left). The `page` handler takes the monitor first (empty = focused) and the surface name second — `qs -c ukishima ipc call ukishima page "" wifi`.
+Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar`, `media`, `power`, `link`, `battery`, `sysmon`/`system`, `recorder`/`screenrec`/`record`, `quickRecord`, `gameMode`, `peek`, `hide`, `unloadAll`, `page`, `minimizeWindow`, `restoreWindow`. `unloadAll` drops every closed surface on every monitor immediately (the open one is left alone). With Memory saver on, closed surfaces otherwise unload themselves after a per-surface idle tier (heavy wallpaper/mixer ~30s, calendar 45s, clipboard/media/recorder 60s, everything else several minutes); off, they stay resident until `unloadAll`. The `page` handler takes the monitor first (empty = focused) and the surface name second — `qs -c ukishima ipc call ukishima page "" wifi`.
 
 ## State & cache
 

@@ -20,7 +20,8 @@ SettingsSurface {
     rows: [
         { item: scaleRow, kind: "seg", vals: [0.9, 1.0, 1.1, 1.25], get: function () { return Flags.uiScale; }, set: function (v) { Flags.uiScale = v; } },
         { item: motionRow, kind: "toggle", get: function () { return Flags.reduceMotion; }, set: function (v) { Flags.reduceMotion = v; } },
-        { item: autoHideRow, kind: "toggle", get: function () { return Flags.autoHide; }, set: function (v) { Flags.autoHide = v; } }
+        { item: autoHideRow, kind: "toggle", get: function () { return Flags.autoHide; }, set: function (v) { Flags.autoHide = v; } },
+        { item: saverRow, kind: "toggle", get: function () { return Flags.memorySaver; }, set: function (v) { Flags.memorySaver = v; } }
     ]
 
     Column {
@@ -71,12 +72,25 @@ SettingsSurface {
             surface: root
             name: "Auto hide"
             icon: "eye-off"
-            last: true
 
             LinkToggle {
                 s: root.s
                 on: Flags.autoHide
                 onToggled: Flags.autoHide = !Flags.autoHide
+            }
+        }
+
+        SettingsRow {
+            id: saverRow
+            surface: root
+            name: "Memory saver"
+            icon: "stopwatch"
+            last: true
+
+            LinkToggle {
+                s: root.s
+                on: Flags.memorySaver
+                onToggled: Flags.memorySaver = !Flags.memorySaver
             }
         }
     }

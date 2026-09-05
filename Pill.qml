@@ -31,21 +31,42 @@ Item {
     property string surface: ""
 
     /**
-     * Tail retention: a closed surface keeps its object tree alive for this
-     * long in case it reopens, so a double-toggle or a quick return is still
-     * instant. Every closed surface runs its own countdown (keyed by surface
-     * name in `closedAt`), so closing one surface never extends another's
-     * tail. Once a countdown expires the Loader is deactivated and the whole
-     * tree is reclaimed, so surfaces you don't come back to stop costing RAM.
+     * Tail retention: a closed surface keeps its object tree alive until its
+     * own countdown elapses so a quick return is still instant. Every closed
+     * surface is tracked by name in `closedAt` and swept independently, so
+     * closing one never extends another's tail. When memory saver is on each
+     * surface gets a tiered cooldown (heavy/thirsty surfaces evict sooner);
+     * when off, closed surfaces stay resident for the whole session and only
+     * the explicit `unloadAll` IPC drops them.
      */
-    readonly property real unloadTailMs: 30000
     property string prevSurface: ""
+
+    /**
+     * Idle (ms) before a closed surface is unloaded, keyed by surface name,
+     * scaled from the Flags.unloadSec base (`unloadS` here). Heavier / more
+     * RAM-hungry surfaces evict first; light settings and mini-surfaces keep
+     * their tail far longer. Unlisted names fall through to the long default.
+     */
+    readonly property real unloadS: (Flags.memorySaver ? Math.max(10, Flags.unloadSec) : 1e12)
+    readonly property var unloadIdleMs: ({
+        // heaviest, evict first
+        wallpaper:   unloadS * 1000,
+        mixer:       unloadS * 1000,
+        // thirsty frequent fliers
+        clipboard:   unloadS * 2 * 1000,
+        media:       unloadS * 2 * 1000,
+        recorder:    unloadS * 2 * 1000,
+        // big but slow to rebuild
+        calendar:    unloadS * 4 * 1000,
+        // everything else keeps a long tail
+        default:     unloadS * 60 * 1000
+    })
 
     /**
      * Every surface that has stopped being open, keyed by surface name, with
      * the epoch ms it closed. `surfaceItem` drops the entry when the surface
-     * reopens (that *is* the "reset the timer and wait again" of the tail);
-     * the sweep timer unloads each entry once its own tail has elapsed.
+     * reopens (that *is* the "reset the clock and wait again" of the tail);
+     * the sweep timer unloads each entry once its own tier has elapsed.
      */
     property var closedAt: ({})
 
@@ -363,8 +384,9 @@ Item {
     /**
      * Loader lookup by surface name, as thunks so the map never pins a loader
      * before it is built. The unload machinery keeps every closed surface
-     * resident for `unloadTailMs`, then drops it — so opening a surface pays
-     * its build cost once, and re-opening within the tail is instant.
+     * resident for its own tiered countdown, then drops it — so opening a
+     * surface pays its build cost once, and re-opening within the tail is
+     * instant.
      */
     readonly property var loaders: ({
         calendar:   () => ldCalendar,
@@ -394,7 +416,7 @@ Item {
      * are tracked, so a name can never sit in the map pointing at an inactive
      * loader. Reopening the surface before the tail elapses has already called
      * cancelUnload by the time this could re-fire, so the countdown restarts
-     * on the next close — "open again before 30s, stay alive".
+     * on the next close — "open again before its tier elapses, stay alive".
      */
     function scheduleUnload(name) {
         if (!name || !pill.loaders[name])
@@ -415,13 +437,25 @@ Item {
     }
 
     /**
-     * Periodic sweep. Each closed surface keeps its own timestamp, so every one
-     * is dropped independently once its own tail has elapsed; unloading one
+     * This surface's own idle window, from the tier map by surface name.
+     * Loaders not actually defined (typo'd or removed names) fall through to
+     * the full default so they never evict accidentally early.
+     */
+    function idleFor(name) {
+        var v = pill.unloadIdleMs[name];
+        if (v === undefined)
+            v = pill.unloadIdleMs.default;
+        return v;
+    }
+
+    /**
+     * Periodic sweep. Each closed surface carries its own timestamp, so every
+     * one is dropped independently once its own tier has elapsed; unloading one
      * never shortens or lengthens another's countdown.
      */
     Timer {
         id: sweepTimer
-        interval: 1000
+        interval: 5000
         repeat: true
         running: false
         onTriggered: {
@@ -430,7 +464,7 @@ Item {
             var keeps = false;
             for (var i = 0; i < names.length; i++) {
                 var name = names[i];
-                if (now - pill.closedAt[name] >= pill.unloadTailMs) {
+                if (now - pill.closedAt[name] >= pill.idleFor(name)) {
                     const fn = pill.loaders[name];
                     const ld = fn ? fn() : null;
                     if (ld && ld.active)
@@ -2553,7 +2587,7 @@ Item {
     /**
      * Morphing surfaces, one tail-unloaded Loader each (see surfaceItem). Eager,
      * they dominated startup and per-monitor RAM; now a surface is built
-     * synchronously on its first open, kept for one private unloadTailMs countdown
+     * synchronously on its first open, kept for one private tiered countdown
      * after it stops being open, then dropped — so nothing is retained for surfaces
      * the user never opens, and closed ones don't linger past their own tail. Each
      * loader fills the pill so the PillSurface inside anchors exactly as it did as a
