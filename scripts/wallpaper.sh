@@ -34,6 +34,16 @@ is_video() {
     esac
 }
 
+# mpvpaper keeps its real process name only when it runs as a bare ELF; distro
+# wrappers (NixOS private env, FHS shims...) run it under a different comm, so
+# exact-name matches silently miss it and a video lingers on after switching
+# back to a still. Match the command line instead, with the [m] bracket so the
+# pattern never matches the pgrep/pkill call itself.
+MPV_PAT='[m]pvpaper'
+mpv_running() { pgrep -f "$MPV_PAT" >/dev/null 2>&1; }
+mpv_list() { pgrep -af "$MPV_PAT"; }
+mpv_kill() { pkill -f "$MPV_PAT" 2>/dev/null || true; }
+
 # Fit intent mapped to mpv flags (videos have no awww --resize): cover zooms
 # with panscan, contain letterboxes, stretch distorts, center stays native, all
 # mirroring what aww's --resize does for stills.
@@ -190,7 +200,7 @@ sync_videos() {
         desired="*"$'\t'"$(printf '%s' "$desired" | head -n1 | cut -f2)"$'\n'
     fi
     desired=$(printf '%s' "$desired" | sort)
-    actual=$(pgrep -ax mpvpaper 2>/dev/null | awk '{ print $(NF-1) "\t" $NF }' | sort || true)
+    actual=$(mpv_list | awk '{ print $(NF-1) "\t" $NF }' | sort || true)
     # When the desired set is the collapsed shared instance ('*'), fold the
     # running set to the same shape whenever every running video is that same
     # file: mpvpaper only reports real output names, so without this a shared
@@ -201,10 +211,10 @@ sync_videos() {
         actual="*"$'\t'"$(printf '%s' "$actual" | cut -f2 | sort -u)"
     fi
     VOPTS=$(opts_for_fit)
-    if pgrep -x mpvpaper >/dev/null 2>&1 && [ "$(cat "$FIT_STATE" 2>/dev/null || true)" != "$VOPTS" ]; then
-        pkill -x mpvpaper 2>/dev/null || true
+    if mpv_running && [ "$(cat "$FIT_STATE" 2>/dev/null || true)" != "$VOPTS" ]; then
+        mpv_kill
         for _ in $(seq 1 10); do
-            pgrep -x mpvpaper >/dev/null 2>&1 || break
+            mpv_running || break
             sleep 0.1
         done
         actual=""
@@ -212,10 +222,10 @@ sync_videos() {
     mkdir -p "$(dirname "$FIT_STATE")"
     printf '%s\n' "$VOPTS" > "$FIT_STATE.tmp" && mv "$FIT_STATE.tmp" "$FIT_STATE"
     [ "$desired" = "$actual" ] && return 0
-    if pgrep -x mpvpaper >/dev/null 2>&1; then
-        pkill -x mpvpaper 2>/dev/null || true
+    if mpv_running; then
+        mpv_kill
         for _ in $(seq 1 10); do
-            pgrep -x mpvpaper >/dev/null 2>&1 || break
+            mpv_running || break
             sleep 0.1
         done
     fi
@@ -255,6 +265,10 @@ palette_update() {
     hyprctl reload >/dev/null 2>&1 || true
     busctl --user call com.mitchellh.ghostty /com/mitchellh/ghostty org.gtk.Actions \
         Activate "sava{sv}" reload-config 0 0 >/dev/null 2>&1 || true
+    # kitty: remote-control reload (needs allow_remote_control in kitty.conf);
+    # silently skipped when kitty is missing, not running, or IPC is disabled.
+    command -v kitty >/dev/null 2>&1 \
+        && kitty @ set-colors "$HOME/.cache/ukishima/kitty-colors" >/dev/null 2>&1 || true
 }
 
 map_has_video() {
@@ -316,7 +330,7 @@ if [ "$cmd" = "init" ]; then
         [ -f "$pic" ] && map_put_all "$pic"
     fi
     if [ "$daemon_was_running" = true ]; then
-        if map_has_video && ! pgrep -x mpvpaper >/dev/null 2>&1; then
+        if map_has_video && ! mpv_running; then
             sync_videos
         fi
         exit 0

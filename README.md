@@ -67,6 +67,7 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 | `ddcutil` | monitor brightness via DDC (external display faders) |
 | `kdialog` / `zenity` | native folder picker for the record output directory |
 | `ghostty` | live terminal palette reload over D-Bus |
+| `kitty` | live terminal palette reload via `kitty @ set-colors` (add `allow_remote_control yes` to kitty.conf and `include ~/.cache/ukishima/kitty-colors` for persistence) |
 | `fastfetch` | recoloured system readout (needs `~/.config/fastfetch/config.jsonc.in`) |
 | `hypridle` | idle / DPMS lock integration alongside the built-in keep-awake |
 
