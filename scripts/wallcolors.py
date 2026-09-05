@@ -169,6 +169,17 @@ def main():
     for i in range(16):
         lines.append(f'palette = {i}={b["base%02x" % i]}')
     (CACHE / "ghostty-colors").write_text("\n".join(lines) + "\n")
+
+    kitty_lines = [
+        f'background {b["base00"]}',
+        f'foreground {b["base07"]}',
+        f'cursor {pill["primary"]}',
+        f'selection_background {b["base02"]}',
+        f'selection_foreground {b["base07"]}',
+    ]
+    for i in range(16):
+        kitty_lines.append(f'color{i} {b["base%02x" % i]}')
+    (CACHE / "kitty-colors").write_text("\n".join(kitty_lines) + "\n")
     return 0
 
 
