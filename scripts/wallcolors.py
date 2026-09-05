@@ -7,8 +7,14 @@ The mean lightness drives the pill's whole tone: a bright wallpaper makes a ligh
 pill with dark text, a dark or OLED-black one makes a near-black pill with cream
 text, so the surfaces and the text flip together for contrast across the full
 range. The dominant hue tints every tier in HSL. An achromatic wallpaper drops to
-a neutral grey ramp. matugen still builds the dark base16 the always-dark terminal
-reads; the pill JSON carries surfaces, accent and the contrast-matched text.
+a neutral grey ramp.
+
+The terminal stays dark no matter the pill's tone: a near-black, hue-tinted
+background with bright text tiers is built in HSL (matugen only shapes the 16
+ANSI colour slots, with a hue-anchored fallback if it is missing), then every
+emitted colour is checked against WCAG contrast so the readout stays legible even
+where the wallpaper glows through blur and transparency. The pill JSON carries
+surfaces, accent and the contrast-matched text.
 """
 import colorsys
 import json
@@ -76,6 +82,40 @@ def tint(hue, sat, light):
 def lerp(x, x0, x1, y0, y1):
     t = max(0.0, min(1.0, (x - x0) / (x1 - x0)))
     return y0 + t * (y1 - y0)
+
+
+def rgb(h):
+    return tuple(int(h[i:i + 2], 16) / 255 for i in (1, 3, 5))
+
+
+def to_hex(v):
+    return "#%02x%02x%02x" % tuple(round(c * 255) for c in v)
+
+
+def lum(h):
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb(h)]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def contrast(a, b):
+    l1, l2 = lum(a), lum(b)
+    lo, hi = min(l1, l2), max(l1, l2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def ensure_contrast(color, bg, ratio):
+    """Brighten a colour until it clears ratio:1 against bg, keeping its hue."""
+    if contrast(color, bg) >= ratio:
+        return color
+    h, l, s = colorsys.rgb_to_hls(*rgb(color))
+    lo, hi = l, 1.0
+    for _ in range(28):
+        mid = (lo + hi) / 2
+        if contrast(to_hex(colorsys.hls_to_rgb(h, mid, s)), bg) >= ratio:
+            hi = mid
+        else:
+            lo = mid
+    return to_hex(colorsys.hls_to_rgb(h, hi, s))
 
 
 def render_fastfetch(pill):
@@ -150,36 +190,54 @@ def main():
     render_fastfetch(pill)
 
     try:
-        b = {k: v["dark"]["color"] for k, v in
-             matugen(tint(hue, sat, 0.45) if chromatic else "#787878")["base16"].items()}
-    except (OSError, ValueError, KeyError, subprocess.SubprocessError):
-        return 0
+        # Terminal ramp: always a near-black, hue-tinted background with bright
+        # text tiers, so a transparent + blurred terminal stays legible no matter
+        # what the wallpaper glows through the gaps. base04 clears ~4.5:1 and the
+        # text tiers above it ~7:1 on the background.
+        ramp = [(0.035, 0.045), (0.07, 0.05), (0.14, 0.05), (0.33, 0.06),
+                (0.47, 0.06), (0.62, 0.06), (0.76, 0.05), (0.90, 0.05)]
+        b = {"base%02x" % i: tint(hue, s, l) for i, (l, s) in enumerate(ramp)}
+        b00 = b["base00"]
+        # matugen shapes the 16 ANSI slots; a hue-anchored ramp covers its absence.
+        try:
+            theme = matugen(tint(hue, sat, 0.45) if chromatic else "#787878")
+            ansi = [theme["base16"]["base%02x" % i]["dark"]["color"]
+                    for i in range(8, 16)]
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+            ansi = [tint(h, s, l) for (h, s, l) in (
+                (0.00, 0.55, 0.70), (0.062, 0.55, 0.68), (0.14, 0.50, 0.70),
+                (0.33, 0.47, 0.68), (0.50, 0.45, 0.65), (0.60, 0.50, 0.70),
+                (0.76, 0.50, 0.70), (0.083, 0.60, 0.60))]
+        for i, c in enumerate(ansi):
+            b["base%02x" % (8 + i)] = ensure_contrast(c, b00, 3.0)
 
-    (CACHE / "hypr-colors.lua").write_text(
-        'return {\n    active = "%s",\n    inactive = "%s",\n}\n'
-        % (pill["primary"], b["base01"]))
+        (CACHE / "hypr-colors.lua").write_text(
+            'return {\n    active = "%s",\n    inactive = "%s",\n}\n'
+            % (pill["primary"], b["base01"]))
 
-    lines = [
-        f'background = {b["base00"]}',
-        f'foreground = {b["base07"]}',
-        f'cursor-color = {pill["primary"]}',
-        f'selection-background = {b["base02"]}',
-        f'selection-foreground = {b["base07"]}',
-    ]
-    for i in range(16):
-        lines.append(f'palette = {i}={b["base%02x" % i]}')
-    (CACHE / "ghostty-colors").write_text("\n".join(lines) + "\n")
+        lines = [
+            f'background = {b["base00"]}',
+            f'foreground = {b["base07"]}',
+            f'cursor-color = {pill["primary"]}',
+            f'selection-background = {b["base02"]}',
+            f'selection-foreground = {b["base07"]}',
+        ]
+        for i in range(16):
+            lines.append(f'palette = {i}={b["base%02x" % i]}')
+        (CACHE / "ghostty-colors").write_text("\n".join(lines) + "\n")
 
-    kitty_lines = [
-        f'background {b["base00"]}',
-        f'foreground {b["base07"]}',
-        f'cursor {pill["primary"]}',
-        f'selection_background {b["base02"]}',
-        f'selection_foreground {b["base07"]}',
-    ]
-    for i in range(16):
-        kitty_lines.append(f'color{i} {b["base%02x" % i]}')
-    (CACHE / "kitty-colors").write_text("\n".join(kitty_lines) + "\n")
+        kitty_lines = [
+            f'background {b["base00"]}',
+            f'foreground {b["base07"]}',
+            f'cursor {pill["primary"]}',
+            f'selection_background {b["base02"]}',
+            f'selection_foreground {b["base07"]}',
+        ]
+        for i in range(16):
+            kitty_lines.append(f'color{i} {b["base%02x" % i]}')
+        (CACHE / "kitty-colors").write_text("\n".join(kitty_lines) + "\n")
+    except (OSError, subprocess.SubprocessError):
+        pass
     return 0
 
 
