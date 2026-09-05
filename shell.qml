@@ -573,6 +573,42 @@ ShellRoot {
                     }
                 }
 
+                /**
+                 * Drag-and-drop gateway for the auto-hidden pill. The reveal
+                 * strip keeps its input while the pill is retracted, but drops
+                 * are routed to drop targets, not to the passive HoverHandler
+                 * that opens the strip — so a hidden pill would never see a
+                 * dragged file. This target shadows the strip's geometry, pulls
+                 * the pill in on drag enter and hands the drop to the same
+                 * install flow as the resting pill. Sits below the pill in the
+                 * scene so drops on the visible pill itself keep winning.
+                 */
+                DropArea {
+                    id: stripDrop
+                    width: pill.stripBar ? Math.max(420 * overlay.s, pill.width) : 420 * overlay.s
+                    height: 8 * overlay.s
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    enabled: Flags.autoHide && !pill.surfaceOpen && !pill.quickChoosing
+                        && !pill.quickCounting && !Flags.gameMode
+                    visible: enabled
+                    keys: ["text/uri-list"]
+                    onEntered: (drag) => {
+                        drag.acceptProposedAction();
+                        pill.revealSession = true;
+                        pill.dropEntered(drag.urls);
+                    }
+                    onExited: {
+                        pill.dropExited();
+                        pill.revealSession = false;
+                    }
+                    onDropped: (drop) => {
+                        drop.acceptProposedAction();
+                        pill.dropDropped(drop.urls);
+                        pill.revealSession = false;
+                    }
+                }
+
                 Pill {
                     id: pill
                     anchors.top: parent.top

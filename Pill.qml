@@ -1309,6 +1309,46 @@ Item {
     }
 
     /**
+     * Shared drop lifecycle. Entered during a drag (either over the pill itself
+     * or over the auto-hide reveal strip in shell.qml), dropped at release.
+     * Extracted so the hidden pill's reveal strip can hand drops straight into
+     * the same install flow the resting pill uses.
+     */
+    function dropEntered(urls) {
+        pill.dragActive = true;
+        pill.dragStage = pill.droppablePaths(urls).length > 0 ? "hover" : "bad";
+        pill.dragName = pill.dropLabel(urls);
+    }
+
+    function dropExited() {
+        if (pill.dragStage === "hover" || pill.dragStage === "bad") {
+            pill.dragActive = false;
+            pill.dragStage = "";
+        }
+    }
+
+    function dropDropped(urls) {
+        var files = pill.droppablePaths(urls);
+        if (files.length === 0) {
+            pill.dragActive = true;
+            pill.dragStage = "bad";
+            pill.dragName = pill.dropLabel(urls);
+            dropBadTimer.restart();
+            return;
+        }
+        pill.dragActive = true;
+        pill.dragStage = "installing";
+        pill.installedAny = false;
+        pill.installedApp = false;
+        pill.installFailed = false;
+        pill.installKind = "app";
+        pill.installAction = "new";
+        pill.installSeconds = 0;
+        pill.installQueue = files;
+        pill.runNextInstall();
+    }
+
+    /**
      * File drops land only on the resting pill; an open surface turns the pill
      * into a fullscreen modal that swallows the drag before it can start.
      * app-install.sh routes each drop by type (apps install, fonts land in the
@@ -1320,36 +1360,12 @@ Item {
         keys: ["text/uri-list"]
         onEntered: (drag) => {
             drag.acceptProposedAction();
-            pill.dragActive = true;
-            pill.dragStage = pill.droppablePaths(drag.urls).length > 0 ? "hover" : "bad";
-            pill.dragName = pill.dropLabel(drag.urls);
+            pill.dropEntered(drag.urls);
         }
-        onExited: {
-            if (pill.dragStage === "hover" || pill.dragStage === "bad") {
-                pill.dragActive = false;
-                pill.dragStage = "";
-            }
-        }
+        onExited: pill.dropExited()
         onDropped: (drop) => {
             drop.acceptProposedAction();
-            var files = pill.droppablePaths(drop.urls);
-            if (files.length === 0) {
-                pill.dragActive = true;
-                pill.dragStage = "bad";
-                pill.dragName = pill.dropLabel(drop.urls);
-                dropBadTimer.restart();
-                return;
-            }
-            pill.dragActive = true;
-            pill.dragStage = "installing";
-            pill.installedAny = false;
-            pill.installedApp = false;
-            pill.installFailed = false;
-            pill.installKind = "app";
-            pill.installAction = "new";
-            pill.installSeconds = 0;
-            pill.installQueue = files;
-            pill.runNextInstall();
+            pill.dropDropped(drop.urls);
         }
     }
 
