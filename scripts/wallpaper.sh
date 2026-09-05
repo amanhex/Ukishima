@@ -41,8 +41,26 @@ is_video() {
 # pattern never matches the pgrep/pkill call itself.
 MPV_PAT='[m]pvpaper'
 mpv_running() { pgrep -f "$MPV_PAT" >/dev/null 2>&1; }
-mpv_list() { pgrep -af "$MPV_PAT"; }
+mpv_list() { pgrep -af "$MPV_PAT" || true; }
 mpv_kill() { pkill -f "$MPV_PAT" 2>/dev/null || true; }
+
+# Soft-kill first so mpv can flush its quit bookkeeping, then escalate to
+# SIGKILL. A decoder wedged on the frame queue otherwise lingers with its full
+# buffer pool while the next video spawns on top, so a rapid video-to-video
+# switch ratchets the footprint up instead of swapping one player for another.
+stop_mpv() {
+    mpv_running || return 0
+    mpv_kill
+    for _ in $(seq 1 10); do
+        mpv_running || return 0
+        sleep 0.1
+    done
+    pkill -9 -f "$MPV_PAT" 2>/dev/null || true
+    for _ in $(seq 1 10); do
+        mpv_running || return 0
+        sleep 0.1
+    done
+}
 
 # Fit intent mapped to mpv flags (videos have no awww --resize): cover zooms
 # with panscan, contain letterboxes, stretch distorts, center stays native, all
@@ -200,7 +218,14 @@ sync_videos() {
         desired="*"$'\t'"$(printf '%s' "$desired" | head -n1 | cut -f2)"$'\n'
     fi
     desired=$(printf '%s' "$desired" | sort)
-    actual=$(mpv_list | awk '{ print $(NF-1) "\t" $NF }' | sort || true)
+    # Running set keyed by the output, keeping the whole trailing path so a file
+    # name with spaces can never read as a different video and force a kill-and-
+    # respawn loop (each cycle re-decodes the clip and re-grows the buffer pools).
+    actual=$(for o in $outs; do
+        mpv_list | awk -v o="$o" '
+            { n = 0; for (i = 1; i <= NF; i++) if ($i == o || $i == "*") n = i }
+            n { for (j = 1; j <= n; j++) $j = ""; sub(/^ +/, ""); print o "\t" $0 }'
+    done | sort -u)
     # When the desired set is the collapsed shared instance ('*'), fold the
     # running set to the same shape whenever every running video is that same
     # file: mpvpaper only reports real output names, so without this a shared
@@ -211,23 +236,17 @@ sync_videos() {
         actual="*"$'\t'"$(printf '%s' "$actual" | cut -f2 | sort -u)"
     fi
     VOPTS=$(opts_for_fit)
-    if mpv_running && [ "$(cat "$FIT_STATE" 2>/dev/null || true)" != "$VOPTS" ]; then
-        mpv_kill
-        for _ in $(seq 1 10); do
-            mpv_running || break
-            sleep 0.1
-        done
-        actual=""
+    if [ "$(cat "$FIT_STATE" 2>/dev/null || true)" != "$VOPTS" ]; then
+        if mpv_running; then
+            stop_mpv
+            actual=""
+        fi
     fi
     mkdir -p "$(dirname "$FIT_STATE")"
     printf '%s\n' "$VOPTS" > "$FIT_STATE.tmp" && mv "$FIT_STATE.tmp" "$FIT_STATE"
     [ "$desired" = "$actual" ] && return 0
     if mpv_running; then
-        mpv_kill
-        for _ in $(seq 1 10); do
-            mpv_running || break
-            sleep 0.1
-        done
+        stop_mpv
     fi
     [ -n "$desired" ] || return 0
     sleep 0.8
