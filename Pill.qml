@@ -315,8 +315,8 @@ Item {
     readonly property real wallpaperH: 172 * s
     readonly property real powerW: 330 * s
     readonly property real powerH: 150 * s
-    readonly property real mediaW: (Players.pickable.length > 1 ? 460 : 390) * s
-    readonly property real mediaH: 150 * s
+    readonly property real mediaW: 470 * s
+    readonly property real mediaH: 132 * s
     readonly property real batteryW: 316 * s
     readonly property real wifiW: 272 * s
     readonly property real btW: 286 * s
@@ -2698,11 +2698,15 @@ Item {
         id: ldMedia
         active: false
         anchors.fill: parent
-        sourceComponent: Media {
+sourceComponent: Media {
             s: pill.s
             open: pill.mediaOpen
             morphCloseness: pill.morphCloseness
+            topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
+            pinned: pill.pinned
             onRequestClose: pill.requestClose()
+            onRequestPin: pill.forcePinned = !pill.forcePinned
+            onRequestExpand: { pill.requestClose(); pill.hoverLatch = true; }
         }
     }
 

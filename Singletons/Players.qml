@@ -133,6 +133,7 @@ Singleton {
     /** Falls back to the service label so a titleless DRM stream still reads as its site. */
     readonly property string title: has ? refineTitle(active, active.trackTitle || labelOf(active)) : ""
     readonly property string artist: has ? Theme.joinArtists(active.trackArtists, active.trackArtist) : ""
+    readonly property string album: has ? (active.trackAlbum || "") : ""
     readonly property string trackUrl: urlOf(active)
     readonly property string artUrl: artUrlFor(active)
     readonly property real lengthSec: has && active.length > 0 ? active.length : 0
