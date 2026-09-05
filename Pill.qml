@@ -43,23 +43,24 @@ Item {
 
     /**
      * Idle (ms) before a closed surface is unloaded, keyed by surface name,
-     * scaled from the Flags.unloadSec base (`unloadS` here). Heavier / more
-     * RAM-hungry surfaces evict first; light settings and mini-surfaces keep
-     * their tail far longer. Unlisted names fall through to the long default.
+     * scaled from the Flags.unloadSec base (`unloadS` here). The two heaviest
+     * surfaces (wallpaper, mixer) keep the shortest tail; everything else gets
+     * one 60s reset for quick re-toggles before it is reclaimed, so a session
+     * that touched every surface returns near boot RSS within a couple of
+     * minutes. Unlisted names fall through to that same short default.
      */
     readonly property real unloadS: (Flags.memorySaver ? Math.max(10, Flags.unloadSec) : 1e12)
     readonly property var unloadIdleMs: ({
         // heaviest, evict first
         wallpaper:   unloadS * 1000,
         mixer:       unloadS * 1000,
-        // thirsty frequent fliers
+        // thirsty frequent fliers: one generous reset, then reclaim
         clipboard:   unloadS * 2 * 1000,
         media:       unloadS * 2 * 1000,
         recorder:    unloadS * 2 * 1000,
-        // big but slow to rebuild
-        calendar:    unloadS * 4 * 1000,
-        // everything else keeps a long tail
-        default:     unloadS * 60 * 1000
+        calendar:    unloadS * 2 * 1000,
+        // everything else: a single 60s reset for quick re-toggles, then reclaim
+        default:     unloadS * 2 * 1000
     })
 
     /**
