@@ -78,7 +78,7 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/remote-install.sh | bash
 ```
 
-This clones the project to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints the keybinds and auto-launch line to add to your Hyprland config. If already installed, it pulls the latest changes instead.
+This clones the project to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints the keybinds and auto-launch line to add to your Hyprland config. If already installed, it pulls the latest changes instead. The updater inside the settings hub tells you when a new version is waiting.
 
 **Already installed?** Pull updates from the **Update** sub-surface inside the pill's settings (Appearance → Update), run the same command above, or pull manually:
 
