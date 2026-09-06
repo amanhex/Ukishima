@@ -67,6 +67,7 @@ PillSurface {
     /** Live throughput (MB/s) read straight from /proc/net/dev while the card is open. */
     property real netDown: 0
     property real netUp: 0
+    property bool netOk: false
     property real netPrevRx: 0
     property real netPrevTx: 0
     property real netPrevTime: 0
@@ -189,7 +190,7 @@ PillSurface {
 
     Process {
         id: netProc
-        command: ["sh", "-c", "awk 'NR>2{gsub(\":\",\" \");if($1!=\"lo\"){rx+=$2;tx+=$10}}END{print \"NET\",rx+0,tx+0}' /proc/net/dev"]
+        command: ["sh", "-c", "awk 'NR>2{gsub(\":\",\" \");if($1!=\"lo\"){rx+=$2;tx+=$10}}END{print \"NET\",rx+0,tx+0}' /proc/net/dev; for i in /sys/class/net/wl*/; do [ -d \"$i\" ] && [ \"$(cat \"$i/operstate\")\" = up ] && { echo WIFI up; exit 0; }; done; echo WIFI down"]
         stdout: StdioCollector {
             onStreamFinished: {
                 var p = this.text.trim().split(/\s+/);
@@ -206,6 +207,7 @@ PillSurface {
                 root.netPrevRx = rx;
                 root.netPrevTx = tx;
                 root.netPrevTime = now;
+                root.netOk = p.indexOf("WIFI") >= 0 && p[p.indexOf("WIFI") + 1] === "up";
             }
         }
     }
@@ -414,11 +416,11 @@ PillSurface {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     width: Math.max(0, parent.width - 18 * root.s)
-                    text: (root.netDown <= 0.001 && root.netUp <= 0.001)
-                        ? "Not connected"
-                        : "↓ " + root.fmtNet(root.netDown) + "  ↑ " + root.fmtNet(root.netUp)
+                    text: root.netOk
+                        ? "↓ " + root.fmtNet(root.netDown) + "  ↑ " + root.fmtNet(root.netUp)
+                        : "Not connected"
                     elide: Text.ElideRight
-                    color: (root.netDown <= 0.001 && root.netUp <= 0.001) ? Theme.subtle : Theme.cream
+                    color: root.netOk ? Theme.cream : Theme.subtle
                     font.family: Theme.font
                     font.pixelSize: 10 * root.s
                     font.features: { "tnum": 1 }
