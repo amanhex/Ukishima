@@ -110,6 +110,56 @@ PillSurface {
     readonly property string btName: btPick ? (btPick.deviceName || btPick.name || "Bluetooth device") : ""
     readonly property int btBat: btPick ? root.batteryOf(btPick) : -1
     readonly property color btBatColor: root.btBat >= 50 ? Theme.cream : root.btBat >= 20 ? Theme.dim : Theme.vermDeep
+    readonly property string btGlyph: {
+        var icon = btPick ? (btPick.icon || "") : "";
+        var n = btName.toLowerCase();
+        switch (icon) {
+        case "audio-headset":
+        case "audio-headphones":
+        case "audio-headset-mic":
+            return "headphones";
+        case "audio-card":
+            return "speaker";
+        case "audio-input-mic":
+            return "mic";
+        case "phone":
+            return "phone";
+        case "watch":
+            return "watch";
+        case "computer":
+        case "laptop":
+            return "computer";
+        case "input-keyboard":
+            return "keyboard";
+        case "input-mouse":
+        case "input-tablet":
+            return "mouse";
+        case "input-gaming":
+            return "gamepad";
+        case "tv":
+            return "tv";
+        case "printer":
+        case "scanner":
+        case "multifunction-printer":
+            return "printer";
+        case "camera-video":
+        case "camera-photo":
+            return "camera";
+        }
+        if (n.indexOf("earbud") >= 0 || n.indexOf("buds") >= 0 || n.indexOf("headphone") >= 0 || n.indexOf("headset") >= 0)
+            return "headphones";
+        if (n.indexOf("phone") >= 0 || n.indexOf("mobile") >= 0)
+            return "phone";
+        if (n.indexOf("watch") >= 0)
+            return "watch";
+        if (n.indexOf("keyboard") >= 0)
+            return "keyboard";
+        if (n.indexOf("mouse") >= 0)
+            return "mouse";
+        if (n.indexOf("speaker") >= 0)
+            return "speaker";
+        return "bluetooth";
+    }
 
     /**
      * Art only decodes while this monitor's surface is open, keyed on the track
@@ -436,8 +486,8 @@ PillSurface {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 12 * root.s
                     height: 12 * root.s
-                    name: "bluetooth"
-                    color: Theme.vermLit
+                    name: root.btGlyph
+                    color: root.btName.length > 0 ? Theme.vermLit : Theme.subtle
                 }
 
                 Text {
