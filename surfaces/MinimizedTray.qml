@@ -56,9 +56,14 @@ Row {
         for (var i = 0; i < apps.length; i++) {
             var e = apps[i];
             if (e && e.id && e.id.toLowerCase() === cls.toLowerCase() && e.icon)
-                return Quickshell.iconPath(e.icon, "application-x-executable");
+                return root.saneIcon(Quickshell.iconPath(e.icon, "application-x-executable"));
         }
-        return Quickshell.iconPath(cls, "application-x-executable");
+        return root.saneIcon(Quickshell.iconPath(cls, "application-x-executable"));
+    }
+
+    /** Quickshell returns `name?fallback=other` when an icon isn't themable; drop it so Image sources fall back gracefully. */
+    function saneIcon(p) {
+        return (p && String(p).indexOf("?fallback=") < 0) ? p : "";
     }
 
     Repeater {

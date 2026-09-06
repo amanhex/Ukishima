@@ -186,7 +186,9 @@ Singleton {
     /**
      * The player's own themed app icon, matched off its desktop entry so any
      * source carries its real logo. Matching is the same window-to-entry pass the
-     * tray uses, with a direct icon-theme lookup as the fallback.
+     * tray uses, with a direct icon-theme lookup as the fallback. Returns "" when
+     * the entry icon is missing, so an Image source falls back to a glyph instead
+     * of loading Quickshell's unresolved `name?fallback=` reference (and warning).
      */
     function appIconFor(p) {
         if (!p)
@@ -198,9 +200,14 @@ Singleton {
         for (var i = 0; i < apps.length; i++) {
             var e = apps[i];
             if (e && e.id && e.id.toLowerCase() === id.toLowerCase() && e.icon)
-                return Quickshell.iconPath(e.icon, "application-x-executable");
+                return root.saneIcon(Quickshell.iconPath(e.icon, "application-x-executable"));
         }
-        return Quickshell.iconPath(id.toLowerCase(), "application-x-executable");
+        return root.saneIcon(Quickshell.iconPath(id.toLowerCase(), "application-x-executable"));
+    }
+
+    /** Quickshell returns `name?fallback=other` when an icon isn't themable; drop it so Image sources fall back gracefully. */
+    function saneIcon(p) {
+        return (p && String(p).indexOf("?fallback=") < 0) ? p : "";
     }
 
     function artUrlFor(p) {

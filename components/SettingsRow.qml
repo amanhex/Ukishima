@@ -108,7 +108,15 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         width: childrenRect.width
-        height: childrenRect.height
+        height: implicitHeight
+        implicitHeight: {
+            var h = 0;
+            for (var i = 0; i < data.length; i++) {
+                var c = data[i];
+                if (c.height > h) h = c.height;
+            }
+            return h;
+        }
     }
 
     Rectangle {
