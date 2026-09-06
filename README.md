@@ -9,12 +9,10 @@ The project is fully self-contained. It makes no changes to existing Hyprland co
 ## Preview
 
 <p align="center">
-<a href="https://youtu.be/Xkld6B5Pke0">
-  <img src="https://img.youtube.com/vi/Xkld6B5Pke0/maxresdefault.jpg" width="80%" alt="Ukishima demo on YouTube">
+<a href="https://youtu.be/5aSVFX3FqvM">
+  <img src="https://img.youtube.com/vi/5aSVFX3FqvM/maxresdefault.jpg" width="80%" alt="Ukishima demo on YouTube">
 </a>
 </p>
-
-See the [full preview gallery](preview/README.md) for all screenshots.
 
 ## Credits
 
