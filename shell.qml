@@ -366,6 +366,7 @@ ShellRoot {
                 if (root.openMon === modelData.name) root.close();
                 if (root.peekMon === modelData.name) root.peekMon = "";
                 pill.pinned = false;
+                pill.expandLatch = false;
             }
 
             screen: modelData
