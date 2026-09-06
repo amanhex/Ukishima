@@ -322,8 +322,10 @@ ShellRoot {
              */
             readonly property real restFaceH: 44 * s
 
-            /** Trimming the reserved band below the pill's bottom lets windows climb, so App gap sets the pill-to-window air without touching the desktop gaps_out. */
-            readonly property real reservedH: Math.max(0, restFaceH + topGap - 12 * (1 - Flags.appGap) * s)
+                        /** Trimming the reserved band below the pill's bottom lets windows climb, so App gap sets the pill-to-window air without touching the desktop gaps_out. The strip face docks flush to the screen top (its own topGap is zero), so it never adds the margin. */
+            readonly property real reservedH: Flags.mainDisplay === "strip"
+                ? Math.max(0, restFaceH - 12 * (1 - Flags.appGap) * s)
+                : Math.max(0, restFaceH + topGap - 12 * (1 - Flags.appGap) * s)
 
             readonly property real gameBarH: 34 * s
 
