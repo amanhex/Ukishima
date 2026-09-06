@@ -26,7 +26,7 @@ Singleton {
     readonly property int count: entries.length
     property bool pending: false
 
-    readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/cliphist-thumbs/"
+    readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/ukishima/cliphist-thumbs/"
     readonly property string thumbScript: Config.hyprPath("scripts", "cliphist-thumbs.sh")
 
     function refresh() {

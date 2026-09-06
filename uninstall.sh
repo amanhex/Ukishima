@@ -25,7 +25,9 @@ rm -f  "$STATE/ukishima-wallpaper-bag"
 rm -f  "$STATE/ukishima-wallpaper-fit"
 rm -f  "$STATE/ukishima-wallpaper-still.png"
 
-# Cache: rec thumbs, wallpaper + clipboard previews, weather location.
+# Cache: weather, rec thumbs, wallpaper + clipboard previews, dynamic
+# colors — all under the single ~/.cache/ukishima root. The scattered legacy
+# dirs are removed too so an old install is cleaned out fully.
 rm -rf "$CACHE/ukishima"
 rm -rf "$CACHE/ukishima-wp-thumbs"
 rm -rf "$CACHE/cliphist-thumbs"

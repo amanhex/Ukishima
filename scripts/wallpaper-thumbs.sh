@@ -10,7 +10,7 @@ raw=$(jq -r '.wallpaperDir // ""' "$flags" 2>/dev/null || echo "")
 # Drop any trailing slash so a flags/state trailing-slash drift cannot spawn a
 # second cache directory (the folder hash must match the pill's listing hash).
 wpdir=$(printf %s "$raw" | sed 's#/*$##')
-cache="${XDG_CACHE_HOME:-$HOME/.cache}/ukishima-wp-thumbs"
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/wp-thumbs"
 # Each wallpaper folder gets its own subdirectory keyed by the hash of its
 # normalized path, so files that share a basename across folders never stomp
 # each other and switching folders cannot show a stale thumb from the other
