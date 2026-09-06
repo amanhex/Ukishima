@@ -31,6 +31,29 @@ PillSurface {
     signal requestPin()
     signal requestExpand()
 
+    /**
+     * With auto-hide off and expandTo "media" the card is hover-driven: leaving
+     * it (past a small margin + grace window) closes the surface again so it
+     * shrinks back to the resting pill. Pinning disarms the guard.
+     */
+    Timer {
+        id: leaveGuardT
+        interval: 120
+        onTriggered: root.requestClose()
+    }
+
+    HoverHandler {
+        id: leaveGuard
+        enabled: root.open && !Flags.autoHide && Flags.expandTo === "media" && !root.pinned
+        margin: 10 * root.s
+        onHoveredChanged: {
+            if (enabled && !hovered)
+                leaveGuardT.start();
+            else if (enabled)
+                leaveGuardT.stop();
+        }
+    }
+
     readonly property var player: Players.active
     readonly property bool hasPlayer: player !== null
     readonly property bool playing: Players.playing
