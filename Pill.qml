@@ -2569,6 +2569,8 @@ Item {
                     GlyphIcon {
                         anchors.fill: parent
                         name: "cog"
+                        scale: 0.86
+                        transformOrigin: Item.Center
                         color: appearanceArea.containsMouse ? Theme.cream : Theme.iconDim
                         stroke: 1.6
                     }
