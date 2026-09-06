@@ -170,9 +170,9 @@ PillSurface {
         if (!root.active)
             return "";
         var u = Players.artUrl;
-        if (!u)
-            return "";
-        return u.indexOf("file:") === 0 ? u + "#" + Players.trackKey : u;
+        if (u)
+            return u.indexOf("file:") === 0 ? u + "#" + Players.trackKey : u;
+        return Players.appIconFor(root.player);
     }
     /** Latched on first decode so the fallback glyph doesn't flash back while a track change reloads behind the retained cover. */
     property bool everReady: false
