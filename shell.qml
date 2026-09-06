@@ -312,10 +312,18 @@ ShellRoot {
             required property var modelData
             readonly property real s: modelData ? (modelData.height / 1080) * Flags.uiScale : 1
             readonly property real topGap: 8 * Flags.topGap * s
-            readonly property real restHeight: 38 * s
+            /**
+             * Reserved-band ceiling with auto-hide off. A full-footprint reserve
+             * (hover 58, quick-record 76) cost too much window space, so this is
+             * just the resting face plus the transient OSD ring (44): the flashes
+             * that actually cover windows (workspace/volume/brightness/record)
+             * stay clear, while the cursor-driven hover (58) may still dip past
+             * the band by a few pixels.
+             */
+            readonly property real restFaceH: 44 * s
 
             /** Trimming the reserved band below the pill's bottom lets windows climb, so App gap sets the pill-to-window air without touching the desktop gaps_out. */
-            readonly property real reservedH: Math.max(0, restHeight + topGap - 12 * (1 - Flags.appGap) * s)
+            readonly property real reservedH: Math.max(0, restFaceH + topGap - 12 * (1 - Flags.appGap) * s)
 
             readonly property real gameBarH: 34 * s
 
