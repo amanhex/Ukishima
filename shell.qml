@@ -343,7 +343,7 @@ ShellRoot {
             readonly property real topGap: 8 * Flags.topGap * s
             readonly property string surface: root.openMon === modelData.name ? root.openSurface : ""
             readonly property bool surfaceOpen: surface.length > 0
-            readonly property bool modal: surfaceOpen || pill.held || pill.quickChoosing
+            readonly property bool modal: surfaceOpen || pill.held || pill.quickChoosing || pill.expandLatch
 
             /**
              * True while this monitor's active workspace reports a fullscreen
@@ -454,6 +454,7 @@ ShellRoot {
                             pill.surfaceBack();
                     } else {
                         pill.pinned = false;
+                        pill.expandLatch = false;
                         root.peekMon = "";
                     }
                 }
