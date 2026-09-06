@@ -26,7 +26,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/pill"
+    readonly property string cacheDir: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/ukishima/weather"
 
     property int tempNow: 0
     property int codeNow: 0

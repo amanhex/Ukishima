@@ -1125,7 +1125,7 @@ PillSurface {
                     // Every thumb is decoded straight from disk (or the remote thumb CDN) and
                     // never cached in the process-global image cache. Wallhaven
                     // thumbs are fetched on demand and must not linger; local
-                    // ones re-decode from the on-disk ukishima-wp-thumbs cache
+                    // ones re-decode from the on-disk ukishima/wp-thumbs cache
                     // when a tile scrolls back in. Caching them would pin up to
                     // a wall's worth of decoded 512px frames in RAM for the whole
                     // session — even after this surface unloads — which is exactly

@@ -27,8 +27,8 @@ import Quickshell.Io
  * rebuilds. A warm snapshot (list + thumbs intact) costs one ~10ms stat on
  * open instead of a full rebuild on every visit.
  *
- * Thumbs live in per-folder subdirectories of the ukishima-wp-thumbs cache, each
- * keyed by the md5 of its wallpaper folder's path. Files sharing a basename
+ * Thumbs live in per-folder subdirectories of the `ukishima/wp-thumbs` cache,
+ * each keyed by the md5 of its wallpaper folder's path. Files sharing a basename
  * across folders therefore never clobber each other, and switching folders
  * can't surface a stale thumb from the previous one; each folder's cache is
  * pruned and regenerated independently.
@@ -63,7 +63,7 @@ Singleton {
     property string resolvedDir: ""
     readonly property string wpDir: Flags.wallpaperDir.length > 0 ? Flags.wallpaperDir
         : (resolvedDir.length > 0 ? resolvedDir : Quickshell.env("HOME") + "/Pictures/Wallpapers")
-    readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/ukishima-wp-thumbs/"
+    readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/ukishima/wp-thumbs/"
     readonly property string thumbScript: Config.hyprPath("scripts", "wallpaper-thumbs.sh")
     readonly property string setScript: Config.hyprPath("scripts", "wallpaper.sh")
     readonly property string stateFile: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima-wallpaper"

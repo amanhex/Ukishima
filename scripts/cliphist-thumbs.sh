@@ -7,7 +7,7 @@ export MAGICK_CONFIGURE_PATH
 # missing ones are decoded through the ImageMagick decode cage
 # (MAGICK_CONFIGURE_PATH above — clipboard bytes are untrusted input), and
 # thumbs whose source entry no longer exists are pruned.
-cache="${XDG_CACHE_HOME:-$HOME/.cache}/cliphist-thumbs"
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/cliphist-thumbs"
 mkdir -p "$cache"
 
 # One cliphist list snapshot drives both passes, so a refresh never prunes and
