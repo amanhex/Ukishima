@@ -166,7 +166,7 @@ SettingsSurface {
      */
     Process {
         id: fetchProc
-        command: ["git", "-C", Config.configDir, "fetch", "--quiet", "origin", "master:refs/remotes/origin/update-probe"]
+        command: ["git", "-C", Config.configDir, "fetch", "--quiet", "origin", "+master:refs/remotes/origin/update-probe"]
         onExited: function (exitCode) {
             if (exitCode !== 0) {
                 root.checked = true;
