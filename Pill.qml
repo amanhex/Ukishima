@@ -1122,7 +1122,13 @@ Item {
 
     onHoveredChanged: {
         if (hovered) {
-            if (Flags.autoHide && !revealSession && !expanded && !surfaceOpen
+            if (!Flags.autoHide && Flags.expandTo === "media" && pill.hasMedia
+                && !pill.surfaceOpen && !quickChoosing && !quickCounting
+                && bootSettled && !toastActive) {
+                /* expandTo "media": with auto-hide off the resting pill grows
+                 * into the player itself on hover instead of the icon face. */
+                pill.requestSurface("media");
+            } else if (Flags.autoHide && !revealSession && !expanded && !surfaceOpen
                 && !quickChoosing && !quickCounting) {
                 revealSession = true;
                 revealTimer.stop();
