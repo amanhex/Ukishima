@@ -1121,15 +1121,16 @@ Item {
     readonly property real inputPadRight: bud.shown ? bud.budR + 2 * s : 0
 
     onHoveredChanged: {
-        if (hovered) {
+        if (hovered && pill.mode !== "game") {
             if (!Flags.autoHide && Flags.expandTo === "media" && pill.hasMedia
                 && !pill.surfaceOpen && !pill.dragActive
                 && !quickChoosing && !quickCounting
                 && bootSettled && !toastActive) {
                 /* expandTo "media" with auto-hide off: a hover grows the pill
-                 * into the player itself instead of the icon face. With auto-hide
-                 * on the reveal keeps showing the normal pill; a click opens the
-                 * player (TapHandler below). */
+                 * into the player itself instead of the icon face. Auto-hide
+                 * still reveals the normal pill; a click opens the player
+                 * (TapHandler below). Game mode never hands the bar to the
+                 * player, or the exit chip would be buried under it. */
                 pill.requestSurface("media");
             } else if (Flags.autoHide && !revealSession && !expanded && !surfaceOpen
                 && !quickChoosing && !quickCounting) {
@@ -1176,7 +1177,7 @@ Item {
     }
 
     TapHandler {
-        enabled: !pill.surfaceOpen
+        enabled: !pill.surfaceOpen && pill.mode !== "game"
         gesturePolicy: TapHandler.WithinBounds
         onTapped: {
             if (pill.expandLatch) {
@@ -1202,7 +1203,7 @@ Item {
      */
     TapHandler {
         acceptedButtons: Qt.RightButton
-        enabled: !pill.surfaceOpen || pill.mediaOpen
+        enabled: (!pill.surfaceOpen || pill.mediaOpen) && pill.mode !== "game"
         gesturePolicy: TapHandler.WithinBounds
         onTapped: {
             if (pill.mediaOpen)
