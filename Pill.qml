@@ -2709,8 +2709,6 @@ sourceComponent: Media {
             onRequestClose: pill.requestClose()
             onRequestPin: pill.forcePinned = !pill.forcePinned
             onRequestExpand: {
-                if (Flags.expandTo === "media")
-                    return;
                 pill.requestClose();
                 pill.hoverLatch = true;
             }
