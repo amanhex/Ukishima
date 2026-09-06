@@ -1166,7 +1166,9 @@ Item {
         enabled: !pill.surfaceOpen
         gesturePolicy: TapHandler.WithinBounds
         onTapped: {
-            if (Flags.autoHide) {
+            if (Flags.expandTo === "media" && pill.hasMedia) {
+                pill.requestSurface("media");
+            } else if (Flags.autoHide) {
                 pill.hoverLatch = !pill.hoverLatch;
             } else {
                 pill.pinned = !pill.pinned;
