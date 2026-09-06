@@ -292,8 +292,10 @@ SettingsSurface {
                             if (/^[0-9a-fA-F]{6}$/.test(clean)) {
                                 var c = Qt.color("#" + clean);
                                 if (c.hslHue >= 0) {
-                                    Flags.manualHue = Math.round(c.hslHue * 359);
-                                    Flags.manualSat = c.hslSaturation;
+                                    /* QML color hslHue is 0-359, hslSaturation 0-255;
+                                     * the strip stores hue 0-359 and sat 0-1. */
+                                    Flags.manualHue = Math.round(c.hslHue);
+                                    Flags.manualSat = c.hslSaturation / 255;
                                 } else {
                                     Flags.manualSat = 0;
                                 }
