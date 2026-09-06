@@ -188,10 +188,9 @@ PillSurface {
             }
 
             StatRow {
-                visible: Battery.healthSupported
-                label: "Health"
-                value: Battery.health + "%"
-                warm: true
+                visible: Battery.designSupported
+                label: "Design"
+                value: Battery.energyFullDesign.toFixed(0) + " Wh"
             }
 
             StatRow {
