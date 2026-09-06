@@ -26,6 +26,7 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 - **Surfaces** grown from the pill: launcher, weather, calendar, media, mixer, wallpaper strip + online search, screen recorder, clipboard history, wifi, bluetooth, battery, power menu, system monitor (with a speed test), notification centre, minimized-window stash, OSD, toasts, and a settings hub (appearance → display, theme, font, interface, update).
 - **Wallpaper system** — `awww` backend with a shuffled bag, per-monitor assignment, animated transitions, live wallpapers (`mpvpaper`), a per-wallpaper fit control (Cover / Contain / Stretch / Center) that rescales the screen in place, and a live palette that retints the whole UI plus the terminal on every change; an online **wallhaven** browse/search with pagination, Hot / Latest / Top / Random / Top Liked sorting, and memory-only thumbnails (nothing cached to disk).
 - **Screen recorder** — `gpu-screen-recorder` with slurp window/region picking, countdown, quality presets, audio, and a recent-clips filmstrip.
+- **Media** — a Dynamic-Glacier-style player card with album art (falling back to the playing app's icon when a source reports no cover), pick-a-source switching when several players run, and a status rail with live wifi up/down speeds plus the connected Bluetooth device and its color-coded battery. Smaller touches: device-type icons (earbuds, phone, watch, keyboard/mouse/gamepad, tv, printer, camera), "Not connected" states, an expand action that grows into the full pill (or optionally the media surface) and stays up until dismissed, and cover art that decodes only while the surface is open.
 - **Weather** — Open-Meteo current conditions, hourly and five-day forecast in a dedicated surface, with an editable location (falls back to IP auto-detection).
 - **Extras** — night light (hyprsunset), clipboard manager (cliphist), music visualiser (cava), game mode, quick-record keybind, keep-awake, and an in-app updater that pulls the latest release from GitHub.
 
@@ -91,7 +92,7 @@ cd ~/.local/share/quickshell/ukishima && git pull
 curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/uninstall.sh | bash
 ```
 
-Removes the program files, all state (`~/.local/state/ukishima*`) and all caches (`~/.cache/ukishima*`, `~/.cache/cliphist-thumbs`, `~/.cache/pill`), and stops any running instance.
+Removes the program files, all state (`~/.local/state/ukishima*`) and every disk cache (all under `~/.cache/ukishima`, plus legacy scattered dirs), and stops any running instance.
 
 You still need to remove the `exec-once` auto-launch line and the SUPER keybinds you added to your Hyprland config, and uninstall any dependencies you installed only for Ukishima (see [Dependencies](#dependencies)).
 
@@ -142,4 +143,4 @@ Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar
 ## State & cache
 
 - state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, gamemode snapshot; wallpaper selection lives in sibling files `~/.local/state/ukishima-wallpaper*`
-- cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — palette JSON, rec thumbs; wallpaper previews under `ukishima-wp-thumbs/`, clipboard previews under `cliphist-thumbs/`, weather location under `pill/`
+- cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — every disk cache under one root: palette JSON, screen-recording thumbs (`rec-thumbs/`), wallpaper previews (`wp-thumbs/`), clipboard previews (`cliphist-thumbs/`), weather forecast + location (`weather/`)
