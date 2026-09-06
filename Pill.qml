@@ -1122,12 +1122,14 @@ Item {
 
     onHoveredChanged: {
         if (hovered) {
-            if (Flags.expandTo === "media" && pill.hasMedia
+            if (!Flags.autoHide && Flags.expandTo === "media" && pill.hasMedia
                 && !pill.surfaceOpen && !pill.dragActive
                 && !quickChoosing && !quickCounting
                 && bootSettled && !toastActive) {
-                /* expandTo "media": a hover grows the pill into the player itself
-                 * instead of the icon face, in every auto-hide mode. */
+                /* expandTo "media" with auto-hide off: a hover grows the pill
+                 * into the player itself instead of the icon face. With auto-hide
+                 * on the reveal keeps showing the normal pill; a click opens the
+                 * player (TapHandler below). */
                 pill.requestSurface("media");
             } else if (Flags.autoHide && !revealSession && !expanded && !surfaceOpen
                 && !quickChoosing && !quickCounting) {
