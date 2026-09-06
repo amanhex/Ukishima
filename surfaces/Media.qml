@@ -487,7 +487,7 @@ PillSurface {
                     width: 12 * root.s
                     height: 12 * root.s
                     name: root.btGlyph
-                    color: root.btName.length > 0 ? Theme.vermLit : Theme.subtle
+                    color: Theme.iconDim
                 }
 
                 Text {
@@ -528,7 +528,7 @@ PillSurface {
                         width: 12 * root.s
                         height: 12 * root.s
                         name: "layers"
-                        color: Theme.subtle
+                        color: Theme.iconDim
                     }
 
                     Text {
