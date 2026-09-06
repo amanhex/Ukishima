@@ -1170,7 +1170,11 @@ Item {
         enabled: !pill.surfaceOpen
         gesturePolicy: TapHandler.WithinBounds
         onTapped: {
-            pill.expandLatch = false;
+            if (pill.expandLatch) {
+                pill.expandLatch = false;
+                pill.hoverLatch = false;
+                return;
+            }
             if (Flags.expandTo === "media" && pill.hasMedia) {
                 pill.requestSurface("media");
             } else if (Flags.autoHide) {
