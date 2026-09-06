@@ -91,6 +91,8 @@ Item {
     property bool revealSession: false
     property bool pinned: false
     property bool forcePinned: false
+    /** Latch held by an explicit Expand click in the media card. Unlike hoverLatch it survives cursor exit, so the expanded pill stays up until the user dismisses it (tap the pill, open a surface, or focus loss). */
+    property bool expandLatch: false
 
     readonly property bool held: pinned || forcePinned
     readonly property bool mixerOpen: surface === "mixer"
@@ -142,7 +144,7 @@ Item {
         onTriggered: pill.bootSettled = true
     }
 
-    readonly property bool expanded: surfaceOpen || held || hoverLatch
+    readonly property bool expanded: surfaceOpen || held || hoverLatch || expandLatch
 
     /**
      * First expansion (hover, latch, held, or any surface) marks weather as
@@ -183,6 +185,7 @@ Item {
     onMonFocusedChanged: if (!monFocused && Flags.autoHide) {
         revealSession = false;
         hoverLatch = false;
+        expandLatch = false;
     }
 
     /**
@@ -763,6 +766,7 @@ Item {
         pinned = false;
         revealSession = false;
         hoverLatch = false;
+        expandLatch = false;
         revealTimer.stop();
         if (quickHere && ScreenRec.quickChoosing) {
             ScreenRec.quickChoosing = false;
@@ -1166,6 +1170,7 @@ Item {
         enabled: !pill.surfaceOpen
         gesturePolicy: TapHandler.WithinBounds
         onTapped: {
+            pill.expandLatch = false;
             if (Flags.expandTo === "media" && pill.hasMedia) {
                 pill.requestSurface("media");
             } else if (Flags.autoHide) {
@@ -2711,6 +2716,7 @@ sourceComponent: Media {
             onRequestExpand: {
                 pill.requestClose();
                 pill.hoverLatch = true;
+                pill.expandLatch = true;
             }
         }
     }
