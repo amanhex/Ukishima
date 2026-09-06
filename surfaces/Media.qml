@@ -199,6 +199,7 @@ PillSurface {
     readonly property real textX: root.artMargin + root.artSize + root.gapArt
     readonly property real textColW: 190 * s
     readonly property real railW: 96 * s
+    readonly property real railInset: 24 * s
 
     property real sealPulse: 0
 
@@ -439,7 +440,7 @@ PillSurface {
     Item {
         id: infoStack
         anchors.right: parent.right
-        anchors.rightMargin: root.pad
+        anchors.rightMargin: root.railInset
         anchors.verticalCenter: parent.verticalCenter
         width: root.railW
         height: infoCol.height
