@@ -1122,11 +1122,12 @@ Item {
 
     onHoveredChanged: {
         if (hovered) {
-            if (!Flags.autoHide && Flags.expandTo === "media" && pill.hasMedia
-                && !pill.surfaceOpen && !quickChoosing && !quickCounting
+            if (Flags.expandTo === "media" && pill.hasMedia
+                && !pill.surfaceOpen && !pill.dragActive
+                && !quickChoosing && !quickCounting
                 && bootSettled && !toastActive) {
-                /* expandTo "media": with auto-hide off the resting pill grows
-                 * into the player itself on hover instead of the icon face. */
+                /* expandTo "media": a hover grows the pill into the player itself
+                 * instead of the icon face, in every auto-hide mode. */
                 pill.requestSurface("media");
             } else if (Flags.autoHide && !revealSession && !expanded && !surfaceOpen
                 && !quickChoosing && !quickCounting) {
