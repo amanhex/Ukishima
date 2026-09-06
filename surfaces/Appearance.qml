@@ -37,7 +37,7 @@ SettingsSurface {
         SettingsHeader {
             s: root.s
             glyph: "相"
-            title: "APPEARANCE"
+            title: "SETTINGS"
             showBack: false
         }
 

@@ -2557,7 +2557,7 @@ Item {
 
                     GlyphIcon {
                         anchors.fill: parent
-                        name: "palette"
+                        name: "cog"
                         color: appearanceArea.containsMouse ? Theme.cream : Theme.iconDim
                         stroke: 1.6
                     }
@@ -2706,7 +2706,12 @@ sourceComponent: Media {
             pinned: pill.pinned
             onRequestClose: pill.requestClose()
             onRequestPin: pill.forcePinned = !pill.forcePinned
-            onRequestExpand: { pill.requestClose(); pill.hoverLatch = true; }
+            onRequestExpand: {
+                if (Flags.expandTo === "media")
+                    return;
+                pill.requestClose();
+                pill.hoverLatch = true;
+            }
         }
     }
 
