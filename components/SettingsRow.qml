@@ -111,8 +111,8 @@ Item {
         height: implicitHeight
         implicitHeight: {
             var h = 0;
-            for (var i = 0; i < data.length; i++) {
-                var c = data[i];
+            for (var i = 0; i < children.length; i++) {
+                var c = children[i];
                 if (c.height > h) h = c.height;
             }
             return h;
