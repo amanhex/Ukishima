@@ -476,21 +476,37 @@ Item {
             var now = Date.now();
             var names = Object.keys(pill.closedAt);
             var keeps = false;
+            var dropped = false;
             for (var i = 0; i < names.length; i++) {
                 var name = names[i];
                 if (now - pill.closedAt[name] >= pill.idleFor(name)) {
                     const fn = pill.loaders[name];
                     const ld = fn ? fn() : null;
-                    if (ld && ld.active)
+                    if (ld && ld.active) {
                         ld.active = false;
+                        dropped = true;
+                    }
                     delete pill.closedAt[name];
                 } else {
                     keeps = true;
                 }
             }
+            if (dropped)
+                Qt.callLater(pill.reapJs);
             if (!keeps)
                 sweepTimer.stop();
         }
+    }
+
+    /**
+     * Detached JS models/closures outlive a Loader teardown until the engine's
+     * next major collection. A GC right after an eviction reclaims those
+     * wrappers up-front instead of piling into a later spike. Guarded because
+     * the `gc` global is not available in every JS environment.
+     */
+    function reapJs() {
+        if (typeof gc === "function")
+            gc();
     }
 
     /**
@@ -500,14 +516,19 @@ Item {
      */
     function unloadClosedSurfaces() {
         var names = Object.keys(pill.closedAt);
+        var dropped = false;
         for (var i = 0; i < names.length; i++) {
             const fn = pill.loaders[names[i]];
             const ld = fn ? fn() : null;
-            if (ld && ld.active)
+            if (ld && ld.active) {
                 ld.active = false;
+                dropped = true;
+            }
             delete pill.closedAt[names[i]];
         }
         sweepTimer.stop();
+        if (dropped)
+            Qt.callLater(pill.reapJs);
     }
 
     readonly property string mode: dragActive ? "dragOver"
