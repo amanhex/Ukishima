@@ -6,13 +6,17 @@ import Quickshell.Io
 /**
  * cliphist bridge: keeps a warm in-memory snapshot of the clipboard history so
  * the clipboard surface opens instantly without shelling out on demand. A
- * wl-paste watcher fires on every clipboard change; after a short debounce the
- * thumbnail script regenerates missing image previews (and prunes stale ones),
- * then `cliphist list` is re-read into `entries`. Thumbnails are written before
- * the list lands so image delegates never bind to a not-yet-existing file. A
- * change arriving while the pipeline runs sets `pending` and replays once the
- * list lands, so no clipboard event is ever silently dropped; the watcher
- * respawns through a cooldown timer if wl-paste dies.
+ * wl-paste watcher fires on every clipboard change. While the clipboard surface
+ * is open, after a short debounce the thumbnail script regenerates missing
+ * image previews (and prunes stale ones), then `cliphist list` is re-read into
+ * `entries` — live streaming while the user is looking at the list. While the
+ * surface is closed the change only marks the snapshot `dirty` and nothing is
+ * spawned; the next open re-pulls through refresh(). Thumbnails are written
+ * before the list lands so image delegates never bind to a not-yet-existing
+ * file. A change arriving while the pipeline runs sets `pending` (or `dirty`
+ * when closed) and replays once the list lands, so no clipboard event is ever
+ * silently dropped; the watcher respawns through a cooldown timer if wl-paste
+ * dies.
  *
  * Entries are plain objects: { id, preview, isImage, meta, label, sizeLabel,
  * thumb } where meta is cliphist's raw binary descriptor ("245 KiB png
@@ -26,10 +30,25 @@ Singleton {
     readonly property int count: entries.length
     property bool pending: false
 
+    /**
+     * The clipboard surface passes this to its `active` state so a change
+     * landing while the surface is closed is deferred instead of spawning the
+     * thumbnail script + cliphist list in the background all day.
+     */
+    property bool surfaceOpen: false
+
+    /**
+     * A clipboard change arrived while the surface was closed. refresh()
+     * clears it, so the snapshot is authoritative again once it finishes a
+     * pull (whether from a live change or from opening the surface).
+     */
+    property bool dirty: true
+
     readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/ukishima/cliphist-thumbs/"
     readonly property string thumbScript: Config.hyprPath("scripts", "cliphist-thumbs.sh")
 
     function refresh() {
+        dirty = false;
         if (thumbProc.running || listProc.running || delProc.running || delQueue.length) {
             pending = true;
             return;
@@ -83,8 +102,10 @@ Singleton {
         onExited: {
             if (root.delQueue.length)
                 root.pumpDeletes();
-            else
+            else if (root.surfaceOpen)
                 root.refresh();
+            else
+                root.dirty = true;
         }
     }
 
@@ -93,7 +114,12 @@ Singleton {
         command: ["wl-paste", "--watch", "echo", "x"]
         running: true
         stdout: SplitParser {
-            onRead: debounce.restart()
+            onRead: {
+                if (root.surfaceOpen)
+                    debounce.restart();
+                else
+                    root.dirty = true;
+            }
         }
         onExited: respawn.restart()
     }
@@ -107,13 +133,18 @@ Singleton {
     Timer {
         id: debounce
         interval: 300
-        onTriggered: root.refresh()
+        onTriggered: if (root.surfaceOpen) root.refresh()
     }
 
     Process {
         id: wipeProc
         command: ["cliphist", "wipe"]
-        onExited: root.refresh()
+        onExited: {
+            if (root.surfaceOpen)
+                root.refresh();
+            else
+                root.dirty = true;
+        }
     }
 
     Process {
@@ -162,7 +193,10 @@ Singleton {
                 root.entries = out;
                 if (root.pending) {
                     root.pending = false;
-                    Qt.callLater(root.refresh);
+                    if (root.surfaceOpen)
+                        Qt.callLater(root.refresh);
+                    else
+                        root.dirty = true;
                 }
             }
         }

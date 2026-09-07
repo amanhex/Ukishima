@@ -85,6 +85,7 @@ PillSurface {
     }
 
     onActiveChanged: {
+        Cliphist.surfaceOpen = active;
         if (active) {
             query = "";
             search.text = "";
