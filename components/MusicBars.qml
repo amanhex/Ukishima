@@ -35,6 +35,7 @@ Row {
             }
 
             Behavior on height {
+                enabled: root.visible
                 NumberAnimation { duration: Motion.fast; easing.type: Easing.OutQuad }
             }
         }
