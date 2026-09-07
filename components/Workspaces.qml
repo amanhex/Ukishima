@@ -36,6 +36,17 @@ Item {
     property real gap: 4 * s
 
     /**
+     * When false, the watcher is fully inert: no hyprctl fetches, no Hyprland
+     * event hooks, no boot polling. The hidden OSD controller in Pill.qml owns a
+     * copy of this component that is never rendered, and gating it here stops
+     * it from spawning sh + hyprctl on every workspace event. The OSD popup
+     * instance stays watched, so visible workspace flashes keep fresh dots.
+     * Input (enabled) is untouched: the strip face must stay live while
+     * hovering, and the OSD dots are never interactive regardless.
+     */
+    property bool watch: true
+
+    /**
      * The dot range and active marker are plain properties, recomputed
      * imperatively by rebuild() from the last hyprctl snapshot rather than
      * chained computed bindings. A switch onto an already-created workspace
@@ -52,6 +63,8 @@ Item {
     property var wsList: []
 
     function refreshData() {
+        if (!workspaces.watch)
+            return;
         proc.running = true;
     }
 
@@ -129,7 +142,7 @@ Item {
         id: bootPoll
         interval: 250
         repeat: true
-        running: true
+        running: workspaces.watch
         onTriggered: {
             workspaces.refreshData();
             workspaces.bootTries += 1;
@@ -140,9 +153,11 @@ Item {
 
     Component.onCompleted: refreshData()
     onScreenNameChanged: refreshData()
+    onWatchChanged: if (workspaces.watch) workspaces.refreshData()
 
     Connections {
         target: Hyprland
+        enabled: workspaces.watch
         function onRawEvent(event) {
             var n = event.name;
             if (n === "workspace" || n === "workspacev2"
@@ -156,6 +171,7 @@ Item {
 
     Connections {
         target: Workspacerules
+        enabled: workspaces.watch
         function onByMonitorChanged() { workspaces.rebuild() }
     }
 
