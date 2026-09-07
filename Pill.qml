@@ -1923,6 +1923,9 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: kanjiFill.baseline
                     s: pill.s
+                    /** Culled (not just faded) while the waveform is off, so the
+                     *  per-bar easing anims don't keep ticking at 60fps invisibly. */
+                    visible: restKanji.barsOn
                     opacity: restKanji.barsOn ? 1 : 0
                     scale: restKanji.barsOn ? 1 : 0.7
                     Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
