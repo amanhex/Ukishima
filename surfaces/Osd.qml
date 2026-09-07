@@ -305,7 +305,7 @@ Item {
             Image {
                 id: cover
                 anchors.fill: parent
-                source: root.liveArt
+                source: root.kind === "track" ? root.liveArt : ""
                 sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
@@ -347,7 +347,7 @@ Item {
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     smooth: true
-                    source: root.subjectIcon
+                    source: root.kind === "track" ? root.subjectIcon : ""
                 }
             }
         }
@@ -543,6 +543,10 @@ Item {
             s: root.s
             gap: 8 * root.s
             enabled: false
+            /** The hidden pill OSD controller is disabled, so stop it from
+             *  spawning sh + hyprctl on every workspace event. The popup OSD
+             *  stays enabled and keeps its watcher live for fresh dots. */
+            watch: root.enabled
         }
     }
 
