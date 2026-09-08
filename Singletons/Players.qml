@@ -240,9 +240,18 @@ Singleton {
         return root.iconSourceFor(id.toLowerCase());
     }
 
-    /** A provider URL the icon image resolves at load time, generic app icon as last resort. */
+    /**
+     * A provider URL the icon image resolves at load time. Only names the icon
+     * theme and its inherited parents actually carry load cleanly; anything else
+     * makes the provider warn and render a blank, so stay empty and let the
+     * glyph fallback take over.
+     */
     function iconSourceFor(name) {
-        return (name && name.length > 0) ? Quickshell.iconPath(name, "application-x-executable") : "";
+        if (!name || name.length === 0)
+            return "";
+        if (Quickshell.hasThemeIcon(name))
+            return Quickshell.iconPath(name, "application-x-executable");
+        return "";
     }
 
     function artUrlFor(p) {

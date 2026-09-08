@@ -56,9 +56,18 @@ Row {
         for (var i = 0; i < apps.length; i++) {
             var e = apps[i];
             if (e && e.id && e.id.toLowerCase() === cls.toLowerCase() && e.icon)
-                return Quickshell.iconPath(e.icon, "application-x-executable");
+                return root.iconSourceFor(e.icon);
         }
-        return Quickshell.iconPath(cls, "application-x-executable");
+        return root.iconSourceFor(cls);
+    }
+
+    /** Only names the icon theme resolves load without warning; otherwise empty. */
+    function iconSourceFor(name) {
+        if (!name || name.length === 0)
+            return "";
+        if (Quickshell.hasThemeIcon(name))
+            return Quickshell.iconPath(name, "application-x-executable");
+        return "";
     }
 
     Repeater {
