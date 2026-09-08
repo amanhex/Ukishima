@@ -202,7 +202,39 @@ Singleton {
             if (e && e.id && e.id.toLowerCase() === id.toLowerCase() && e.icon)
                 return root.saneIcon(Quickshell.iconPath(e.icon, "application-x-executable"));
         }
-        return root.saneIcon(Quickshell.iconPath(id.toLowerCase(), "application-x-executable"));
+        var icon = root.saneIcon(Quickshell.iconPath(id.toLowerCase(), "application-x-executable"));
+        if (icon.length > 0 || !p.identity || p.identity.length === 0)
+            return icon;
+        /**
+         * Browsers expose no desktop entry, only an identity like "Mozilla zen";
+         * match the entry whose id or name carries one of its words so a theme
+         * icon resolves for a player that sends no art.
+         */
+        var identityWords = p.identity.toLowerCase().split(/[^a-z0-9]+/);
+        for (var w = 0; w < identityWords.length; w++) {
+            var word = identityWords[w];
+            if (word.length < 3)
+                continue;
+            for (var j = 0; j < apps.length; j++) {
+                var je = apps[j];
+                if (!je || !je.icon || !je.id)
+                    continue;
+                var entryWords = je.id.toLowerCase().replace(/\.desktop$/, "").split(/[^a-z0-9]+/);
+                var nameWords = String(je.name || "").toLowerCase().split(/[^a-z0-9]+/);
+                var hit = false;
+                for (var k = 0; k < entryWords.length; k++)
+                    if (entryWords[k] === word) { hit = true; break; }
+                if (!hit)
+                    for (var m = 0; m < nameWords.length; m++)
+                        if (nameWords[m] === word) { hit = true; break; }
+                if (hit) {
+                    var found = root.saneIcon(Quickshell.iconPath(je.icon, "application-x-executable"));
+                    if (found.length > 0)
+                        return found;
+                }
+            }
+        }
+        return "";
     }
 
     /** Quickshell returns `name?fallback=other` when an icon isn't themable; drop it so Image sources fall back gracefully. */
