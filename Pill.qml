@@ -1569,12 +1569,25 @@ Item {
                 color: Theme.tileBg
                 clip: true
                 Image {
+                    id: artImg
                     anchors.fill: parent
                     source: Players.artUrl
                     sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     visible: status === Image.Ready
+                }
+                /** No art from the player: the source's own app icon stands in. */
+                Image {
+                    anchors.centerIn: parent
+                    width: parent.width - 8 * pill.s
+                    height: parent.height - 8 * pill.s
+                    source: Players.appIconFor(Players.active)
+                    sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    smooth: true
+                    visible: artImg.status !== Image.Ready && status === Image.Ready
                 }
             }
             Column {
@@ -1762,12 +1775,26 @@ Item {
                 color: Theme.tileBg
                 clip: true
                 Image {
+                    id: stripArtImg
                     anchors.fill: parent
                     source: Players.artUrl
                     sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     visible: status === Image.Ready
+                }
+                /** No art from the player: the source's own app icon stands in. */
+                Image {
+                    id: stripArtIcon
+                    anchors.centerIn: parent
+                    width: parent.width - 8 * pill.s
+                    height: parent.height - 8 * pill.s
+                    source: Players.appIconFor(Players.active)
+                    sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    smooth: true
+                    visible: stripArtImg.status !== Image.Ready && status === Image.Ready
                 }
             }
 

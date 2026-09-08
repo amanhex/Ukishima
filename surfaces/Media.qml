@@ -414,7 +414,12 @@ PillSurface {
                 asynchronous: true
                 retainWhileLoading: true
                 cache: String(source).indexOf("file:") !== 0
-                onStatusChanged: if (status === Image.Ready) root.everReady = true
+                onStatusChanged: {
+                    if (status === Image.Ready)
+                        root.everReady = true;
+                    else if (status === Image.Error && cover.source !== "")
+                        root.everReady = false;
+                }
             }
         }
 
