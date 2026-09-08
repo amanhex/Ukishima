@@ -43,7 +43,7 @@ Row {
     readonly property int count: items.length
 
     /**
-     * Resolve an icon path for a toplevel by matching its window class to a
+     * Resolve an icon source for a toplevel by matching its window class to a
      * desktop entry id (the class often differs from the icon-theme name), with
      * a direct icon-theme lookup as fallback.
      */
@@ -56,14 +56,9 @@ Row {
         for (var i = 0; i < apps.length; i++) {
             var e = apps[i];
             if (e && e.id && e.id.toLowerCase() === cls.toLowerCase() && e.icon)
-                return root.saneIcon(Quickshell.iconPath(e.icon, "application-x-executable"));
+                return Quickshell.iconPath(e.icon, "application-x-executable");
         }
-        return root.saneIcon(Quickshell.iconPath(cls, "application-x-executable"));
-    }
-
-    /** Quickshell returns `name?fallback=other` when an icon isn't themable; drop it so Image sources fall back gracefully. */
-    function saneIcon(p) {
-        return (p && String(p).indexOf("?fallback=") < 0) ? p : "";
+        return Quickshell.iconPath(cls, "application-x-executable");
     }
 
     Repeater {

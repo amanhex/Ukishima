@@ -186,9 +186,9 @@ Singleton {
     /**
      * The player's own themed app icon, matched off its desktop entry so any
      * source carries its real logo. Matching is the same window-to-entry pass the
-     * tray uses, with a direct icon-theme lookup as the fallback. Returns "" when
-     * the entry icon is missing, so an Image source falls back to a glyph instead
-     * of loading Quickshell's unresolved `name?fallback=` reference (and warning).
+     * tray uses, with a direct icon-theme lookup as the fallback. The result is
+     * always a valid provider URL the icon image resolves at load time, so a
+     * theme without the exact name still yields the generic app icon.
      */
     function appIconFor(p) {
         if (!p)
@@ -200,46 +200,42 @@ Singleton {
         for (var i = 0; i < apps.length; i++) {
             var e = apps[i];
             if (e && e.id && e.id.toLowerCase() === id.toLowerCase() && e.icon)
-                return root.saneIcon(Quickshell.iconPath(e.icon, "application-x-executable"));
+                return root.iconSourceFor(e.icon);
         }
-        var icon = root.saneIcon(Quickshell.iconPath(id.toLowerCase(), "application-x-executable"));
-        if (icon.length > 0 || !p.identity || p.identity.length === 0)
-            return icon;
         /**
          * Browsers expose no desktop entry, only an identity like "Mozilla zen";
-         * match the entry whose id or name carries one of its words so a theme
-         * icon resolves for a player that sends no art.
+         * match the entry whose id or name carries one of its words so the real
+         * logo wins over the generic fallback.
          */
-        var identityWords = p.identity.toLowerCase().split(/[^a-z0-9]+/);
-        for (var w = 0; w < identityWords.length; w++) {
-            var word = identityWords[w];
-            if (word.length < 3)
-                continue;
-            for (var j = 0; j < apps.length; j++) {
-                var je = apps[j];
-                if (!je || !je.icon || !je.id)
+        if (p.identity && p.identity.length > 0) {
+            var identityWords = p.identity.toLowerCase().split(/[^a-z0-9]+/);
+            for (var w = 0; w < identityWords.length; w++) {
+                var word = identityWords[w];
+                if (word.length < 3)
                     continue;
-                var entryWords = je.id.toLowerCase().replace(/\.desktop$/, "").split(/[^a-z0-9]+/);
-                var nameWords = String(je.name || "").toLowerCase().split(/[^a-z0-9]+/);
-                var hit = false;
-                for (var k = 0; k < entryWords.length; k++)
-                    if (entryWords[k] === word) { hit = true; break; }
-                if (!hit)
-                    for (var m = 0; m < nameWords.length; m++)
-                        if (nameWords[m] === word) { hit = true; break; }
-                if (hit) {
-                    var found = root.saneIcon(Quickshell.iconPath(je.icon, "application-x-executable"));
-                    if (found.length > 0)
-                        return found;
+                for (var j = 0; j < apps.length; j++) {
+                    var je = apps[j];
+                    if (!je || !je.icon || !je.id)
+                        continue;
+                    var entryWords = je.id.toLowerCase().replace(/\.desktop$/, "").split(/[^a-z0-9]+/);
+                    var nameWords = String(je.name || "").toLowerCase().split(/[^a-z0-9]+/);
+                    var hit = false;
+                    for (var k = 0; k < entryWords.length; k++)
+                        if (entryWords[k] === word) { hit = true; break; }
+                    if (!hit)
+                        for (var m = 0; m < nameWords.length; m++)
+                            if (nameWords[m] === word) { hit = true; break; }
+                    if (hit)
+                        return root.iconSourceFor(je.icon);
                 }
             }
         }
-        return "";
+        return root.iconSourceFor(id.toLowerCase());
     }
 
-    /** Quickshell returns `name?fallback=other` when an icon isn't themable; drop it so Image sources fall back gracefully. */
-    function saneIcon(p) {
-        return (p && String(p).indexOf("?fallback=") < 0) ? p : "";
+    /** A provider URL the icon image resolves at load time, generic app icon as last resort. */
+    function iconSourceFor(name) {
+        return (name && name.length > 0) ? Quickshell.iconPath(name, "application-x-executable") : "";
     }
 
     function artUrlFor(p) {
