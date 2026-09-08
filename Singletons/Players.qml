@@ -230,6 +230,13 @@ Singleton {
                 }
             }
         }
+        /**
+         * Registry still filling (it populates asynchronously): a raw identity
+         * or entry name here would resolve to nothing useful yet and warn, so
+         * stay empty and let the bindings re-evaluate once entries arrive.
+         */
+        if (apps.length === 0)
+            return "";
         return root.iconSourceFor(id.toLowerCase());
     }
 
