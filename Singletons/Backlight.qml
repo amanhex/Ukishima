@@ -62,11 +62,12 @@ Singleton {
                 var pct = parseInt(line.trim(), 10);
                 if (isNaN(pct))
                     return;
-                var seen = root.lastPct >= 0;
+                var prior = root.lastPct;
+                var seen = prior >= 0;
                 root.present = true;
                 root.brightness = Math.max(0, Math.min(100, pct)) / 100.0;
                 root.lastPct = pct;
-                if (seen)
+                if (seen && pct !== prior)
                     root.changed();
             }
         }
