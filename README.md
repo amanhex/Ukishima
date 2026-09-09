@@ -78,11 +78,15 @@ curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/remote-inst
 
 This clones the project to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints the keybinds and auto-launch line to add to your Hyprland config. If already installed, it pulls the latest changes instead. The updater inside the settings hub tells you when a new version is waiting.
 
+The auto-launch line points at [`launch.sh`](#lower-memory), which starts the shell with jemalloc decay settings so memory stays close to the live working set instead of holding the session peak.
+
 **Already installed?** Pull updates from the **Update** sub-surface inside the pill's settings (Appearance → Update), run the same command above, or pull manually:
 
 ```bash
 cd ~/.local/share/quickshell/ukishima && git pull
 ```
+
+If you were running the shell from an older autostart line, switch it to [`launch.sh`](#lower-memory) inside your install (anywhere the project lives).
 
 ## Uninstall
 
@@ -94,24 +98,32 @@ Removes the program files, all state (`~/.local/state/ukishima*`) and every disk
 
 You still need to remove the `exec-once` auto-launch line and the SUPER keybinds you added to your Hyprland config, and uninstall any dependencies you installed only for Ukishima (see [Dependencies](#dependencies)).
 
+## Lower memory
+
+Ukishima launches through `launch.sh`, which sets jemalloc's `MALLOC_CONF` (`background_thread:true,dirty_decay_ms:100,muzzy_decay_ms:100`) before starting Quickshell. Quickshell links jemalloc; without the decay settings the allocator **retains freed pages at the session's peak**, so resident memory climbs toward whatever the busiest moment was and stays there. With decay on, unused pages are returned to the OS and RSS sits near the live working set (~250 MB).
+
+`launch.sh` resolves its own location, so it works from any install path. If the `quickshell` binary is shipped under a different name (`qs`), it falls back to that. Running `quickshell --config …` directly still works, but skips the memory tuning — so prefer launching (and auto-launching) through `launch.sh`.
+
+If you installed before `launch.sh` existed and your Hyprland autostart still runs `quickshell --config …`, point that line at launch.sh inside your install — e.g. `exec-once = ~/wherever/Ukishima/launch.sh`.
+
 ## Launch
 
 ```bash
-quickshell --config "$HOME/.local/share/quickshell/ukishima"
+/path/to/your/ukishima/launch.sh
 ```
 
-To auto-launch, add to your Hyprland config:
+`launch.sh` is the launch script at the top of your install — run it from wherever you cloned the project. To auto-launch, add it to your Hyprland config (examples use the default install path):
 
 **hyprlang (.conf)**
 
 ```conf
-exec-once = quickshell --config ~/.local/share/quickshell/ukishima
+exec-once = ~/.local/share/quickshell/ukishima/launch.sh
 ```
 
 **Lua**
 
 ```lua
-hl.exec_cmd("quickshell --config ~/.local/share/quickshell/ukishima")
+hl.exec_cmd("~/.local/share/quickshell/ukishima/launch.sh")
 ```
 
 ## Keybinds (IPC)
