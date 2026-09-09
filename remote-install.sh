@@ -81,8 +81,8 @@ printf '
 \033[1;33mLaunch via launch.sh\033[0m — a copy lives inside your install at %s/launch.sh.
 It starts quickshell with jemalloc decay settings (MALLOC_CONF) so resident memory
 stays near the live working set instead of the session peak. Launching quickshell
-directly still works, you just miss the memory tuning. Point your exec-once at
-%[2]s/launch.sh wherever the project is installed.
-' "$INSTALL_ROOT"
+directly still works, you just miss the memory tuning — point your exec-once at the
+launch.sh inside the folder you install to (this install: %s/launch.sh).
+' "$INSTALL_ROOT" "$INSTALL_ROOT"
 
 [ "$missing" -eq 0 ] || printf '\n\033[1;31mSome core dependencies are missing — install them for full functionality.\033[0m\n' >&2
