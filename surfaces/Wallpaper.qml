@@ -313,6 +313,28 @@ PillSurface {
         }
     }
 
+    /**
+     * Virtualization window for the strip, so the Repeater renders a fixed pool
+     * of live tiles around the focused index instead of one delegate per entry.
+     * A folder with hundreds of wallpapers previously instantiated a delegate
+     * tree (ClippingRectangle + layer texture + MultiEffect wiring) for every
+     * one of them at once, even though only ~11 are ever on screen; the pool
+     * caps that at `tileSlots` regardless of folder size, and since delegates
+     * are reused (only the bound index shifts as the focus moves) opening is
+     * cheap and rebinding on a filter/page swap touches 17 tiles instead of the
+     * whole list. The window is centred on the focused index with a margin past
+     * the ao <= 6 decode edge, so a tile entering or leaving the pool always
+     * swaps in off-screen.
+     */
+    readonly property int tileSlots: 17
+    readonly property int tileBase: {
+        if (itemCount <= tileSlots)
+            return 0;
+        var b = root.focusIndex - Math.floor(tileSlots / 2);
+        return Math.max(0, Math.min(itemCount - tileSlots, b));
+    }
+    readonly property int tileCount: Math.min(tileSlots, Math.max(0, itemCount))
+
     function activate() {
         if (focusIndex < 0 || focusIndex >= itemCount)
             return;
@@ -1028,16 +1050,25 @@ PillSurface {
     }
 
     Repeater {
-        model: root.items
+        model: root.tileCount
 
         delegate: Item {
             id: tile
 
             required property int index
-            required property var modelData
 
-            readonly property string thumb: modelData.thumb !== undefined ? modelData.thumb : ""
-            readonly property bool remote: modelData.image !== undefined
+            /**
+             * Global list index for this slot: the pool window offset plus the
+             * slot's position in it. Slots past the end of the list read as
+             * `dead` and shy away, keeping the strip bounded when the list is
+             * shorter than the pool.
+             */
+            readonly property int gridIndex: root.tileBase + index
+            readonly property var modelData: gridIndex >= 0 && gridIndex < root.itemCount ? root.items[gridIndex] : undefined
+            readonly property bool dead: modelData === undefined
+
+            readonly property string thumb: !dead && modelData.thumb !== undefined ? modelData.thumb : ""
+            readonly property bool remote: !dead && modelData.image !== undefined
 
             /**
              * Local thumbs append the source mtime as a cache-buster. Image's
@@ -1045,7 +1076,7 @@ PillSurface {
              * file with the same name, or a source replaced in place) would
              * otherwise keep showing the stale cached frame.
              */
-            readonly property string thumbSource: remote ? thumb : ("file://" + thumb + "?v=" + (modelData.mtime !== undefined ? Math.round(modelData.mtime) : 0))
+            readonly property string thumbSource: dead ? "" : (remote ? thumb : ("file://" + thumb + "?v=" + (modelData.mtime !== undefined ? Math.round(modelData.mtime) : 0)))
 
             /**
              * Live preview gating: only the focused tile plays, and only once
@@ -1054,21 +1085,24 @@ PillSurface {
              * loop muted through the ffmpeg backend; everything else keeps the
              * static thumb, which also stays underneath as the loading frame.
              */
-            readonly property bool isGif: /\.gif(\?|$)/i.test(remote ? (modelData.image || "") : modelData.path)
-            readonly property string videoSource: remote
-                ? (focused && root.previewFile !== "" ? "file://" + root.previewFile : "")
-                : (/\.(mp4|webm|mkv|mov)$/i.test(modelData.path) ? "file://" + modelData.path : "")
-            readonly property bool showPreview: focused && root.previewArmed && ao < 0.5
-            readonly property string resLabel: remote
-                ? (modelData.w > 0 ? modelData.w + "x" + modelData.h : "")
-                : (root.dimsCache[modelData.path] !== undefined ? root.dimsCache[modelData.path] : "")
-            readonly property bool motion: remote
-                ? (modelData.preview !== undefined || isGif)
-                : /\.(gif|mp4|webm|mkv|mov)$/i.test(modelData.path)
+            readonly property bool isGif: dead ? false : /\.gif(\?|$)/i.test(remote ? (modelData.image || "") : modelData.path)
+            readonly property string videoSource: dead
+                ? ""
+                : (remote ? (focused && root.previewFile !== "" ? "file://" + root.previewFile : "")
+                  : (/\.(mp4|webm|mkv|mov)$/i.test(modelData.path) ? "file://" + modelData.path : ""))
+            readonly property bool showPreview: !dead && focused && root.previewArmed && ao < 0.5
+            readonly property string resLabel: dead
+                ? ""
+                : (remote ? (modelData.w > 0 ? modelData.w + "x" + modelData.h : "")
+                  : (root.dimsCache[modelData.path] !== undefined ? root.dimsCache[modelData.path] : ""))
+            readonly property bool motion: dead
+                ? false
+                : (remote ? (modelData.preview !== undefined || isGif)
+                  : /\.(gif|mp4|webm|mkv|mov)$/i.test(modelData.path))
 
-            readonly property real off: index - root.pos
+            readonly property real off: gridIndex - root.pos
             readonly property real ao: Math.abs(off)
-            readonly property bool focused: index === root.focusIndex
+            readonly property bool focused: !dead && gridIndex === root.focusIndex
             readonly property real bright: root.slotLerp(root.slotBright, ao)
             readonly property real sat: root.slotLerp(root.slotSat, ao)
             readonly property real corner: (8 + 2 * Math.max(0, 1 - ao)) * root.s
@@ -1093,7 +1127,7 @@ PillSurface {
             x: root.width / 2 + root.offsetX(off) - width / 2
             y: (root.height - height) / 2
             z: 10 - ao
-            visible: ao <= 5
+            visible: !dead && ao <= 5
             opacity: edgeFade * (ao <= 4 ? 1 : Math.max(0, 5 - ao))
 
             onFocusedChanged: if (!focused) trashHeat.cancel()
@@ -1104,7 +1138,7 @@ PillSurface {
                 radius: tile.corner
                 color: Theme.tileBg
 
-                layer.enabled: true
+                layer.enabled: !tile.dead && tile.ao <= 5
                 layer.effect: MultiEffect {
                     saturation: tile.sat - 1
                     shadowEnabled: tile.focused
@@ -1272,8 +1306,8 @@ PillSurface {
             HeatHold {
                 id: trashHeat
                 tapThreshold: 0.25
-                enabled: !tile.remote
-                onConfirmed: if (!tile.remote) Walls.trash(tile.modelData.path)
+                enabled: !tile.remote && !tile.dead
+                onConfirmed: if (!tile.remote && !tile.dead) Walls.trash(tile.modelData.path)
                 onTapped: root.activate()
             }
 
@@ -1291,7 +1325,7 @@ PillSurface {
                 }
                 onReleased: if (tile.focused && !tile.remote) trashHeat.release()
                 onExited: trashHeat.cancel()
-                onClicked: if (!tile.focused) root.focusIndex = tile.index
+                onClicked: if (!tile.focused) root.focusIndex = tile.gridIndex
             }
 
             /**
