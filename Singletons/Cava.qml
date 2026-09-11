@@ -35,7 +35,7 @@ Singleton {
      * music fills the bars while silence stays under the activate threshold.
      */
     readonly property string config: "[general]\n"
-        + "bars = " + bars + "\nframerate = 60\nautosens = 0\nsensitivity = 5500\n"
+        + "bars = " + bars + "\nframerate = 30\nautosens = 0\nsensitivity = 5500\n"
         + "[input]\nmethod = pipewire\nsource = auto\n"
         + "[output]\nmethod = raw\nraw_target = /dev/stdout\ndata_format = ascii\n"
         + "ascii_max_range = 1000\nbar_delimiter = 59\nframe_delimiter = 10\n"
@@ -70,10 +70,24 @@ Singleton {
                 /**
                  * Silence frames stop mattering once the morph has settled back
                  * to the clock, so skip the 60Hz levels churn while both the
-                 * frame and the stored levels are already flat.
+                 * frame and the stored levels are already flat. The same
+                 * short-circuit applies to audible frames that only wiggle the
+                 * bars by a hair: the bar repaints cost a scene-graph animation
+                 * restart each, and a wall of ~identical frames keeps ratcheting
+                 * the renderer's working set with nothing visibly moving, so a
+                 * sub-epsilon movement is treated as no movement at all.
                  */
                 const flat = peak <= 0.001 && !root.active;
-                if (!flat)
+                let moved = flat;
+                if (!moved) {
+                    for (let i = 0; i < root.bars; i++) {
+                        if (Math.abs(out[i] - (root.levels[i] || 0)) > 0.015) {
+                            moved = true;
+                            break;
+                        }
+                    }
+                }
+                if (moved)
                     root.levels = out;
                 if (peak > 0.02) {
                     root.active = true;
