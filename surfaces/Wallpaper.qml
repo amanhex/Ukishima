@@ -64,6 +64,15 @@ PillSurface {
     /** True while the wallhaven search field holds keyboard focus; shell.qml routes bare keys to the field only while it's false. */
     readonly property bool whTyping: searchField.input.activeFocus
     property var wallResults: []
+    /** True while wallhaven answers with a WAF block page; the strip stops fetching and retries on its own timer. */
+    property bool whBlocked: false
+    /** Disk-cache mapping for remote thumbs: wallhaven URL -> local path, warmed by `thumbPump`. */
+    property var thumbLocal: ({})
+    /** The thumb URLs of the current chunk still waiting to be cached. */
+    property var thumbQueue: []
+    /** Bumped whenever a thumb lands, so tile sources rebind to their new local file. */
+    property int thumbTick: 0
+    property bool thumbBusy: false
     property int whPage: 1
     /** Wallhaven sort bucket: hot (default), latest, top, views, random, favorites. */
     property string whSort: "hot"
@@ -525,6 +534,11 @@ PillSurface {
         searchField.text = "";
         wallResults = [];
         whSource = false;
+        thumbQueue = [];
+        thumbLocal = {};
+        thumbBusy = false;
+        thumbProc.running = false;
+        thumbProc.thumbUrl = "";
         // Release the decode/format caches a browsing session piled up so
         // they don't linger between close and the unload sweep. All of these
         // are cheaply rebuilt when the surface reopens (Walls.warm() refreshes
@@ -662,21 +676,108 @@ PillSurface {
         stdout: StdioCollector {
             onStreamFinished: {
                 var out = [];
+                var parsed = null;
                 try {
-                    var parsed = JSON.parse(this.text);
-                    if (Array.isArray(parsed))
-                        out = parsed;
+                    parsed = JSON.parse(this.text);
                 } catch (e) {
-                    out = [];
+                    parsed = null;
                 }
-                if (root.whSource)
-                    root.wallResults = out;
+                if (parsed && !Array.isArray(parsed) && parsed.wallhaven === "blocked") {
+                    // Wallhaven's WAF is blocking the IP: stop fetching and let
+                    // whRetry own the re-checks, so the strip never dogs the ban.
+                    root.whBlocked = true;
+                    root.wallResults = [];
+                    root.thumbQueue = [];
+                    return;
+                }
+                if (Array.isArray(parsed))
+                    out = parsed;
                 if (root.whSource) {
+                    root.whBlocked = false;
+                    root.wallResults = out;
+                    root.thumbLocal = {};
+                    root.enqueueThumbs();
                     root.focusIndex = 0;
                     root.pos = 0;
                 }
             }
         }
+    }
+
+    /**
+     * Paced thumb pump. Remote thumbs are never handed to QML Image directly
+     * any more — that used to fire an unbounded burst of CDN requests per
+     * scroll and is what tripped wallhaven's Cloudflare rate rule in the
+     * first place. Instead each thumb is pulled into a local cache one at a
+     * time (the fetcher's own gate paces wallhaven-bound traffic to at most
+     * one request every ~4s), and tiles render from the cache file. The same
+     * cache keeps a page browsable even while wallhaven is blocking us.
+     */
+    function enqueueThumbs() {
+        root.thumbQueue = [];
+        var seen = {};
+        for (var i = 0; i < root.wallResults.length; i++) {
+            var t = root.wallResults[i].thumb;
+            if (t && typeof t === "string" && !(t in seen)) {
+                seen[t] = true;
+                if (!root.thumbLocal[t])
+                    root.thumbQueue.push(t);
+            }
+        }
+        root.pumpThumb();
+    }
+
+    function pumpThumb() {
+        if (root.thumbBusy)
+            return;
+        while (root.thumbQueue.length > 0) {
+            var u = root.thumbQueue.shift();
+            if (root.thumbLocal[u])
+                continue;
+            thumbProc.thumbUrl = u;
+            thumbProc.command = ["bash", root.searchScript, "thumbget", u];
+            root.thumbBusy = true;
+            thumbProc.running = true;
+            return;
+        }
+    }
+
+    Process {
+        id: thumbProc
+        property string thumbUrl: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var p = this.text.trim();
+                if (p.length) {
+                    root.thumbLocal[thumbProc.thumbUrl] = p;
+                    root.thumbTick++;
+                } else {
+                    // Fetch failed (network blip, still blocked, gone thumb):
+                    // abandon the rest of this chunk instead of pacing through
+                    // futile requests; the next search re-queues the page.
+                    root.thumbQueue = [];
+                }
+                root.thumbBusy = false;
+                thumbProc.thumbUrl = "";
+                root.pumpThumb();
+            }
+        }
+    }
+
+    Timer {
+        id: thumbPump
+        interval: 200
+        repeat: true
+        running: root.whSource
+        onTriggered: root.pumpThumb()
+    }
+
+    Timer {
+        id: whRetry
+        interval: 60000
+        repeat: true
+        running: root.whBlocked && root.whSource
+        onTriggered: if (root.whSource) root.refreshWallhaven()
     }
 
     Process {
@@ -1074,9 +1175,13 @@ PillSurface {
              * Local thumbs append the source mtime as a cache-buster. Image's
              * QPixmapCache is keyed by URL alone, so a regenerated thumb (new
              * file with the same name, or a source replaced in place) would
-             * otherwise keep showing the stale cached frame.
+             * otherwise keep showing the stale cached frame. Remote wallhaven
+             * thumbs render from the paced disk cache instead of the CDN; the
+             * `thumbTick` reference forces a rebind when a thumb lands.
              */
-            readonly property string thumbSource: dead ? "" : (remote ? thumb : ("file://" + thumb + "?v=" + (modelData.mtime !== undefined ? Math.round(modelData.mtime) : 0)))
+            readonly property string thumbSource: dead ? "" : (remote
+                ? (root.thumbTick >= 0 && root.thumbLocal[modelData.thumb] !== undefined ? "file://" + root.thumbLocal[modelData.thumb] : "")
+                : ("file://" + thumb + "?v=" + (modelData.mtime !== undefined ? Math.round(modelData.mtime) : 0)))
 
             /**
              * Live preview gating: only the focused tile plays, and only once
@@ -1414,7 +1519,7 @@ PillSurface {
 
     Text {
         anchors.centerIn: parent
-        visible: root.itemCount === 0 && !searchProc.running
+        visible: root.itemCount === 0 && !searchProc.running && !root.whBlocked
         text: {
             if (root.whSource)
                 return root.query.length ? "no wallhaven results" : "no wallhaven wallpapers";
@@ -1504,6 +1609,16 @@ PillSurface {
         color: Theme.faint
         font.family: Theme.font
         font.pixelSize: 10.5 * root.s
+    }
+
+    Text {
+        anchors.centerIn: parent
+        visible: root.whSource && root.whBlocked
+        text: "wallhaven blocked · retrying in a minute"
+        color: Theme.vermLit
+        font.family: Theme.font
+        font.pixelSize: 10.5 * root.s
+        opacity: 0.9
     }
 
     component HintKey: Row {
