@@ -184,6 +184,15 @@ whsearch() {
         "https://wallhaven.cc/api/v1/search?${query:+q=${enc}&}sorting=${sort}&${extra}order=desc&page=${page}")
     code="${raw##*$'\n'}"
     raw="${raw%$'\n'*}"
+    [ -n "$code" ] || code=000
+    if [ "$code" = "000" ]; then
+        # No HTTP response at all — offline, DNS failure, or a time-out. That
+        # is a network hiccup, not wallhaven blocking us: don't latch a phantom
+        # cooldown or a blocked chip, just hand back an empty page and let the
+        # UI sit idle until connectivity returns.
+        printf '[]\n'
+        return 0
+    fi
     if [ "$code" != "200" ]; then
         # 429 = the documented rate cap (45/min); 403/5xx = WAF block or edge
         # hiccup. Either way latch a hard cooldown so no part of the UI can

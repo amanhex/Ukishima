@@ -688,6 +688,7 @@ PillSurface {
                     root.whBlocked = true;
                     root.wallResults = [];
                     root.thumbQueue = [];
+                    root.searching = false;
                     return;
                 }
                 if (Array.isArray(parsed))
@@ -709,9 +710,9 @@ PillSurface {
      * any more — that used to fire an unbounded burst of CDN requests per
      * scroll and is what tripped wallhaven's Cloudflare rate rule in the
      * first place. Instead each thumb is pulled into a local cache one at a
-     * time (the fetcher's own gate paces wallhaven-bound traffic to at most
-     * one request every ~4s), and tiles render from the cache file. The same
-     * cache keeps a page browsable even while wallhaven is blocking us.
+     * time (the fetcher's own rolling budget paces wallhaven-bound traffic),
+     * and tiles render from the cache file. The same cache keeps a page
+     * browsable even while wallhaven is blocking us.
      */
     function enqueueThumbs() {
         root.thumbQueue = [];
@@ -1604,7 +1605,7 @@ PillSurface {
 
     Text {
         anchors.centerIn: parent
-        visible: searchProc.running
+        visible: searchProc.running && !root.whBlocked
         text: "searching…"
         color: Theme.faint
         font.family: Theme.font
