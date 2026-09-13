@@ -261,6 +261,7 @@ PillSurface {
         hintDwell.restart();
         previewArmed = false;
         previewArm.restart();
+        root.setWindow(root.focusWindow());
     }
 
     Timer {
@@ -281,7 +282,9 @@ PillSurface {
      * Continuous view position chasing focusIndex. The strip renders from this
      * single value, so any input rate (40Hz key autorepeat, wheel bursts) stays
      * coherent: lag is bounded by the chase time constant, not piled up across
-     * per-tile retargeting animations.
+     * per-tile retargeting animations. 0.14s exponential approach with a snap
+     * on the closing fraction reads as a quick, decisive glide — the former
+     * 0.07s constant was near-instant snap, 0.2s dragged.
      */
     property real pos: 0
 
@@ -316,9 +319,13 @@ PillSurface {
     FrameAnimation {
         running: root.active && root.pos !== root.focusIndex
         onTriggered: {
-            var k = 1 - Math.exp(-frameTime / 0.07);
+            var k = 1 - Math.exp(-frameTime / 0.14);
             var next = root.pos + (root.focusIndex - root.pos) * k;
-            root.pos = Math.abs(next - root.focusIndex) < 0.001 ? root.focusIndex : next;
+            // The exponential keeps decelerating until the very end (no deadband,
+            // no early hold). It only locks once the residual is below ~1px,
+            // where the final handoff is unperceivable — the glide never stops
+            // early, so there is no terminal jump to see.
+            root.pos = Math.abs(next - root.focusIndex) < 0.005 ? root.focusIndex : next;
         }
     }
 
@@ -328,21 +335,83 @@ PillSurface {
      * A folder with hundreds of wallpapers previously instantiated a delegate
      * tree (ClippingRectangle + layer texture + MultiEffect wiring) for every
      * one of them at once, even though only ~11 are ever on screen; the pool
-     * caps that at `tileSlots` regardless of folder size, and since delegates
-     * are reused (only the bound index shifts as the focus moves) opening is
-     * cheap and rebinding on a filter/page swap touches 17 tiles instead of the
-     * whole list. The window is centred on the focused index with a margin past
-     * the ao <= 6 decode edge, so a tile entering or leaving the pool always
-     * swaps in off-screen.
+     * caps that at `tileSlots` regardless of folder size. Delegates own their
+     * view item imperatively (`gridIndex`), and the window slides by recycling
+     * only the tile that falls off the far edge (setWindow reassigns just the
+     * freed delegate to the entering index). Consecutive steps therefore never
+     * re-map the visible tiles, so each thumb keeps its decoded frame while the
+     * strip glides — the old re-centring pool re-bound every delegate on every
+     * keystroke, re-decoding a fresh 512px thumb per tile per step (cache:false)
+     * and showing a black → image blink.
      */
     readonly property int tileSlots: 17
-    readonly property int tileBase: {
+    property int poolStart: 0
+    readonly property int tileCount: Math.min(tileSlots, Math.max(0, itemCount))
+
+    /**
+     * Window the focused tile should sit in, keeping it inside the keep margin
+     * (5 slots) from either edge. Returns the desired window start; when the
+     * focus crosses the margin the window slides, otherwise it stays put and
+     * the whole strip just translates.
+     */
+    function focusWindow() {
         if (itemCount <= tileSlots)
             return 0;
-        var b = root.focusIndex - Math.floor(tileSlots / 2);
-        return Math.max(0, Math.min(itemCount - tileSlots, b));
+        var keep = 5;
+        var lo = Math.max(0, Math.min(itemCount - tileSlots, root.poolStart));
+        if (root.focusIndex < lo + keep)
+            return Math.max(0, Math.min(itemCount - tileSlots, root.focusIndex - keep));
+        if (root.focusIndex > lo + tileSlots - 1 - keep)
+            return Math.max(0, Math.min(itemCount - tileSlots, root.focusIndex - (tileSlots - 1 - keep)));
+        return lo;
     }
-    readonly property int tileCount: Math.min(tileSlots, Math.max(0, itemCount))
+
+    /**
+     * Point the delegate pool at the window [start, start + tileSlots). Only
+     * delegates whose item no longer belongs to the window are released; those
+     * that stay keep gridIndex (and their decoded thumb) untouched. A one-slot
+     * slide so changes the content of exactly one — off-screen — tile.
+     */
+    function setWindow(start) {
+        if (tilePool === undefined)
+            return;
+        var ts = root.tileSlots;
+        var total = root.itemCount;
+        var lo = Math.max(0, Math.min(Math.max(0, total - ts), start));
+        var pool = tilePool;
+        var freed = [];
+        var reused = {};
+        var i, d, gi;
+        for (i = 0; i < pool.count; i++) {
+            d = pool.itemAt(i);
+            if (d == null)
+                continue;
+            gi = d.gridIndex;
+            if (gi >= lo && gi < lo + ts)
+                reused[gi] = true;
+            else
+                freed.push(d);
+        }
+        var fi = 0;
+        for (gi = lo; gi < lo + ts && gi < total; gi++) {
+            if (reused[gi])
+                continue;
+            if (fi >= freed.length)
+                break;
+            freed[fi++].gridIndex = gi;
+        }
+        while (fi < freed.length)
+            freed[fi++].gridIndex = -1;
+        root.poolStart = lo;
+    }
+
+    onItemCountChanged: Qt.callLater(function () {
+        if (root.focusIndex >= root.itemCount)
+            root.focusIndex = Math.max(0, root.itemCount - 1);
+        root.setWindow(root.focusWindow());
+    })
+
+    Component.onCompleted: root.setWindow(root.focusWindow())
 
     function activate() {
         if (focusIndex < 0 || focusIndex >= itemCount)
@@ -1152,6 +1221,7 @@ PillSurface {
     }
 
     Repeater {
+        id: tilePool
         model: root.tileCount
 
         delegate: Item {
@@ -1160,12 +1230,19 @@ PillSurface {
             required property int index
 
             /**
-             * Global list index for this slot: the pool window offset plus the
-             * slot's position in it. Slots past the end of the list read as
-             * `dead` and shy away, keeping the strip bounded when the list is
-             * shorter than the pool.
+             * View item for this pool slot, owned imperatively by setWindow so
+             * a one-slot window slide changes only the edge tile's content.
+             * -1 marks an unused slot outside the window.
              */
-            readonly property int gridIndex: root.tileBase + index
+            property int gridIndex: -1
+
+            /**
+             * A delegate born late (Repeater model growth on a page/feed swap)
+             * misses the itemCount-notify setWindow, which can fire before the
+             * new delegates exist. Claiming a gridIndex here converges the
+             * whole window once every delegate has finished constructing.
+             */
+            Component.onCompleted: if (tile.gridIndex < 0) root.setWindow(root.focusWindow())
             readonly property var modelData: gridIndex >= 0 && gridIndex < root.itemCount ? root.items[gridIndex] : undefined
             readonly property bool dead: modelData === undefined
 
