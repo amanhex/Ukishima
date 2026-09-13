@@ -137,9 +137,13 @@ wh_gate() {
 # feed — clicking the strip's wallhaven chip lands there; a query refines it as
 # a most-favorited search. The third arg picks the sorting bucket (hot, latest,
 # top, random, favorites); with a query, favorites is implied unless
-# overridden. The API serves ready-made thumbs, so results are URLs handed
-# over to `thumbget` for a paced local copy: nothing is downloaded until the
-# strip actually shows it.
+# overridden. Hot and Top deliberately map to DIFFERENT API buckets: toplist is
+# dominated by the same mega-popular wallpapers on page one whether you ask for
+# a month or a year, which made the two sections return identical thumbs, so
+# Top now means all-time most-viewed (`views`) instead of a redundant toplist
+# range. The API serves ready-made thumbs, so results are URLs handed over to
+# `thumbget` for a paced local copy: nothing is downloaded until the strip
+# actually shows it.
 whsearch() {
     local query="${1:-}" page="${2:-1}" want="${3:-}"
     case "$page" in
@@ -152,7 +156,7 @@ whsearch() {
     extra=""
     case "$want" in
         latest)    sort="date_added" ;;
-        top)       sort="toplist";   extra="topRange=1y&" ;;
+        top)       sort="views" ;;
         random)    sort="random" ;;
         favorites) sort="favorites" ;;
     esac
