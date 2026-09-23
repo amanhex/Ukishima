@@ -105,16 +105,25 @@ Rectangle {
      * keeps contrast on bright wallpapers. A plain flat alpha, no filter. The
      * alpha blends the surface's own baseline with the user's Text-visibility
      * setting, so it stays theme-consistent while the slider actually moves it.
+     * Mirrors the slab's radii so it never pokes square corners past the
+     * rounded silhouette (with the strip's square top that edge stays flush).
      */
     Rectangle {
         anchors.fill: parent
+        radius: parent.radius
+        topLeftRadius: parent.topLeftRadius
+        topRightRadius: parent.topRightRadius
+        bottomLeftRadius: parent.bottomLeftRadius
+        bottomRightRadius: parent.bottomRightRadius
         visible: glass.glassy && glass.veilAlpha > 0
         color: Qt.rgba(0, 0, 0, glass.veilAlpha)
     }
 
     /**
      * Top sheen — the edge light. Legacy keeps the plain Theme.sheen hairline;
-     * glassy lifts it slightly so the rim catches the light, and press dims it.
+     * glassy draws none: over a translucent fill a lighter 1px line under the
+     * border reads as a bright rim, so transparency mode keeps only the plain
+     * hairline. Press feedback is likewise skipped when glassy.
      */
     Rectangle {
         anchors.top: parent.top
@@ -124,8 +133,6 @@ Rectangle {
         anchors.leftMargin: parent.radius * 0.6
         anchors.rightMargin: parent.radius * 0.6
         height: 1
-        color: glass.glassy
-            ? Qt.alpha(Theme.cream, 0.10 * glass.sheenScale * (glass.pressed ? 0.5 : 1))
-            : Theme.sheen
+        color: glass.glassy ? "transparent" : Theme.sheen
     }
 }
