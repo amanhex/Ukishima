@@ -32,6 +32,9 @@ Singleton {
     property alias uiFont: adapter.uiFont
     property alias pillOpacity: adapter.pillOpacity
     property alias pillBlur: adapter.pillBlur
+    property alias glass: adapter.glass
+    /** Text-visibility boost when transparency mode is on: 0 (off) to 1 (strong) — lifts the readability veil behind copy so pale text keeps contrast on bright wallpapers. */
+    property alias glassText: adapter.glassText
     property alias autoHide: adapter.autoHide
     property alias topGap: adapter.topGap
     property alias appGap: adapter.appGap
@@ -100,6 +103,10 @@ Singleton {
             property string uiFont: ""
             property real pillOpacity: 1.0
             property bool pillBlur: false
+            /** Transparency mode: translucent tinted slab over the desktop. Off restores the exact legacy flat gradient. */
+            property bool glass: true
+            /** Text-visibility boost when glass is on (0..1): lifts the readability veil behind copy so text keeps contrast on bright wallpapers. Persisted in the settings file like every other flag. */
+            property real glassText: 0
             property bool autoHide: true
             /** Top margin as a fraction of the shipped 8px. 0 sits the pill flush to the screen edge. */
             property real topGap: 1.0

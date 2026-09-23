@@ -228,12 +228,80 @@ Singleton {
         }
     }
 
+    /**
+     * The strip's current marker reads `current`, but the state file
+     * wallpaper.sh maintains only knows picks applied through the script
+     * itself. A wallpaper set by the daemon directly (an `awww restore` at
+     * login, an external `awww img`, another tool) never lands there, leaving
+     * `current` empty. When the state file comes up empty we ask the daemon —
+     * the source of truth for what is on screen — and adopt the first still it
+     * reports, so the strip marker agrees with reality even for external picks.
+     * The probe is bounded and retires early: it stops as soon as a wallpaper
+     * is known or the daemon stays unreachable, so it never idles behind the
+     * shell.
+     */
+    property int liveTries: 0
+    readonly property int liveTriesMax: 8
+
+    function adoptLive() {
+        if (liveProc.running)
+            return;
+        if (root.current.length > 0 || root.liveTries >= root.liveTriesMax)
+            return;
+        liveProc.command = ["awww", "query", "-j"];
+        liveProc.running = true;
+    }
+
+    Timer {
+        id: liveRetry
+        interval: 1500
+        repeat: false
+        onTriggered: root.adoptLive()
+    }
+
+    Process {
+        id: liveProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var picked = "";
+                try {
+                    var obj = JSON.parse(this.text);
+                    var outs = (obj && Array.isArray(obj[""])) ? obj[""] : [];
+                    for (var i = 0; i < outs.length; i++) {
+                        var out = outs[i];
+                        var disp = (out && typeof out === "object") ? out.displaying : null;
+                        if (disp && typeof disp.image === "string" && disp.image.length > 0) {
+                            picked = disp.image;
+                            break;
+                        }
+                    }
+                } catch (err) {
+                    picked = "";
+                }
+                if (picked.length > 0) {
+                    root.liveTries = root.liveTriesMax;
+                    if (root.current.length === 0)
+                        root.current = picked;
+                } else if (root.current.length === 0 && root.liveTries < root.liveTriesMax) {
+                    root.liveTries += 1;
+                    liveRetry.start();
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: root.adoptLive()
+
     Process {
         id: stateProc
         command: ["sh", "-c", "cat \"$1\" 2>/dev/null || true", "_", root.stateFile]
         stdout: StdioCollector {
             onStreamFinished: {
-                root.current = this.text.trim();
+                var live = this.text.trim();
+                if (live.length > 0)
+                    root.current = live;
+                else
+                    root.adoptLive();
                 root.warmRequested = false;
                 if (root.pending) {
                     root.pending = false;
