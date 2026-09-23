@@ -28,6 +28,7 @@ PillSurface {
 
     /** Pin state: the right-end toggle keeps the expanded pill open after the card closes. */
     property bool pinned: false
+
     signal requestPin()
     signal requestExpand()
 
@@ -368,19 +369,23 @@ PillSurface {
         }
     }
 
-    Rectangle {
+    LiquidGlass {
         id: card
         anchors.fill: parent
         radius: 20 * root.s
         topLeftRadius: radius * (1 - root.topFlat)
         topRightRadius: radius * (1 - root.topFlat)
-        border.width: 1
-        border.color: Theme.frameBorder
 
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: Theme.cardTop }
-            GradientStop { position: 1.0; color: Theme.cardBot }
-        }
+        /**
+         * The surface card is the clear material: more see-through than the
+         * body, with a veil so title/artist copy keeps contrast on bright
+         * wallpapers. Falls back to the exact legacy opaque card when glass is off.
+         */
+        style: "clear"
+        legacyOpacity: 1
+        accent: 0.09
+        veil: 0.08
+        borderColor: Theme.frameBorder
     }
 
     /** Square cover floating detached from every edge. */

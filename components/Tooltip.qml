@@ -71,18 +71,31 @@ Item {
         height: column.implicitHeight + 14 * root.s
         radius: 9 * root.s
         border.width: 1
-        border.color: Theme.frameBorder
+        border.color: Theme.border
         gradient: Gradient {
             GradientStop { position: 0.0; color: Theme.cardTop }
             GradientStop { position: 1.0; color: Theme.cardBot }
         }
 
+        /**
+         * Contrast veil: a solid bubble must read against the translucent glass
+         * and the wallpaper behind it, so the fill is deepened a notch past the
+         * plain card gradient. Kept 1px inside the border so the hairline stays
+         * crisp; keeps cream copy legible in both palettes.
+         */
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: parent.radius - 1
+            color: Qt.rgba(0, 0, 0, 0.22)
+        }
+
         layer.enabled: true
         layer.effect: MultiEffect {
             shadowEnabled: true
-            shadowColor: Theme.shadow
-            shadowBlur: 0.6
-            shadowVerticalOffset: 4 * root.s
+            shadowColor: Qt.rgba(0, 0, 0, 0.7)
+            shadowBlur: 0.7
+            shadowVerticalOffset: 5 * root.s
         }
     }
 
@@ -122,7 +135,10 @@ Item {
         onPaint: {
             var ctx = getContext("2d");
             ctx.reset();
-            ctx.fillStyle = Theme.cardBot;
+            /* Match the bubble's bottom under its contrast veil: cardBot mixed
+             * 22% toward black, same as the fill rectangle above. */
+            var c = Theme.cardBot;
+            ctx.fillStyle = Qt.rgba(c.r * 0.78, c.g * 0.78, c.b * 0.78, 1);
             ctx.beginPath();
             if (root.below) {
                 ctx.moveTo(0, height);

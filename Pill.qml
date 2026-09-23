@@ -942,7 +942,7 @@ Item {
      */
     readonly property bool morphing: morphAnimW.running || morphAnimH.running || morphAnimR.running
 
-    Rectangle {
+    LiquidGlass {
         id: bud
         readonly property bool shown: pill.mode === "hover" && pill.hasMedia
         property real budR: (budArea.containsMouse ? 15 : 12) * pill.s
@@ -953,12 +953,11 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         visible: opacity > 0.01
         opacity: shown ? 1 : 0
-        border.width: 1
-        border.color: Theme.border
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.alpha(Theme.cardTop, Flags.pillOpacity) }
-            GradientStop { position: 1.0; color: Qt.alpha(Theme.cardBot, Flags.pillOpacity) }
-        }
+        style: "regular"
+        legacyOpacity: Flags.pillOpacity
+        accent: 0.05
+        sheenScale: (budArea.containsMouse ? 1.3 : 1)
+        hovered: budArea.containsMouse
         Behavior on budR { NumberAnimation { duration: Motion.fast; easing.type: Motion.easeStandard } }
         Behavior on opacity { NumberAnimation { duration: Motion.standard } }
 
@@ -1000,7 +999,13 @@ Item {
         }
     }
 
-    Rectangle {
+    /**
+     * The flagship slab: translucent regular glass — a palette-tinted slab
+     * over the transparent window, the exact legacy flat gradient (scaled by
+     * the user's own translucency) when glass is off. Hover lifts sheen, an
+     * open surface adds a touch more accent to the fill.
+     */
+    LiquidGlass {
         id: body
         anchors.fill: parent
 
@@ -1020,12 +1025,15 @@ Item {
         topRightRadius: pill.morphRadius * (1 - topFlat)
         bottomLeftRadius: pill.morphRadius * (1 - gameFlat)
         bottomRightRadius: pill.morphRadius * (1 - gameFlat)
-        border.width: 1
-        border.color: Theme.border
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.alpha(Theme.cardTop, Flags.pillOpacity) }
-            GradientStop { position: 1.0; color: Qt.alpha(Theme.cardBot, Flags.pillOpacity) }
-        }
+
+        style: "regular"
+        legacyOpacity: Flags.pillOpacity
+        accent: 0.05
+        veil: 0.06
+        sheenScale: pill.mode === "hover" ? 1.35 : 1
+        hovered: pill.mode === "hover"
+        pressed: pill.dragActive
+        active: pill.surfaceOpen
 
         /**
          * The live drop shadow keeps an offscreen render of the whole body on
@@ -1039,17 +1047,6 @@ Item {
             shadowColor: Qt.rgba(0, 0, 0, Theme.shadowOpacity)
             shadowBlur: 0.7
             shadowVerticalOffset: 3 * pill.s
-        }
-
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.topMargin: 1
-            anchors.leftMargin: body.radius * 0.6
-            anchors.rightMargin: body.radius * 0.6
-            height: 1
-            color: Theme.sheen
         }
     }
 

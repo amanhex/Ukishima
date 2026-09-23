@@ -87,6 +87,8 @@ SettingsSurface {
 
     rows: [
         { item: paletteRow, kind: "seg", vals: ["light", "dark", "dynamic", "manual"], get: function () { return root.themeMode; }, set: function (v) { root.applyMode(v); } },
+        { item: glassRow, kind: "toggle", get: function () { return Flags.glass; }, set: function (v) { Flags.glass = v; } },
+        { item: glassTextRow, kind: "seg", vals: [0, 0.5, 1], get: function () { return Flags.glassText; }, set: function (v) { Flags.glassText = v; } },
         { item: wpDirRow, kind: "text", activate: function () {
             wpDirRow.editing = !wpDirRow.editing;
             if (wpDirRow.editing) {
@@ -320,6 +322,40 @@ SettingsSurface {
                         Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
                     }
                 }
+            }
+        }
+
+        SettingsRow {
+            id: glassRow
+            surface: root
+            name: "Transparency mode"
+            icon: "droplet"
+            sub: "Translucent pill · desktop shows through"
+
+            LinkToggle {
+                s: root.s
+                on: Flags.glass
+                onToggled: Flags.glass = !Flags.glass
+            }
+        }
+
+        SettingsRow {
+            id: glassTextRow
+            surface: root
+            name: "Text visibility"
+            icon: "type"
+            sub: "Extra contrast for copy on the glass"
+            enabled: Flags.glass
+
+            SettingsSeg {
+                s: root.s
+                options: [
+                    { label: "Off", value: 0 },
+                    { label: "Soft", value: 0.5 },
+                    { label: "Strong", value: 1 }
+                ]
+                value: Flags.glassText || 0
+                onPicked: (v) => Flags.glassText = v
             }
         }
 

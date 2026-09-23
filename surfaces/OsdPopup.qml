@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import "../Singletons"
+import "../components"
 
 /**
  * Standalone OSD overlay, fully decoupled from the pill. The pill never morphs
@@ -47,35 +48,28 @@ Item {
         }
     }
 
-    Rectangle {
+    /**
+     * The translucent capsule: the same material as the pill, with a small
+     * veil so percentage and title copy keep contrast while flashing.
+     */
+    LiquidGlass {
+        id: glass
         anchors.fill: parent
         radius: 22 * s
         topLeftRadius: 22 * s * (1 - topFlat)
         topRightRadius: 22 * s * (1 - topFlat)
-        border.width: 1
-        border.color: Theme.border
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.alpha(Theme.cardTop, Flags.pillOpacity) }
-            GradientStop { position: 1.0; color: Qt.alpha(Theme.cardBot, Flags.pillOpacity) }
-        }
-
+        style: "regular"
+        legacyOpacity: Flags.pillOpacity
+        accent: 0.08
+        veil: 0.10
+        sheenScale: 1.1
+        borderColor: Theme.border
         layer.enabled: true
         layer.effect: MultiEffect {
             shadowEnabled: true
             shadowColor: Qt.rgba(0, 0, 0, Theme.shadowOpacity)
             shadowBlur: 0.7
             shadowVerticalOffset: 3 * s
-        }
-
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.topMargin: 1
-            anchors.leftMargin: parent.radius * 0.6
-            anchors.rightMargin: parent.radius * 0.6
-            height: 1
-            color: Theme.sheen
         }
     }
 
