@@ -199,7 +199,7 @@ PillSurface {
                 label: "Capacity"
                 value: Battery.capacityWh.toFixed(1) + " Wh"
             }
-                        Item {
+            Item {
                 width: parent.width
                 height: profileSeg.height
 
@@ -215,20 +215,20 @@ PillSurface {
                     font.letterSpacing: 0.8 * root.s
                 }
 
-                SettingsSeg {
+                ProfileSeg {
                     id: profileSeg
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     s: root.s
                     options: Battery.hasPerformance
                         ? [
-                            { label: "Saver", value: PowerProfile.PowerSaver },
-                            { label: "Balanced", value: PowerProfile.Balanced },
-                            { label: "Perf", value: PowerProfile.Performance }
+                            { glyph: "moon", value: PowerProfile.PowerSaver },
+                            { glyph: "cog", value: PowerProfile.Balanced },
+                            { glyph: "bolt", value: PowerProfile.Performance }
                           ]
                         : [
-                            { label: "Saver", value: PowerProfile.PowerSaver },
-                            { label: "Balanced", value: PowerProfile.Balanced }
+                            { glyph: "moon", value: PowerProfile.PowerSaver },
+                            { glyph: "cog", value: PowerProfile.Balanced }
                           ]
                     value: Battery.profile
                     onPicked: (v) => Battery.setProfile(v)
