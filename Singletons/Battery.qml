@@ -14,6 +14,8 @@ import Quickshell.Services.UPower
  * /sys/class/power_supply (BAT* or battery) so the surface can show charge
  * cycles and a design-derived health even when UPower's own health is missing.
  */
+
+ 
 Singleton {
     id: root
 
@@ -32,6 +34,42 @@ Singleton {
     readonly property real rateW: !dev ? 0
         : (discharging ? -dev.changeRate : (charging ? dev.changeRate : 0))
     readonly property real capacityWh: dev ? dev.energyCapacity : 0
+
+        /**
+     * Power profile, backed by power-profiles-daemon through Quickshell's own
+     * PowerProfiles service — no extra process spawned. Mirrors the
+     * performance/balanced/power-saver states the old waybar
+     * powerprofile.sh / powerprofile-toggle.sh scripts cycled through, minus
+     * the shell round-trip. `hasPerformance` gates offering Performance in
+     * the UI, since power-profiles-daemon rejects setting it when the
+     * hardware has no such profile (desktops, some laptops on battery-only
+     * firmware).
+     */
+     
+    readonly property int profile: PowerProfiles.profile
+    readonly property bool powerSaver: profile === PowerProfile.PowerSaver
+    readonly property bool performance: profile === PowerProfile.Performance
+    readonly property bool hasPerformance: PowerProfiles.hasPerformanceProfile
+
+    function setProfile(p) {
+        PowerProfiles.profile = p;
+    }
+
+    /** Same performance → balanced → power-saver → performance cycle as
+     *  powerprofile-toggle.sh, for a keybind or a single-click chip. */
+    function cycleProfile() {
+        if (root.performance)
+            root.setProfile(PowerProfile.Balanced);
+        else if (root.powerSaver)
+            root.setProfile(root.hasPerformance ? PowerProfile.Performance : PowerProfile.Balanced);
+        else
+            root.setProfile(PowerProfile.PowerSaver);
+    }
+
+    function togglePowerSaver() {
+        PowerProfiles.profile = root.powerSaver ? PowerProfile.Balanced : PowerProfile.PowerSaver;
+    }
+    
 
     /** Factory full-charge energy in Wh from sysfs; -1 when unreadable. */
     readonly property real energyFullDesign: root._energyFullDesign

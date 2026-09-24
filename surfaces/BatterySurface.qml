@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell.Services.UPower
 import "../Singletons"
 import "../components"
 
@@ -198,6 +199,43 @@ PillSurface {
                 label: "Capacity"
                 value: Battery.capacityWh.toFixed(1) + " Wh"
             }
+                        Item {
+                width: parent.width
+                height: profileSeg.height
+
+                Text {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Power Profile"
+                    color: Theme.faint
+                    font.family: Theme.font
+                    font.pixelSize: 10 * root.s
+                    font.weight: Font.Medium
+                    font.capitalization: Font.AllUppercase
+                    font.letterSpacing: 0.8 * root.s
+                }
+
+                SettingsSeg {
+                    id: profileSeg
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    s: root.s
+                    options: Battery.hasPerformance
+                        ? [
+                            { label: "Saver", value: PowerProfile.PowerSaver },
+                            { label: "Balanced", value: PowerProfile.Balanced },
+                            { label: "Perf", value: PowerProfile.Performance }
+                          ]
+                        : [
+                            { label: "Saver", value: PowerProfile.PowerSaver },
+                            { label: "Balanced", value: PowerProfile.Balanced }
+                          ]
+                    value: Battery.profile
+                    onPicked: (v) => Battery.setProfile(v)
+                }
+            }
         }
     }
 }
+
+
