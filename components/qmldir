@@ -9,6 +9,7 @@ LinkToggle LinkToggle.qml
 Marquee Marquee.qml
 MusicBars MusicBars.qml
 PillSurface PillSurface.qml
+ProfileSeg ProfileSeg.qml
 SearchField SearchField.qml
 Dropdown Dropdown.qml
 SettingsHeader SettingsHeader.qml

@@ -6,6 +6,7 @@ import "../Singletons"
  * each option renders a GlyphIcon instead of a text label. `options` is a
  * list of `{ glyph, value }`; picking one emits `picked(value)`.
  */
+ 
 Rectangle {
     id: seg
 

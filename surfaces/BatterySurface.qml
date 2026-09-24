@@ -199,6 +199,7 @@ PillSurface {
                 label: "Capacity"
                 value: Battery.capacityWh.toFixed(1) + " Wh"
             }
+            
             Item {
                 width: parent.width
                 height: profileSeg.height
