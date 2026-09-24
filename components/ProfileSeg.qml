@@ -2,7 +2,7 @@ import QtQuick
 import "../Singletons"
 
 /**
- * Icon-based segmented choice control — same behavior as SettingsSeg, but
+ * Icon-based segmented choice control
  * each option renders a GlyphIcon instead of a text label. `options` is a
  * list of `{ glyph, value }`; picking one emits `picked(value)`.
  */
