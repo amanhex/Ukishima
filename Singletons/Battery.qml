@@ -15,7 +15,6 @@ import Quickshell.Services.UPower
  * cycles and a design-derived health even when UPower's own health is missing.
  */
 
- 
 Singleton {
     id: root
 
@@ -35,7 +34,7 @@ Singleton {
         : (discharging ? -dev.changeRate : (charging ? dev.changeRate : 0))
     readonly property real capacityWh: dev ? dev.energyCapacity : 0
 
-        /**
+    /**
      * Power profile, backed by power-profiles-daemon through Quickshell's own
      * PowerProfiles service — no extra process spawned. Mirrors the
      * performance/balanced/power-saver states the old waybar
@@ -44,15 +43,42 @@ Singleton {
      * the UI, since power-profiles-daemon rejects setting it when the
      * hardware has no such profile (desktops, some laptops on battery-only
      * firmware).
+     *
+     * The service is a one-shot connect: Quickshell constructs its
+     * PowerProfiles singleton on the first property access and, if D-Bus
+     * activation fails then (a masked daemon), never retries — the entire
+     * process is left with a dead connection. So the singleton is only
+     * touched once `_attachPP` runs, which the daemon probe does only when it
+     * reports "active". The first access then binds to the live daemon and
+     * the picker works in-process — no shell reload or restart needed after
+     * an in-surface enable.
      */
-     
-    readonly property int profile: PowerProfiles.profile
-    readonly property bool powerSaver: profile === PowerProfile.PowerSaver
-    readonly property bool performance: profile === PowerProfile.Performance
-    readonly property bool hasPerformance: PowerProfiles.hasPerformanceProfile
+    property int profile: PowerProfile.Balanced
+    readonly property bool powerSaver: root.profile === PowerProfile.PowerSaver
+    readonly property bool performance: root.profile === PowerProfile.Performance
+    property bool hasPerformance: true
+    property bool _ppAttached: false
+
+    /** First PowerProfiles access. Caller guarantees the daemon is active,
+     *  so the singleton binds and mirrors into our plain properties. */
+    function _attachPP() {
+        if (root._ppAttached)
+            return;
+        root._ppAttached = true;
+        PowerProfiles.profileChanged.connect(function () {
+            root.profile = PowerProfiles.profile;
+        });
+        PowerProfiles.hasPerformanceProfileChanged.connect(function () {
+            root.hasPerformance = PowerProfiles.hasPerformanceProfile;
+        });
+        root.profile = PowerProfiles.profile;
+        root.hasPerformance = PowerProfiles.hasPerformanceProfile;
+    }
 
     function setProfile(p) {
-        PowerProfiles.profile = p;
+        if (root._ppAttached)
+            PowerProfiles.profile = p;
+        root.profile = p;
     }
 
     /** Same performance → balanced → power-saver → performance cycle as
@@ -67,9 +93,34 @@ Singleton {
     }
 
     function togglePowerSaver() {
-        PowerProfiles.profile = root.powerSaver ? PowerProfile.Balanced : PowerProfile.PowerSaver;
+        root.setProfile(root.powerSaver ? PowerProfile.Balanced : PowerProfile.PowerSaver);
     }
-    
+
+    /** power-profiles-daemon reachability, probed once at startup and again
+     *  after an in-surface enable. "active" is the only usable state; "masked"
+     *  / "inactive" mean the unit exists but won't start; "missing" means the
+     *  unit file itself is absent. */
+    readonly property string daemonState: root._daemonState
+    readonly property bool daemonReady: root._daemonState === "active"
+    readonly property bool enabling: root._enabling
+    property string _daemonState: "unknown"
+    property bool _enabling: false
+
+    function checkDaemon() {
+        daemonProbe.running = true;
+    }
+
+    /** Prompt the user (pkexec → polkit) to unmask and start the daemon.
+     *  No-ops when the unit isn't installed or its state is unknown — there
+     *  is nothing to unmask/start, only the "not installed" note shows. */
+    function enableDaemon() {
+        if (root._enabling)
+            return;
+        if (root._daemonState === "missing" || root._daemonState === "unknown")
+            return;
+        root._enabling = true;
+        daemonEnable.running = true;
+    }
 
     /** Factory full-charge energy in Wh from sysfs; -1 when unreadable. */
     readonly property real energyFullDesign: root._energyFullDesign
@@ -97,7 +148,10 @@ Singleton {
         return m + "m";
     }
 
-    Component.onCompleted: findProc.running = true
+    Component.onCompleted: {
+        findProc.running = true;
+        daemonProbe.running = true;
+    }
 
     /** Resolve which sysfs node is the battery, then read its health fields. */
     Process {
@@ -127,6 +181,48 @@ Singleton {
                 var n = parseFloat(val);
                 root._energyFullDesign = isNaN(n) ? -1 : n / 1e6;
             }
+        }
+    }
+
+    /** One-shot daemon reachability probe: is-active + is-enabled tell masked,
+     *  disabled and installed-apart states apart. Re-run via checkDaemon() after
+     *  an enable, so the surface flips to the live picker the moment the daemon
+     *  answers. */
+    Process {
+        id: daemonProbe
+        command: ["sh", "-c",
+            "a=$(systemctl is-active power-profiles-daemon 2>/dev/null); "
+            + "e=$(systemctl is-enabled power-profiles-daemon 2>/dev/null); "
+            + "printf '%s|%s\\n' \"$a\" \"$e\""]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var out = this.text.trim().split("|");
+                var active = out[0] || "";
+                var enabled = out[1] || "";
+                root._daemonState = active === "active" ? "active"
+                    : enabled === "masked" ? "masked"
+                    : enabled === "enabled" || enabled === "static" || enabled === "indirect" ? "inactive"
+                    : /Failed|not[ -]found|No such|does not exist/i.test(enabled) ? "missing"
+                    : "unknown";
+                if (root._daemonState === "active")
+                    root._attachPP();
+            }
+        }
+    }
+
+    /** Elevate for the unmask+enable. pkexec shows the polkit auth dialog; on
+     *  exit (accepted or cancelled) re-probe so the UI reflects reality. A
+     *  successful enable flips the probe to "active", whereupon the probe
+     *  attaches the PowerProfiles singleton (`_attachPP`) — the first such
+     *  access, so it binds to the now-live daemon. */
+    Process {
+        id: daemonEnable
+        command: ["pkexec", "sh", "-c",
+            "systemctl unmask power-profiles-daemon"
+            + " && systemctl enable --now power-profiles-daemon"]
+        onExited: function (exitCode) {
+            root._enabling = false;
+            root.checkDaemon();
         }
     }
 }

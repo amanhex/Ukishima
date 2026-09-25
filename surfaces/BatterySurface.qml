@@ -202,7 +202,7 @@ PillSurface {
             
             Item {
                 width: parent.width
-                height: profileSeg.height
+                height: Math.max(profileSeg.height, notInstalled.height, enableChip.height)
 
                 Text {
                     anchors.left: parent.left
@@ -218,25 +218,71 @@ PillSurface {
 
                 ProfileSeg {
                     id: profileSeg
+                    visible: Battery.daemonReady
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     s: root.s
+                    glyphShift: 2
                     options: Battery.hasPerformance
                         ? [
-                            { glyph: "moon", value: PowerProfile.PowerSaver },
-                            { glyph: "cog", value: PowerProfile.Balanced },
-                            { glyph: "bolt", value: PowerProfile.Performance }
+                            { glyph: "moon", value: PowerProfile.PowerSaver, scale: 1.05, dx: 0.5, dy: -0.5 },
+                            { glyph: "cog", value: PowerProfile.Balanced, scale: 0.9 },
+                            { glyph: "bolt", value: PowerProfile.Performance, scale: 0.98 }
                           ]
                         : [
-                            { glyph: "moon", value: PowerProfile.PowerSaver },
-                            { glyph: "cog", value: PowerProfile.Balanced }
+                            { glyph: "moon", value: PowerProfile.PowerSaver, scale: 1.05, dx: 0.5, dy: -0.5 },
+                            { glyph: "cog", value: PowerProfile.Balanced, scale: 0.9 }
                           ]
                     value: Battery.profile
                     onPicked: (v) => Battery.setProfile(v)
+                }
+
+                Text {
+                    id: notInstalled
+                    visible: Battery.daemonState === "missing"
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Not installed"
+                    color: Theme.dim
+                    font.family: Theme.font
+                    font.pixelSize: 10 * root.s
+                    font.weight: Font.Medium
+                }
+
+                Rectangle {
+                    id: enableChip
+                    visible: !Battery.daemonReady && Battery.daemonState !== "missing"
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: enableLabel.implicitWidth + 20 * root.s
+                    height: 26 * root.s
+                    radius: 8 * root.s
+                    color: enableArea.containsMouse && !Battery.enabling
+                        ? Qt.alpha(Theme.onGlow, 0.16) : Theme.frameBg
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
+
+                    Text {
+                        id: enableLabel
+                        anchors.centerIn: parent
+                        text: Battery.enabling ? "Starting…"
+                            : Battery.daemonState === "masked" ? "Unmask & enable"
+                            : "Enable power profiles"
+                        color: Theme.cream
+                        font.family: Theme.font
+                        font.pixelSize: 10 * root.s
+                        font.weight: Font.Medium
+                    }
+
+                    MouseArea {
+                        id: enableArea
+                        anchors.fill: parent
+                        enabled: !Battery.enabling
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Battery.enableDaemon()
+                    }
                 }
             }
         }
     }
 }
-
-

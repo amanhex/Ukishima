@@ -46,7 +46,7 @@ check slurp        "screen recording picker"
 check hyprsunset   "night light"
 check xdg-open     "open files"
 
-for b in gpu-screen-recorder mpvpaper matugen ddcutil kdialog zenity; do
+for b in gpu-screen-recorder mpvpaper matugen ddcutil kdialog zenity power-profiles-daemon; do
   command -v "$b" >/dev/null 2>&1 || warn "optional: $b"
 done
 
