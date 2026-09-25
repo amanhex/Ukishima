@@ -15,7 +15,6 @@ import Quickshell.Services.UPower
  * cycles and a design-derived health even when UPower's own health is missing.
  */
 
- 
 Singleton {
     id: root
 
@@ -35,7 +34,7 @@ Singleton {
         : (discharging ? -dev.changeRate : (charging ? dev.changeRate : 0))
     readonly property real capacityWh: dev ? dev.energyCapacity : 0
 
-        /**
+    /**
      * Power profile, backed by power-profiles-daemon through Quickshell's own
      * PowerProfiles service — no extra process spawned. Mirrors the
      * performance/balanced/power-saver states the old waybar

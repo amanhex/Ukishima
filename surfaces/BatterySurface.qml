@@ -222,15 +222,16 @@ PillSurface {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     s: root.s
+                    glyphShift: 2
                     options: Battery.hasPerformance
                         ? [
-                            { glyph: "moon", value: PowerProfile.PowerSaver },
-                            { glyph: "cog", value: PowerProfile.Balanced },
-                            { glyph: "bolt", value: PowerProfile.Performance }
+                            { glyph: "moon", value: PowerProfile.PowerSaver, scale: 1.05, dx: 0.5, dy: -0.5 },
+                            { glyph: "cog", value: PowerProfile.Balanced, scale: 0.9 },
+                            { glyph: "bolt", value: PowerProfile.Performance, scale: 0.98 }
                           ]
                         : [
-                            { glyph: "moon", value: PowerProfile.PowerSaver },
-                            { glyph: "cog", value: PowerProfile.Balanced }
+                            { glyph: "moon", value: PowerProfile.PowerSaver, scale: 1.05, dx: 0.5, dy: -0.5 },
+                            { glyph: "cog", value: PowerProfile.Balanced, scale: 0.9 }
                           ]
                     value: Battery.profile
                     onPicked: (v) => Battery.setProfile(v)
@@ -285,5 +286,3 @@ PillSurface {
         }
     }
 }
-
-
