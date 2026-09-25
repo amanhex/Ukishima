@@ -202,7 +202,7 @@ PillSurface {
             
             Item {
                 width: parent.width
-                height: profileSeg.height
+                height: Math.max(profileSeg.height, enableChip.height)
 
                 Text {
                     anchors.left: parent.left
@@ -218,6 +218,7 @@ PillSurface {
 
                 ProfileSeg {
                     id: profileSeg
+                    visible: Battery.daemonReady
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     s: root.s
@@ -233,6 +234,41 @@ PillSurface {
                           ]
                     value: Battery.profile
                     onPicked: (v) => Battery.setProfile(v)
+                }
+
+                Rectangle {
+                    id: enableChip
+                    visible: !Battery.daemonReady
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: enableLabel.implicitWidth + 20 * root.s
+                    height: 26 * root.s
+                    radius: 8 * root.s
+                    color: enableArea.containsMouse && !Battery.enabling
+                        ? Qt.alpha(Theme.onGlow, 0.16) : Theme.frameBg
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
+
+                    Text {
+                        id: enableLabel
+                        anchors.centerIn: parent
+                        text: Battery.enabling ? "Starting…"
+                            : Battery.daemonState === "missing" ? "Install power-profiles-daemon"
+                            : Battery.daemonState === "masked" ? "Unmask & enable"
+                            : "Enable power profiles"
+                        color: Theme.cream
+                        font.family: Theme.font
+                        font.pixelSize: 10 * root.s
+                        font.weight: Font.Medium
+                    }
+
+                    MouseArea {
+                        id: enableArea
+                        anchors.fill: parent
+                        enabled: !Battery.enabling
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Battery.enableDaemon()
+                    }
                 }
             }
         }
