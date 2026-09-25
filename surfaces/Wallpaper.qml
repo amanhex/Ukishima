@@ -74,10 +74,11 @@ PillSurface {
     property int thumbTick: 0
     property bool thumbBusy: false
     property int whPage: 1
-    /** Wallhaven sort bucket: hot (default), latest, top, views, random, favorites. */
+    /** Wallhaven sort bucket: hot (default), latest, top, random. No favorites:
+     * it is all-time static, so the dropdown deliberately omits it. */
     property string whSort: "hot"
     readonly property string whSortLabel: {
-        var m = { hot: "Hot", latest: "Latest", top: "Top", random: "Random", favorites: "Top Liked" };
+        var m = { hot: "Hot", latest: "Latest", top: "Top", random: "Random" };
         return m[root.whSort] || "Hot";
     }
     /** The chip/dropdown occupying the slot left of the wallhaven chip: the sort dropdown while browsing, else the kind filter. */
@@ -951,8 +952,7 @@ PillSurface {
             { label: "Hot", value: "hot" },
             { label: "Latest", value: "latest" },
             { label: "Top", value: "top" },
-            { label: "Random", value: "random" },
-            { label: "Top Liked", value: "favorites" }
+            { label: "Random", value: "random" }
         ]
         value: root.whSort
         title: "Sort: " + root.whSortLabel

@@ -133,17 +133,18 @@ wh_gate() {
     flock -u 9
 }
 
-# Wallhaven browse/search. An empty query returns the default hot (toplist)
-# feed — clicking the strip's wallhaven chip lands there; a query refines it as
-# a most-favorited search. The third arg picks the sorting bucket (hot, latest,
-# top, random, favorites); with a query, favorites is implied unless
-# overridden. Hot and Top deliberately map to DIFFERENT API buckets: toplist is
-# dominated by the same mega-popular wallpapers on page one whether you ask for
-# a month or a year, which made the two sections return identical thumbs, so
-# Top now means all-time most-viewed (`views`) instead of a redundant toplist
-# range. The API serves ready-made thumbs, so results are URLs handed over to
-# `thumbget` for a paced local copy: nothing is downloaded until the strip
-# actually shows it.
+# Wallhaven browse/search. An empty query returns the default hot feed —
+# clicking the strip's wallhaven chip lands there; a query tags it. The third
+# arg picks the sort bucket (hot, latest, top, random, favorites). Each maps to
+# the API's own sort, so the UI labels mean exactly what the site's tabs show:
+# hot -> the Hot feed (rolls over constantly), latest -> date_added, top ->
+# toplist over the last month (its topRange window rolls, so it is not frozen),
+# random -> random, favorites -> all-time Top Liked (kept for API parity, not
+# exposed in the UI because it never changes). A typed query keeps the chosen
+# sort — there is no silent favorites fallback, which used to make tag searches
+# show the same static most-favorited wallpapers forever. The API serves
+# ready-made thumbs, so results are URLs handed over to `thumbget` for a paced
+# local copy: nothing is downloaded until the strip actually shows it.
 whsearch() {
     local query="${1:-}" page="${2:-1}" want="${3:-}"
     case "$page" in
@@ -152,24 +153,20 @@ whsearch() {
 
     local enc sort extra raw code base key mapped
     enc=$(jq -rn --arg q "$query" '$q|@uri') || { printf '[]\n'; return 0; }
-    sort="favorites"
+    sort="hot"
     extra=""
     case "$want" in
         latest)    sort="date_added" ;;
-        top)       sort="views" ;;
+        top)       sort="toplist"; extra="topRange=1M&" ;;
         random)    sort="random" ;;
         favorites) sort="favorites" ;;
+        hot)       sort="hot" ;;
     esac
-    # Hot is the default browse bucket: toplist over the last month. The selected
-    # sort is honoured even for browse; a typed query still implies favorites
-    # unless the sort dropdown explicitly overrides it.
-    if [ -z "$want" ] || [ "$want" = "hot" ]; then
-        if [ -n "$query" ]; then
-            sort="favorites"; extra=""
-        else
-            sort="toplist"; extra="topRange=1M&"
-        fi
-    fi
+    # Hot is the default browse bucket and the API's real Hot sort: it rolls
+    # over constantly, unlike toplist/views/favorites which sit on the same
+    # mega-popular page one for weeks. Top maps to toplist (with a rolling 1M
+    # window) so it changes over time instead of freezing on all-time views.
+    # A typed query keeps the picked sort; there is no implied favorites.
 
     base=$(wh_state)
     key=$(printf '%s' "$query|$page|$sort" | sha1sum | cut -c1-24)
