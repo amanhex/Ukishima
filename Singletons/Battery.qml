@@ -44,15 +44,42 @@ Singleton {
      * the UI, since power-profiles-daemon rejects setting it when the
      * hardware has no such profile (desktops, some laptops on battery-only
      * firmware).
+     *
+     * The service is a one-shot connect: Quickshell constructs its
+     * PowerProfiles singleton on the first property access and, if D-Bus
+     * activation fails then (a masked daemon), never retries — the entire
+     * process is left with a dead connection. So the singleton is only
+     * touched once `_attachPP` runs, which the daemon probe does only when it
+     * reports "active". The first access then binds to the live daemon and
+     * the picker works in-process — no shell reload or restart needed after
+     * an in-surface enable.
      */
-     
-    readonly property int profile: PowerProfiles.profile
-    readonly property bool powerSaver: profile === PowerProfile.PowerSaver
-    readonly property bool performance: profile === PowerProfile.Performance
-    readonly property bool hasPerformance: PowerProfiles.hasPerformanceProfile
+    property int profile: PowerProfile.Balanced
+    readonly property bool powerSaver: root.profile === PowerProfile.PowerSaver
+    readonly property bool performance: root.profile === PowerProfile.Performance
+    property bool hasPerformance: true
+    property bool _ppAttached: false
+
+    /** First PowerProfiles access. Caller guarantees the daemon is active,
+     *  so the singleton binds and mirrors into our plain properties. */
+    function _attachPP() {
+        if (root._ppAttached)
+            return;
+        root._ppAttached = true;
+        PowerProfiles.profileChanged.connect(function () {
+            root.profile = PowerProfiles.profile;
+        });
+        PowerProfiles.hasPerformanceProfileChanged.connect(function () {
+            root.hasPerformance = PowerProfiles.hasPerformanceProfile;
+        });
+        root.profile = PowerProfiles.profile;
+        root.hasPerformance = PowerProfiles.hasPerformanceProfile;
+    }
 
     function setProfile(p) {
-        PowerProfiles.profile = p;
+        if (root._ppAttached)
+            PowerProfiles.profile = p;
+        root.profile = p;
     }
 
     /** Same performance → balanced → power-saver → performance cycle as
@@ -67,7 +94,7 @@ Singleton {
     }
 
     function togglePowerSaver() {
-        PowerProfiles.profile = root.powerSaver ? PowerProfile.Balanced : PowerProfile.PowerSaver;
+        root.setProfile(root.powerSaver ? PowerProfile.Balanced : PowerProfile.PowerSaver);
     }
 
     /** power-profiles-daemon reachability, probed once at startup and again
@@ -84,9 +111,13 @@ Singleton {
         daemonProbe.running = true;
     }
 
-    /** Prompt the user (pkexec → polkit) to unmask and start the daemon. */
+    /** Prompt the user (pkexec → polkit) to unmask and start the daemon.
+     *  No-ops when the unit isn't installed or its state is unknown — there
+     *  is nothing to unmask/start, only the "not installed" note shows. */
     function enableDaemon() {
         if (root._enabling)
+            return;
+        if (root._daemonState === "missing" || root._daemonState === "unknown")
             return;
         root._enabling = true;
         daemonEnable.running = true;
@@ -172,20 +203,25 @@ Singleton {
                 root._daemonState = active === "active" ? "active"
                     : enabled === "masked" ? "masked"
                     : enabled === "enabled" || enabled === "static" || enabled === "indirect" ? "inactive"
-                    : /Failed|not found|No such|does not exist/i.test(enabled) ? "missing"
+                    : /Failed|not[ -]found|No such|does not exist/i.test(enabled) ? "missing"
                     : "unknown";
+                if (root._daemonState === "active")
+                    root._attachPP();
             }
         }
     }
 
     /** Elevate for the unmask+enable. pkexec shows the polkit auth dialog; on
-     *  exit (accepted or cancelled) re-probe so the UI reflects reality. */
+     *  exit (accepted or cancelled) re-probe so the UI reflects reality. A
+     *  successful enable flips the probe to "active", whereupon the probe
+     *  attaches the PowerProfiles singleton (`_attachPP`) — the first such
+     *  access, so it binds to the now-live daemon. */
     Process {
         id: daemonEnable
         command: ["pkexec", "sh", "-c",
             "systemctl unmask power-profiles-daemon"
             + " && systemctl enable --now power-profiles-daemon"]
-        onExited: {
+        onExited: function (exitCode) {
             root._enabling = false;
             root.checkDaemon();
         }

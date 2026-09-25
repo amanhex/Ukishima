@@ -69,6 +69,7 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 | `kitty` | live terminal palette reload via `kitty @ set-colors` (add `allow_remote_control yes` to kitty.conf and `include ~/.cache/ukishima/kitty-colors` for persistence) |
 | `fastfetch` | recoloured system readout (needs `~/.config/fastfetch/config.jsonc.in`) |
 | `hypridle` | idle / DPMS lock integration alongside the built-in keep-awake |
+| `power-profiles-daemon` | power-profile picker on the battery hover (moon / balanced / bolt); the row shows "Not installed" without it, and it isn't needed on desktops |
 
 ## Install
 

@@ -202,7 +202,7 @@ PillSurface {
             
             Item {
                 width: parent.width
-                height: Math.max(profileSeg.height, enableChip.height)
+                height: Math.max(profileSeg.height, notInstalled.height, enableChip.height)
 
                 Text {
                     anchors.left: parent.left
@@ -236,9 +236,21 @@ PillSurface {
                     onPicked: (v) => Battery.setProfile(v)
                 }
 
+                Text {
+                    id: notInstalled
+                    visible: Battery.daemonState === "missing"
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Not installed"
+                    color: Theme.dim
+                    font.family: Theme.font
+                    font.pixelSize: 10 * root.s
+                    font.weight: Font.Medium
+                }
+
                 Rectangle {
                     id: enableChip
-                    visible: !Battery.daemonReady
+                    visible: !Battery.daemonReady && Battery.daemonState !== "missing"
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     width: enableLabel.implicitWidth + 20 * root.s
@@ -252,7 +264,6 @@ PillSurface {
                         id: enableLabel
                         anchors.centerIn: parent
                         text: Battery.enabling ? "Starting…"
-                            : Battery.daemonState === "missing" ? "Install power-profiles-daemon"
                             : Battery.daemonState === "masked" ? "Unmask & enable"
                             : "Enable power profiles"
                         color: Theme.cream
