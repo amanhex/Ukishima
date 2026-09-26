@@ -2,7 +2,7 @@
 
 > A dynamic-island Quickshell shell for Hyprland.
 
-Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland built around a single morphing pill at the top of every monitor. Collapsed it is a thin warm-vermillion strip; hover it and it expands in place into a control centre — workspace dots, clock, media, system readouts — and every module grows its own surface out of the pill itself. Nothing ever pops up as a separate panel.
+Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland built around a single morphing pill at the top of every monitor. Collapsed it is a thin warm-vermillion strip; hover it and it expands in place into a control centre — workspace dots, clock, media, system readouts — and every module grows its own surface out of the pill itself. Nothing ever pops up as a separate panel: surfaces morph in place from the pill, and the only persistent companion is the bottom 泊 dock — a floating macOS-style bar of pinned and running apps with hover magnification, multi-window previews, and a theme (Light / Dark / Dynamic / Manual) and glass depth entirely its own.
 
 The project is fully self-contained. It makes no changes to existing Hyprland config files.
 
@@ -21,7 +21,8 @@ Ukishima is built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) b
 ## Features
 
 - **Dynamic island** — one morphing pill per monitor, expanding in place with a bead cursor and smooth morph animations.
-- **Surfaces** grown from the pill: launcher, weather, calendar, media, mixer, wallpaper strip + online search, screen recorder, clipboard history, wifi, bluetooth, battery, power menu, system monitor (with a speed test), notification centre, minimized-window stash, OSD, toasts, and a settings hub (appearance → display, theme, font, interface, update).
+- **泊 Dock** — a floating macOS-style dock at the bottom edge mirroring the pill's material. Pinned apps sit in their chosen order, then a hairline divider and every running app on workspace order; right-click any launcher row to pin/unpin (a vermillion glyph marks pinned rows). Hover magnification grows the icon in place, and multi-window apps pop a picker above the chip that focuses the exact window without warping the cursor. Auto-hide drops it below the edge with a thin bottom strip to pull it back. With nothing open the bar shelves your five most-launched apps (click to relaunch, right-click to pin) and — with no usage history at all — retracts itself and releases its bottom band. The 泊 DOCK settings tile themes it independently of the pill: Light / Dark / Dynamic / Manual plus transparent or solid glass.
+- **Surfaces** grown from the pill: launcher, weather, calendar, media, mixer, wallpaper strip + online search, screen recorder, clipboard history, wifi, bluetooth, battery, power menu, system monitor (with a speed test), notification centre, minimized-window stash, OSD, toasts, and a settings hub (appearance → display, theme, font, interface, dock, update).
 - **Wallpaper system** — `awww` backend with a shuffled bag, per-monitor assignment, animated transitions, live wallpapers (`mpvpaper`), a per-wallpaper fit control (Cover / Contain / Stretch / Center) that rescales the screen in place, and a live palette that retints the whole UI plus the terminal on every change; an online **wallhaven** browse/search with pagination, Hot / Latest / Top / Random sorting, and disk-cached thumbnails (a bounded 20 MB `wh-thumbs/` cache with LRU pruning, so already-seen pages replay with zero network).
 - **Screen recorder** — `gpu-screen-recorder` with slurp window/region picking, countdown, quality presets, audio, and a recent-clips filmstrip.
 - **Media** — a Dynamic-Glacier-style player card with album art (falling back to the playing app's icon when there is no cover), pick-a-source switching, and live wifi speeds plus the connected Bluetooth device and its battery; expand it into the full pill or the media surface. Smaller touches: device-type icons, "Not connected" states, expand-until-dismissed.
@@ -153,5 +154,5 @@ Available IPC handlers: `launcher`, `wallpaper`, `clipboard`, `mixer`, `calendar
 
 ## State & cache
 
-- state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, gamemode snapshot; wallpaper selection lives in sibling files `~/.local/state/ukishima-wallpaper*`
+- state: `$XDG_STATE_HOME/ukishima` (default `~/.local/state/ukishima`) — flags, events, gamemode snapshot, dock pins (`dock-pins.json`) and launcher usage ranks (`launcher-usage.json`); wallpaper selection lives in sibling files `~/.local/state/ukishima-wallpaper*`
 - cache: `$XDG_CACHE_HOME/ukishima` (default `~/.cache/ukishima`) — every disk cache under one root: palette JSON, screen-recording thumbs (`rec-thumbs/`), wallpaper previews (`wp-thumbs/`), wallhaven browse thumbnails (`wh-thumbs/`, LRU-pruned to 20 MB), clipboard previews (`cliphist-thumbs/`), weather forecast + location (`weather/`)
