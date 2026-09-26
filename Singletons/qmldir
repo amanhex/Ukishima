@@ -20,3 +20,4 @@ singleton Players Players.qml
 singleton NightLight NightLight.qml
 singleton GameMode GameMode.qml
 singleton Config Config.qml
+singleton DockPins DockPins.qml

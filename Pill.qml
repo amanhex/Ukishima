@@ -115,7 +115,8 @@ Item {
     readonly property bool interfaceOpen: surface === "interface"
     readonly property bool fontpickerOpen: surface === "fontpicker"
     readonly property bool updateOpen: surface === "update"
-    readonly property bool settingsLike: appearanceOpen || displayOpen || themeOpen || interfaceOpen || fontpickerOpen || updateOpen
+    readonly property bool dockOpen: surface === "dock"
+    readonly property bool settingsLike: appearanceOpen || displayOpen || themeOpen || interfaceOpen || fontpickerOpen || updateOpen || dockOpen
     readonly property bool hasMedia: Players.list.length > 0
 
     readonly property var netDevices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
@@ -391,6 +392,7 @@ Item {
         display:    { size: () => Qt.size(settingsW, surfaceItem("display").implicitHeight + 29 * s), ame: () => surfaceItem("display") },
         theme:      { size: () => Qt.size(settingsW, surfaceItem("theme").implicitHeight + 29 * s), ame: () => surfaceItem("theme") },
         interface:  { size: () => Qt.size(settingsW, surfaceItem("interface").implicitHeight + 29 * s), ame: () => surfaceItem("interface") },
+        dock:       { size: () => Qt.size(settingsW, surfaceItem("dock").implicitHeight + 29 * s), ame: () => surfaceItem("dock") },
         fontpicker: { size: () => Qt.size(fontpickerW, surfaceItem("fontpicker").implicitHeight + 29 * s), ame: () => surfaceItem("fontpicker") },
         update:     { size: () => Qt.size(settingsW, surfaceItem("update").implicitHeight + 29 * s), ame: () => surfaceItem("update") }
     })
@@ -421,6 +423,7 @@ Item {
         display:    () => ldDisplay,
         theme:      () => ldTheme,
         interface:  () => ldInterface,
+        dock:       () => ldDock,
         fontpicker: () => ldFontpicker,
         update:     () => ldUpdate
     })
@@ -590,6 +593,8 @@ Item {
             return ldTheme.item;
         if (pill.interfaceOpen)
             return ldInterface.item;
+        if (pill.dockOpen)
+            return ldDock.item;
         if (pill.fontpickerOpen)
             return ldFontpicker.item;
         return null;
@@ -663,7 +668,7 @@ Item {
      * hover pill. Empty space in the body never triggers this.
      */
     function surfaceBack() {
-        if (pill.displayOpen || pill.themeOpen || pill.interfaceOpen || pill.fontpickerOpen) {
+        if (pill.displayOpen || pill.themeOpen || pill.interfaceOpen || pill.dockOpen || pill.fontpickerOpen) {
             pill.requestSurface("appearance");
             return;
         }
@@ -2904,6 +2909,19 @@ sourceComponent: Media {
         sourceComponent: InterfaceSurface {
             s: pill.s * pill.settingsScale
             open: pill.interfaceOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+            onRequestSurface: (name) => pill.requestSurface(name)
+        }
+    }
+
+    Loader {
+        id: ldDock
+        active: false
+        anchors.fill: parent
+        sourceComponent: DockSurface {
+            s: pill.s * pill.settingsScale
+            open: pill.dockOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
             onRequestSurface: (name) => pill.requestSurface(name)

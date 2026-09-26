@@ -11,6 +11,7 @@ MusicBars MusicBars.qml
 PillSurface PillSurface.qml
 ProfileSeg ProfileSeg.qml
 SearchField SearchField.qml
+DockBar DockBar.qml
 Dropdown Dropdown.qml
 SettingsHeader SettingsHeader.qml
 SettingsRow SettingsRow.qml

@@ -1,7 +1,7 @@
-pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+pragma Singleton
 
 /**
  * Shared session flags persisted to a small JSON file and watched for external
@@ -33,9 +33,19 @@ Singleton {
     property alias pillOpacity: adapter.pillOpacity
     property alias pillBlur: adapter.pillBlur
     property alias glass: adapter.glass
-    /** Text-visibility boost when transparency mode is on: 0 (off) to 1 (strong) — lifts the readability veil behind copy so pale text keeps contrast on bright wallpapers. */
+    //* Text-visibility boost when transparency mode is on: 0 (off) to 1 (strong) — lifts the readability veil behind copy so pale text keeps contrast on bright wallpapers.
     property alias glassText: adapter.glassText
     property alias autoHide: adapter.autoHide
+    //* Bottom dock: macOS-style pinned + running app bar on every monitor.
+    property alias dockEnabled: adapter.dockEnabled
+    //* Dock hides below the screen edge and slides back up on bottom-edge hover; off keeps it reserved and always visible.
+    property alias dockAutoHide: adapter.dockAutoHide
+    //* Dock palette theme, mirroring the pill's: "light"/"dark"/"dynamic"/"manual" — the dock resolves its own palette, independent of the pill's.
+    property alias dockTheme: adapter.dockTheme
+    //* Dock pane depth: "transparent" lets the desktop glow through, "solid" paints the pane opaque.
+    property alias dockStyle: adapter.dockStyle
+    //* Minimal dock: icon-only chips with the small active dot, no inline title label.
+    property alias dockMinimal: adapter.dockMinimal
     property alias topGap: adapter.topGap
     property alias appGap: adapter.appGap
     property alias recordCountdown: adapter.recordCountdown
@@ -65,53 +75,65 @@ Singleton {
 
     FileView {
         id: file
+
         path: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima/flags.json"
         blockLoading: true
         watchChanges: true
         printErrors: false
-
         onFileChanged: reload()
         onAdapterUpdated: writeAdapter()
         onLoadFailed: function(error) {
             if (error === FileViewError.FileNotFound)
                 writeAdapter();
+
         }
 
         JsonAdapter {
             id: adapter
+
             property bool dnd: false
             property bool keepAwake: false
             property bool time12h: false
             property bool clockSeconds: false
-            /** Collapsed-pill face: "minimal" (glyph + time), "classic" (date + time), "system" (weekday, time, workspace, layout, battery) or "strip" (full-width top bar). */
+            //* Collapsed-pill face: "minimal" (glyph + time), "classic" (date + time), "system" (weekday, time, workspace, layout, battery) or "strip" (full-width top bar).
             property string mainDisplay: "minimal"
-            /** What the media card's Expand control opens: "media" keeps the surface as the main screen, "pill" swaps to the expanded pill. With auto-hide off, "media" also makes hovering the resting pill grow into the player. */
+            //* What the media card's Expand control opens: "media" keeps the surface as the main screen, "pill" swaps to the expanded pill. With auto-hide off, "media" also makes hovering the resting pill grow into the player.
             property string expandTo: "pill"
             property bool showGlyphs: true
             property string paletteMode: "static"
-            /** Explicit wallpaper folder override. Empty means autodetect: the dir wallpaper.sh last resolved (ukishima-wallpaper-dir state file), then ~/Pictures/Wallpapers. Lives in user state so an in-app update never clobbers a custom folder. */
+            //* Explicit wallpaper folder override. Empty means autodetect: the dir wallpaper.sh last resolved (ukishima-wallpaper-dir state file), then ~/Pictures/Wallpapers. Lives in user state so an in-app update never clobbers a custom folder.
             property string wallpaperDir: ""
-            /** Still/video wallpaper scaling: awww --resize "no" (center), "crop" (cover), "fit" (contain) or "stretch", driving the strip's Cover/Contain/Stretch/Center control. */
+            //* Still/video wallpaper scaling: awww --resize "no" (center), "crop" (cover), "fit" (contain) or "stretch", driving the strip's Cover/Contain/Stretch/Center control.
             property string wallpaperFit: "crop"
-            /** Super+B random target: "all" repaints every monitor, "cursor" only the one under the pointer. */
+            //* Super+B random target: "all" repaints every monitor, "cursor" only the one under the pointer.
             property string randomScope: "all"
-            property real uiScale: 1.0
+            property real uiScale: 1
             property bool reduceMotion: false
             property int manualHue: 30
             property bool manualDark: true
             property real manualSat: 0.5
             property string uiFont: ""
-            property real pillOpacity: 1.0
+            property real pillOpacity: 1
             property bool pillBlur: false
-            /** Transparency mode: translucent tinted slab over the desktop. Off restores the exact legacy flat gradient. */
+            //* Transparency mode: translucent tinted slab over the desktop. Off restores the exact legacy flat gradient.
             property bool glass: true
-            /** Text-visibility boost when glass is on (0..1): lifts the readability veil behind copy so text keeps contrast on bright wallpapers. Persisted in the settings file like every other flag. */
+            //* Text-visibility boost when glass is on (0..1): lifts the readability veil behind copy so text keeps contrast on bright wallpapers. Persisted in the settings file like every other flag.
             property real glassText: 0
             property bool autoHide: true
-            /** Top margin as a fraction of the shipped 8px. 0 sits the pill flush to the screen edge. */
-            property real topGap: 1.0
-            /** Pill-to-window band as a fraction of the shipped 12px. 0 tucks the windows flush under the pill. */
-            property real appGap: 1.0
+            //* Bottom dock: macOS-style pinned + running app bar on every monitor.
+            property bool dockEnabled: true
+            //* Dock hides below the screen edge and slides back up on bottom-edge hover; off keeps it reserved and always visible.
+            property bool dockAutoHide: true
+            //* Dock palette theme, mirroring the pill's: "light"/"dark"/"dynamic"/"manual".
+            property string dockTheme: "dark"
+            //* Dock pane depth: "transparent" lets the desktop glow through, "solid" paints the pane opaque.
+            property string dockStyle: "transparent"
+            //* Minimal dock: icon-only chips with the small active dot, no inline title label.
+            property bool dockMinimal: false
+            //* Top margin as a fraction of the shipped 8px. 0 sits the pill flush to the screen edge.
+            property real topGap: 1
+            //* Pill-to-window band as a fraction of the shipped 12px. 0 tucks the windows flush under the pill.
+            property real appGap: 1
             property int recordCountdown: 5
             property string recordDir: ""
             property int recordFps: 60
@@ -134,10 +156,12 @@ Singleton {
             property int nightLightTemp: 4000
             property int nightLightOnMin: 1260
             property int nightLightOffMin: 450
-            /** Drop closed surfaces after their own idle tier instead of holding them in RAM all session. */
+            //* Drop closed surfaces after their own idle tier instead of holding them in RAM all session.
             property bool memorySaver: true
-            /** Wallpaper-tier idle in seconds when memorySaver is on; the other tiers scale off it. */
+            //* Wallpaper-tier idle in seconds when memorySaver is on; the other tiers scale off it.
             property real unloadSec: 30
         }
+
     }
+
 }

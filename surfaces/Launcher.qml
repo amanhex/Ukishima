@@ -289,6 +289,7 @@ PillSurface {
             readonly property bool selected: index === root.selectedIndex
             readonly property bool isAppImage: entry && entry.id && entry.id.indexOf("pill-") === 0
             readonly property bool editing: root.editIndex === index && isAppImage
+            readonly property bool dockPinned: entry && entry.id ? DockPins.has(entry.id) : false
             property bool armed: false
             onEditingChanged: if (!editing) armed = false
 
@@ -326,8 +327,13 @@ PillSurface {
                 }
                 onClicked: (m) => {
                     if (m.button === Qt.RightButton) {
-                        if (appRow.isAppImage)
+                        if (appRow.isAppImage) {
                             root.editIndex = appRow.editing ? -1 : appRow.index;
+                            return;
+                        }
+                        // Regular desktop entry: pin/unpin it on the dock.
+                        if (appRow.entry && appRow.entry.id)
+                            DockPins.toggle(appRow.entry.id);
                         return;
                     }
                     if (appRow.editing)
@@ -390,6 +396,21 @@ PillSurface {
                 }
 
                 GlyphIcon {
+                    id: pinGlyph
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: ret.left
+                    anchors.rightMargin: 5 * root.s
+                    width: appRow.dockPinned ? 12 * root.s : 0
+                    height: 12 * root.s
+                    visible: appRow.dockPinned
+                    opacity: 0.6
+                    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+                    stroke: 2
+                    name: "pin"
+                    color: Theme.vermLit
+                }
+
+                GlyphIcon {
                     id: trashGlyph
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.right: parent.right
@@ -429,7 +450,7 @@ PillSurface {
                 Column {
                     anchors.left: iconBg.right
                     anchors.leftMargin: 10 * root.s
-                    anchors.right: appRow.editing ? trashGlyph.left : ret.left
+                    anchors.right: appRow.editing ? trashGlyph.left : (appRow.dockPinned ? pinGlyph.left : ret.left)
                     anchors.rightMargin: 8 * root.s
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 1 * root.s

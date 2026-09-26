@@ -6,11 +6,12 @@ import "../Singletons"
 import "../components"
 
 /**
- * 相 APPEARANCE index: the door into the appearance settings, split into four
+ * 相 APPEARANCE index: the door into the appearance settings, split into six
  * category tiles — DISPLAY (pill layout, clock, glyphs), THEME (colours and the
- * wallpaper folder), FONT (the family picker) and INTERFACE (scale, motion,
- * auto-hide). Picking a tile morphs the pill into that category's sub-surface;
- * the back chevron on each returns here, and an empty click or the cog closes.
+ * wallpaper folder), FONT (the family picker), INTERFACE (scale, motion,
+ * auto-hide), DOCK (the bottom app dock) and UPDATE (pull latest). Picking a
+ * tile morphs the pill into that category's sub-surface; the back chevron on
+ * each returns here, and an empty click or the cog closes.
  * Reached from the pill's hover row and folds back into it on a dismiss.
  */
 SettingsSurface {
@@ -24,6 +25,7 @@ SettingsSurface {
         { item: themeTile, kind: "nav", surface: "theme" },
         { item: fontTile, kind: "nav", surface: "fontpicker" },
         { item: ifaceTile, kind: "nav", surface: "interface" },
+        { item: dockTile, kind: "nav", surface: "dock" },
         { item: updateTile, kind: "nav", surface: "update" }
     ]
 
@@ -103,6 +105,22 @@ SettingsSurface {
                 height: 16 * root.s
                 name: "chevron-right"
                 color: root.focusRowItem === ifaceTile ? Theme.cream : Theme.iconDim
+                stroke: 1.9
+            }
+        }
+
+        SettingsRow {
+            id: dockTile
+            surface: root
+            glyph: "泊"
+            name: "Dock"
+            sub: "Bottom dock, theme, glass"
+
+            GlyphIcon {
+                width: 16 * root.s
+                height: 16 * root.s
+                name: "chevron-right"
+                color: root.focusRowItem === dockTile ? Theme.cream : Theme.iconDim
                 stroke: 1.9
             }
         }

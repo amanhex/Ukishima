@@ -7,9 +7,10 @@ import "../components"
 
 /**
  * 面 INTERFACE sub-surface: general shell behaviour that is not tied to the
- * clock or the theme — the UI scale, reduced motion, and whether the pill
- * auto-hides. Reached from the Appearance index and folds back to it on the
- * back chevron or an empty click.
+ * clock, the theme or the dock — the UI scale, reduced motion, whether the pill
+ * auto-hides, and the memory saver. Reached from the Appearance index and folds
+ * back to it on the back chevron or an empty click. Dock settings live on their
+ * own 泊 DOCK sub-surface.
  */
 SettingsSurface {
     id: root

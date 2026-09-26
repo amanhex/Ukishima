@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import "Singletons"
+import "components"
 import "surfaces"
 
 /**
@@ -340,6 +341,40 @@ ShellRoot {
 
             mask: emptyReserve
             Region { id: emptyReserve }
+        }
+    }
+
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            id: dockReserve
+            required property var modelData
+            readonly property real s: modelData ? (modelData.height / 1080) * Flags.uiScale : 1
+            /**
+             * Bottom band the dock sits in: just the bar's footprint plus its
+             * float gap, so tiled windows climb above the resting dock but the
+             * strips on either side stay usable. With dock auto-hide on nothing
+             * is reserved at all and the dock floats over the desktop until the
+             * edge is touched. Kept in step with DockBar.dockH
+             * (components/DockBar.qml): minimal chips are shorter than titled
+             * ones, and the float lip mirrors the pill's topGap at half scale.
+             */
+            readonly property real dockH: (Flags.dockMinimal ? 58 : 68) * s
+            readonly property real dockGap: 4 * Flags.topGap * s
+            readonly property real reservedH: dockH + dockGap
+
+            screen: modelData
+            color: "transparent"
+            exclusionMode: ExclusionMode.Normal
+            exclusiveZone: (Flags.dockEnabled && !Flags.dockAutoHide) ? reservedH : 0
+            aboveWindows: true
+
+            anchors { bottom: true; left: true; right: true }
+            implicitHeight: (Flags.dockEnabled && !Flags.dockAutoHide) ? reservedH : 0
+
+            mask: emptyDockReserve
+            Region { id: emptyDockReserve }
         }
     }
 
@@ -688,6 +723,196 @@ ShellRoot {
                 function onWallpaperSearchingChanged() {
                     if (!pill.wallpaperSearching && overlay.surfaceOpen)
                         focusScope.forceActiveFocus();
+                }
+            }
+        }
+    }
+
+    /**
+     * Per-monitor dock, mirroring the pill's two-window split: `dockReserve`
+     * claims the bottom band as an exclusive zone while the dock is persistent
+     * (enabled and not auto-hiding), and this full-screen overlay hosts the
+     * `DockBar` pinned to the bottom edge. Its mask is the bar rect while the
+     * dock is shown; with auto-hide on, a thin bottom-centre strip stays live
+     * so the pointer can always pull the bar back in, and the whole layer goes
+     * click-through while the monitor runs fullscreen or game mode is active
+     * (surfaces do not suppress it: opening the launcher or a settings page
+     * keeps the dock on screen and usable). Keyboard focus is never taken, so
+     * the dock can not steal focus from a tiled window below.
+     */
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            id: dockWin
+            required property var modelData
+            readonly property real s: modelData ? (modelData.height / 1080) * Flags.uiScale : 1
+            /** Float gap between the resting dock and the screen's bottom edge: a subtle lip, smaller than the pill's topGap float. */
+            readonly property real dockGap: 4 * Flags.topGap * s
+            readonly property string surface: root.openMon === modelData.name ? root.openSurface : ""
+            readonly property bool surfaceOpen: surface.length > 0
+
+            /**
+             * True while this monitor's active workspace reports a fullscreen
+             * client; the dock then retracts off the bottom edge.
+             */
+            readonly property bool monFullscreen: {
+                var mons = Hyprland.monitors.values;
+                for (var i = 0; i < mons.length; i++) {
+                    if (mons[i].name === modelData.name) {
+                        var ws = mons[i].activeWorkspace;
+                        var o = ws ? ws.lastIpcObject : null;
+                        return o ? !!o.hasfullscreen : false;
+                    }
+                }
+                return false;
+            }
+
+            readonly property bool suppressed: !Flags.dockEnabled || monFullscreen || Flags.gameMode
+
+            screen: modelData
+            color: "transparent"
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            WlrLayershell.namespace: "ukishima-dock"
+
+            anchors { top: true; left: true; right: true; bottom: true }
+
+            mask: suppressed ? dockHiddenRegion : (Flags.dockAutoHide ? ((dock.revealSession || dock.hovered) ? dockRevealUnion : dockRevealRegion) : ((dock.hovered || dock.previewOpen) ? dockLiveUnion : dockRegion))
+            Region { id: dockHiddenRegion }
+
+            /**
+             * A thin bottom-centre strip kept in the input mask while the dock
+             * is retracted, so the pointer can always find it; hovering slides
+             * the bar back up. Mirrors the pill's top reveal strip.
+             */
+            Region {
+                id: dockRevealRegion
+                readonly property real revealW: Math.max(420 * dock.s, dock.width)
+                readonly property real revealH: 10 * dock.s
+                x: Math.max(0, dockWin.width / 2 - revealW / 2)
+                y: dockWin.height - revealH
+                width: revealW
+                height: revealH
+            }
+
+            /**
+             * Mask while the bar is up: the dock's own footprint, so the rest
+             * of the screen clicks through to windows.
+             */
+            Region {
+                id: dockRegion
+                x: dock.x
+                y: dock.y
+                width: dock.width
+                height: dock.height
+            }
+
+            /**
+             * The area a hover popover can occupy: the bar plus everything
+             * above it (popovers anchor to a chip's top, up to ~200px tall).
+             * Kept live whenever the bar is up, so the cursor can walk up
+             * into the preview and click a window row. Fixed geometry — no
+             * QML mapping/plumbing involved.
+             */
+            Region {
+                id: dockPopBand
+                readonly property real bandH: 190 * dock.s
+                x: Math.max(0, dock.x - 100 * dock.s)
+                y: Math.max(0, dock.y - bandH)
+                width: dock.width + 200 * dock.s
+                height: bandH + dock.height
+            }
+
+            /**
+             * Mask while the bar is being pulled in from the reveal strip. The
+             * plain dockRegion alone would flicker: the strip is wider than the
+             * empty bar, so a cursor resting on the strip's outer edge would slip
+             * out of the mask mid-slide and re-trigger the reveal. Unioning the
+             * fixed strip keeps the cursor covered for the whole pull-in.
+             */
+            Region {
+                id: dockRevealUnion
+                x: dockRevealRegion.x
+                y: dockRevealRegion.y
+                width: dockRevealRegion.width
+                height: dockRevealRegion.height
+
+                Region {
+                    x: dockPopBand.x
+                    y: dockPopBand.y
+                    width: dockPopBand.width
+                    height: dockPopBand.height
+                }
+            }
+
+            /**
+             * Mask while the bar is up: the popover band covers the bar and
+             * the space above it, so a multi-window preview takes input and
+             * the cursor can walk up into it and pick a window.
+             */
+            Region {
+                id: dockLiveUnion
+                x: dockRevealRegion.x
+                y: dockRevealRegion.y
+                width: dockRevealRegion.width
+                height: dockRevealRegion.height
+
+                Region {
+                    x: dockPopBand.x
+                    y: dockPopBand.y
+                    width: dockPopBand.width
+                    height: dockPopBand.height
+                }
+            }
+
+            DockBar {
+                id: dock
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: dockWin.dockGap
+                s: dockWin.s
+                suppressed: suppressed
+                screenName: dockWin.modelData.name
+
+                /**
+                 * Slide the bar below the screen edge while the dock is
+                 * retracted (monitor fullscreen, game mode, disabled, or
+                 * auto-hidden after the pointer leaves). The translate covers
+                 * the bar plus its float gap, so nothing peeks back above the
+                 * edge while hidden.
+                 */
+                transform: Translate {
+                    y: dock.hidden || suppressed ? dock.height + dockWin.dockGap : 0
+                    Behavior on y {
+                        NumberAnimation {
+                            duration: Motion.morph
+                            easing.type: Motion.easeMorph
+                            easing.bezierCurve: Motion.morphCurve
+                        }
+                    }
+                }
+            }
+
+            HoverHandler {
+                enabled: !suppressed
+                onHoveredChanged: if (enabled) dock.hovered = hovered
+            }
+
+            Connections {
+                target: Flags
+                function onDockAutoHideChanged() {
+                    if (!Flags.dockAutoHide) {
+                        dock.revealSession = false;
+                        dock.hovered = false;
+                    }
+                }
+                function onDockEnabledChanged() {
+                    if (!Flags.dockEnabled) {
+                        dock.revealSession = false;
+                        dock.hovered = false;
+                    }
                 }
             }
         }
