@@ -43,7 +43,7 @@ SettingsSurface {
         if (root.busy)
             return;
         root.busy = true;
-        root.status = "Pulling latest changes...";
+        root.status = "Fetching latest master...";
         pullProc.running = true;
     }
 
@@ -141,19 +141,44 @@ SettingsSurface {
         }
     }
 
+    /**
+     * Update path: the deployment must mirror origin/master exactly. A plain
+     * `git pull` fatals with "Need to specify how to reconcile divergent
+     * branches" whenever the checkout's history has diverged from the remote
+     * (e.g. after a force-push) and, worse, blames the network. So instead we
+     * fetch master into its tracking ref and hard-reset the checkout onto it:
+     * that handles fast-forwards, diverged histories and even replaced
+     * histories, treating remote master as ground truth. Any local drift in
+     * the install is discarded — this is a managed deployment. Only the fetch
+     * can fail from a network problem; a reset failure is local, so its error
+     * doesn't mention the network.
+     */
     Process {
         id: pullProc
-        command: ["git", "-C", Config.configDir, "pull", "origin", "master"]
+        command: ["git", "-C", Config.configDir, "fetch", "--quiet", "origin", "+master:refs/remotes/origin/master"]
+        onExited: function (exitCode) {
+            if (exitCode !== 0) {
+                root.busy = false;
+                root.status = "Update failed — check network";
+                return;
+            }
+            resetProc.running = true;
+        }
+    }
+
+    Process {
+        id: resetProc
+        command: ["git", "-C", Config.configDir, "reset", "--hard", "refs/remotes/origin/master"]
         onExited: function (exitCode) {
             root.busy = false;
-            if (exitCode === 0) {
-                root.pending = 0;
-                root.checked = true;
-                root.status = "Updated! Reloading...";
-                reloadTimer.start();
-            } else {
-                root.status = "Update failed — check network";
+            if (exitCode !== 0) {
+                root.status = "Update failed";
+                return;
             }
+            root.pending = 0;
+            root.checked = true;
+            root.status = "Updated! Reloading...";
+            reloadTimer.start();
         }
     }
 
