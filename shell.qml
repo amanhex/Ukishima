@@ -356,9 +356,12 @@ ShellRoot {
              * float gap, so tiled windows climb above the resting dock but the
              * strips on either side stay usable. With dock auto-hide on nothing
              * is reserved at all and the dock floats over the desktop until the
-             * edge is touched. Kept in step with DockBar.dockH
-             * (components/DockBar.qml): minimal chips are shorter than titled
-             * ones, and the float lip mirrors the pill's topGap at half scale.
+             * edge is touched; while the dock is retracted empty (no pins, no
+             * running apps, no usage-history shelf — DockState.empty) the band
+             * is released too, so windows may tile all the way down. Kept in
+             * step with DockBar.dockH (components/DockBar.qml): minimal chips
+             * are shorter than titled ones, and the float lip mirrors the
+             * pill's topGap at half scale.
              */
             readonly property real dockH: (Flags.dockMinimal ? 58 : 68) * s
             readonly property real dockGap: 4 * Flags.topGap * s
@@ -367,11 +370,11 @@ ShellRoot {
             screen: modelData
             color: "transparent"
             exclusionMode: ExclusionMode.Normal
-            exclusiveZone: (Flags.dockEnabled && !Flags.dockAutoHide) ? reservedH : 0
+            exclusiveZone: (Flags.dockEnabled && !Flags.dockAutoHide && !DockState.empty) ? reservedH : 0
             aboveWindows: true
 
             anchors { bottom: true; left: true; right: true }
-            implicitHeight: (Flags.dockEnabled && !Flags.dockAutoHide) ? reservedH : 0
+            implicitHeight: (Flags.dockEnabled && !Flags.dockAutoHide && !DockState.empty) ? reservedH : 0
 
             mask: emptyDockReserve
             Region { id: emptyDockReserve }
@@ -779,7 +782,7 @@ ShellRoot {
 
             anchors { top: true; left: true; right: true; bottom: true }
 
-            mask: suppressed ? dockHiddenRegion : (Flags.dockAutoHide ? ((dock.revealSession || dock.hovered) ? dockRevealUnion : dockRevealRegion) : ((dock.hovered || dock.previewOpen) ? dockLiveUnion : dockRegion))
+            mask: suppressed || dock.empty ? dockHiddenRegion : (Flags.dockAutoHide ? ((dock.revealSession || dock.hovered) ? dockRevealUnion : dockRevealRegion) : ((dock.hovered || dock.previewOpen) ? dockLiveUnion : dockRegion))
             Region { id: dockHiddenRegion }
 
             /**
@@ -879,12 +882,14 @@ ShellRoot {
                 /**
                  * Slide the bar below the screen edge while the dock is
                  * retracted (monitor fullscreen, game mode, disabled, or
-                 * auto-hidden after the pointer leaves). The translate covers
-                 * the bar plus its float gap, so nothing peeks back above the
-                 * edge while hidden.
+                 * auto-hidden after the pointer leaves) and while it has
+                 * nothing to show — no pins, no running apps and no usage
+                 * history for a frequent-app shelf (`empty`). The translate
+                 * covers the bar plus its float gap, so nothing peeks back
+                 * above the edge while hidden.
                  */
                 transform: Translate {
-                    y: dock.hidden || suppressed ? dock.height + dockWin.dockGap : 0
+                    y: dock.hidden || dock.empty || suppressed ? dock.height + dockWin.dockGap : 0
                     Behavior on y {
                         NumberAnimation {
                             duration: Motion.morph

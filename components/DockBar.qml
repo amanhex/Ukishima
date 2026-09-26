@@ -16,6 +16,12 @@ import "../Singletons"
  * to a desktop entry still appears while running (icon from the theme) but
  * cannot be pinned, since there is nothing to re-launch.
  *
+ * With nothing pinned and nothing running, the bar becomes a shelf of the five
+ * most-launched apps from the launcher's usage log (click to launch,
+ * right-click to pin — which teaches the affinity with one gesture). With no
+ * usage history at all the dock retracts entirely and releases its reserved
+ * band (see `empty` / DockState).
+ *
  * Pins live in the same state file pattern as launcher usage counts
  * (ukishima/dock-pins.json, an ordered JSON array of desktop entry ids), so
  * they survive restarts and are shared by every monitor's dock. The item list
@@ -114,6 +120,72 @@ Item {
     property var pins: DockPins.pins
     property var items: []
 
+    /**
+     * True when the dock has nothing to show at all: no pinned apps, no
+     * running apps, and no usage history to build a frequent-app shelf. The
+     * shell window then retracts the bar as if it were suppressed (no reveal
+     * strip either) and the reserve window releases its band via DockState.
+     */
+    readonly property bool empty: root.items.length === 0
+
+    /** Launcher usage log (shared with surfaces/Launcher.qml), read for the
+     *  empty-dock frequent-app shelf. Monitored through a FileView so external
+     *  launches are picked up on the next poll. */
+    readonly property string usageFile: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima/launcher-usage.json"
+    property var usage: ({})
+    property string usageSig: ""
+
+    FileView {
+        id: usageStore
+        path: root.usageFile
+        blockLoading: true
+        atomicWrites: true
+        printErrors: false
+    }
+
+    /** Re-parse the usage log only when its text actually changed, and return
+     *  a signature fragment so an external launch flips the dock's item sig. */
+    function usageSignature() {
+        var raw = usageStore.text() || "";
+        if (raw.length > 0 && raw !== root.usageSig) {
+            root.usageSig = raw;
+            try {
+                root.usage = JSON.parse(raw);
+            } catch (e) {
+                root.usage = {};
+            }
+        }
+        return root.usageSig;
+    }
+
+    /** The five most-launched apps, most-used first, tolerating missing
+     *  entries and noDisplay rows (those would be dead chips). */
+    function frequent() {
+        var out = [];
+        var keys = [];
+        for (var fk in root.usage) {
+            if (Object.prototype.hasOwnProperty.call(root.usage, fk)
+                && root.usage[fk] > 0 && keys.indexOf(fk) < 0)
+                keys.push(fk);
+        }
+        keys.sort(function(a, b) { return root.usage[b] - root.usage[a]; });
+        for (var i = 0; i < keys.length && out.length < 5; i++) {
+            var e = root.entryById(keys[i]);
+            if (!e || e.noDisplay) continue;
+            out.push({
+                entry: e,
+                cls: (e.id || "").toLowerCase(),
+                name: e.name,
+                pinned: false,
+                suggested: true,
+                windows: [],
+                running: false,
+                active: false
+            });
+        }
+        return out;
+    }
+
     /** Multi-window preview: one chip's hover popover. The shell window keeps
      *  its input band live while the bar is up, so no per-preview geometry
      *  needs reporting; previewOpen only gates the always-on-dock band. */
@@ -165,6 +237,7 @@ Item {
         if (sig === root.itemSig) return;
         root.itemSig = sig;
         root.items = buildItems();
+        DockState.empty = root.items.length === 0;
     }
 
     function itemsSignature() {
@@ -178,6 +251,7 @@ Item {
         }
         for (var j = 0; j < root.pins.length; j++)
             s += "P:" + root.pins[j] + ";";
+        s += "U:" + root.usageSignature() + ";";
         return s;
     }
 
@@ -366,6 +440,13 @@ Item {
 
         if (out.length > 0 && running.length > 0)
             out.push({ divider: true });
+
+        // Nothing pinned and nothing running: fall back to the most-launched
+        // apps so the dock still has a shelf to offer (and teach pinning via
+        // right-click). With no usage history this returns empty, which
+        // retracts the bar — see `empty` / DockState.
+        if (out.length === 0 && running.length === 0)
+            return root.frequent();
         return out.concat(running);
     }
 
@@ -535,7 +616,8 @@ Item {
                     transformOrigin: Item.Bottom
                     source: !chip.divider ? root.iconForName(
                         chip.modelData.entry ? chip.modelData.entry.icon : chip.modelData.cls) : ""
-                    opacity: !chip.modelData.running && chip.modelData.pinned
+                    opacity: !chip.modelData.running
+                        && (chip.modelData.pinned || chip.modelData.suggested)
                         ? 0.55 : (chip.hover || chip.modelData.active) ? 1 : 0.9
                     /* Magnify up to but never past the dock's top edge: the
                      * icon base sits 36*s (titled) / 44*s (minimal) from the
@@ -784,46 +866,6 @@ Item {
                         }
                     }
                 }
-            }
-        }
-
-        // First-run hint: nothing pinned and nothing running.
-        Item {
-            visible: root.items.length === 0
-            width: root.chipW
-            height: root.dockH
-
-            readonly property bool hover: hintArea.containsMouse
-
-            Image {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.top
-                anchors.topMargin: 12 * s
-                width: 32 * s
-                height: 32 * s
-                sourceSize.width: Math.round(64 * s)
-                sourceSize.height: Math.round(64 * s)
-                asynchronous: true
-                smooth: true
-                transformOrigin: Item.Bottom
-                source: Quickshell.hasThemeIcon("starred") ? Quickshell.iconPath("starred", "application-x-executable") : ""
-                opacity: parent.hover ? 0.8 : 0.55
-                scale: parent.hover ? 1.32 : 1
-                Behavior on scale { NumberAnimation { duration: Motion.fast } }
-                Behavior on opacity { NumberAnimation { duration: Motion.fast } }
-            }
-
-            MouseArea {
-                id: hintArea
-                anchors.fill: parent
-                hoverEnabled: true
-            }
-
-            Tooltip {
-                show: parent.hover
-                s: root.s
-                placement: "above"
-                title: "Right-click any app in the launcher to pin it here"
             }
         }
     }
