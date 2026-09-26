@@ -19,12 +19,31 @@ SettingsSurface {
 
     property string status: ""
     property bool busy: false
-    /** True once the background check has run and knows the remote state. */
+    /** True once a probe has run successfully and knows the remote state. */
     property bool checked: false
     /** Commits on origin/master that this checkout is behind. */
     property int pending: 0
     /** True when checked and origin/master has new commits to pull. */
     readonly property bool updateAvailable: checked && !busy && pending > 0
+    /**
+     * Cooldown between background probes. The surface re-probes on every open
+     * (so a stale result can't stick around), but a bare `git fetch` round-trips
+     * to GitHub each time — throttle that so rapid re-opens don't hammer the
+     * network. First open always probes.
+     */
+    readonly property int probeCooldown: 60 * 1000
+    /** Epoch ms of the last probe attempt; 0 = never ran, so the first open probes. */
+    property real lastProbeMs: 0
+
+    /** Re-probe whenever the surface (re)opens — surfaces stay resident, so
+     *  Component.onCompleted alone would only ever check once per session. */
+    Connections {
+        target: root
+        function onOpenChanged() {
+            if (root.open)
+                root.checkUpdates();
+        }
+    }
 
     rows: [
         { item: updateRow, kind: "activate", activate: function () { root.doUpdate(); } }
@@ -36,6 +55,10 @@ SettingsSurface {
     function checkUpdates() {
         if (root.busy)
             return;
+        var elapsed = Date.now() - root.lastProbeMs;
+        if (root.lastProbeMs > 0 && elapsed < root.probeCooldown)
+            return;
+        root.lastProbeMs = Date.now();
         fetchProc.running = true;
     }
 
@@ -194,8 +217,10 @@ SettingsSurface {
         command: ["git", "-C", Config.configDir, "fetch", "--quiet", "origin", "+master:refs/remotes/origin/update-probe"]
         onExited: function (exitCode) {
             if (exitCode !== 0) {
-                root.checked = true;
-                root.pending = 0;
+                // Couldn't reach the network: leave the surface quiet rather
+                // than claiming "up to date" on a check that never happened.
+                root.checked = false;
+                root.lastProbeMs = 0;
                 return;
             }
             countProc.running = true;
@@ -206,9 +231,20 @@ SettingsSurface {
         id: countProc
         command: ["git", "-C", Config.configDir, "rev-list", "--count", "HEAD..refs/remotes/origin/update-probe"]
         onExited: function (exitCode, standardOutput) {
-            root.checked = true;
+            if (exitCode !== 0) {
+                // Count failed (e.g. no update-probe ref): don't claim anything.
+                root.checked = false;
+                root.lastProbeMs = 0;
+                return;
+            }
             var n = parseInt(String(standardOutput).trim(), 10);
-            root.pending = isNaN(n) ? 0 : n;
+            if (isNaN(n)) {
+                root.checked = false;
+                root.lastProbeMs = 0;
+                return;
+            }
+            root.checked = true;
+            root.pending = n;
         }
     }
 
