@@ -642,7 +642,7 @@ Item {
                     color: root.dockCopy
                     opacity: chip.hover ? 1 : 0.85
                     Behavior on opacity { NumberAnimation { duration: Motion.fast } }
-                    text: chip.modelData.name
+                    text: !chip.divider ? (chip.modelData.name || "") : ""
                 }
 
                 Rectangle {
