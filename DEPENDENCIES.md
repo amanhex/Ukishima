@@ -28,6 +28,7 @@ The installer checks for these and reports anything missing.
 | `gpu-screen-recorder` | the screen-recording backend (recording is disabled without it) |
 | `mpvpaper` | animated / video wallpapers |
 | `matugen` | Material base16 palettes (always-dark terminal theme) |
+| `qt6-m3shapes-git` | `M3Shapes` QML module — the session-lock password dots (lockscreen only) |
 | `ddcutil` | monitor brightness via DDC (external display faders) |
 | `kdialog` / `zenity` | native folder picker for the record output directory |
 | `ghostty` | live terminal palette reload over D-Bus |
