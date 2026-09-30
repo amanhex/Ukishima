@@ -818,6 +818,22 @@ PanelWindow {
                             //* uninstalled family does.
                             MsIcon {
                                 anchors.centerIn: parent
+                                //* Optical centring, measured rather than
+                                //* guessed. Material Symbols draws its glyphs
+                                //* in the upper part of a tall em box — it
+                                //* reserves room for descenders — so anchoring
+                                //* the Text box to the centre leaves the ink
+                                //* above it. On the real 28px button the ink
+                                //* bounding box measured 2.0px high and its
+                                //* visual mass 1.1px left / 2.15px high, the
+                                //* same to a tenth of a pixel across eight
+                                //* renderings. Hence +1 / +2 here.
+                                //*
+                                //* Both offsets are constant because neither
+                                //* the 28px button nor the 18px glyph is
+                                //* scaled by centerScale.
+                                anchors.horizontalCenterOffset: 1
+                                anchors.verticalCenterOffset: 2
                                 text: "keyboard_return"
                                 color: root.buffer ? MsTheme.m3surfaceContainer : MsTheme.m3onSurfaceVariant
 
