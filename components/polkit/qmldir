@@ -1,0 +1,5 @@
+singleton MsTheme MsTheme.qml
+MsAnim MsAnim.qml
+MsIcon MsIcon.qml
+MsText MsText.qml
+PolkitDialog PolkitDialog.qml

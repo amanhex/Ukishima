@@ -1227,4 +1227,10 @@ ShellRoot {
             }
         }
     }
+
+    // The built-in polkit authentication agent. Mounting it here is the only
+    // thing that instantiates it: a Quickshell config directory auto-loads
+    // shell.qml and nothing else, so a sibling root file is never loaded on its
+    // own and polkitd silently falls back to a textual agent without this.
+    Polkit { }
 }
