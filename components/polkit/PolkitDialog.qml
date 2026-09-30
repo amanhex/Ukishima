@@ -24,6 +24,11 @@ PanelWindow {
     readonly property real centerScale: Math.max(0.8, Math.min(1, root.height / 1440))
     readonly property int centerWidth: root.modelData ? MsTheme.lockCenterWidth * centerScale : 0
     readonly property int passwordMaxWidth: centerWidth * 0.8
+    //* Ceiling for the password field itself, which is much narrower than the
+    //* card it sits in. Deliberately not passwordMaxWidth: that also drives
+    //* dialogContainer.targetWidth, so lowering it would shrink the whole
+    //* dialog rather than just the input.
+    readonly property int passwordFieldMaxWidth: centerWidth * 0.56
 
     readonly property string rawMessage: agent.flow ? agent.flow.message : ""
     readonly property var splitMessage: {
@@ -512,11 +517,32 @@ PanelWindow {
                 id: passwordRect
 
                 Layout.alignment: Qt.AlignHCenter
-                implicitWidth: {
-                    const emptyW = nonAnimPlaceholder.width + iconWrapper.implicitWidth + enterButton.implicitWidth + passwordInputLayout.spacing * 2 + MsTheme.paddingMedium * 2;
-                    return root.buffer.length > 0 ? root.passwordMaxWidth : Math.min(root.passwordMaxWidth, emptyW);
-                }
-                implicitHeight: passwordInputLayout.implicitHeight + MsTheme.paddingSmall
+                //* The row's chrome: everything in the field except the text.
+                //*
+                //* iconWrapper's own implicitWidth is `height` under
+                //* Layout.fillHeight, so it is order-dependent — measured
+                //* anywhere between 20 and 44 depending on when the binding is
+                //* evaluated. This budgets the top of that range on purpose.
+                //* Over-reserving costs a few px of width; under-reserving
+                //* clips the placeholder, which is the failure that actually
+                //* shows: at a flat 208 the field cut "Enter your password" to
+                //* "your pas".
+                readonly property int chrome: MsTheme.paddingExtraSmall * 2
+                        + MsTheme.spacingMedium * 2
+                        + MsTheme.bodyMedium * 2   // the 28px enter button
+                        + 44                        // the icon cell, upper bound
+                //* Idle is floored by the placeholder so it can never clip;
+                //* typing widens to the lockscreen's 268 (lockscreen/
+                //* LockSurface.qml), which is also where a dot row of any
+                //* reasonable length stops needing to scroll.
+                implicitWidth: Math.min(root.passwordFieldMaxWidth,
+                        Math.max(root.buffer.length > 0 ? 268 : 0,
+                                nonAnimPlaceholder.width + chrome))
+                //* Was paddingSmall, giving a 36px field — the enter button's own
+                //* 28px plus 8. paddingLarge + paddingSmall is 24, so the field
+                //* is 52px: tall enough to aim at, without turning a text input
+                //* into a slab.
+                implicitHeight: passwordInputLayout.implicitHeight + MsTheme.paddingLarge + MsTheme.paddingSmall
                 color: MsTheme.layer(MsTheme.m3surfaceContainer, 1)
                 radius: MsTheme.roundingFull
                 border.color: root.fieldInError ? MsTheme.m3error : "transparent"
@@ -724,14 +750,17 @@ PanelWindow {
                         ListView {
                             id: charList
 
-                            //* Plain arithmetic: n dots plus n-1 gaps. This used
-                            //* to walk every delegate and add its
-                            //* nonAnimWidthScale, because each dot animated its
-                            //* own implicitWidth and the row had to be
-                            //* re-measured mid-animation. Dots no longer animate
-                            //* their width, so the row can just be counted.
-                            readonly property int fullWidth: count === 0 ? 0
-                                    : count * implicitHeight + (count - 1) * spacing
+                            //* The drawn size of one dot, and the width of the
+                            //* cell that holds it. These were the same number
+                            //* before — the cell was charList.implicitHeight (14)
+                            //* around an 11.2px dot — which wasted 2.8px per
+                            //* character. Eight characters then needed 168px in a
+                            //* 164px cell, and because the middle Item clips, the
+                            //* first dot lost its left edge and rendered as a
+                            //* sliver. The cell is now exactly the dot.
+                            readonly property real dotSize: implicitHeight * 0.8
+                            readonly property real fullWidth: count === 0 ? 0
+                                    : count * dotSize + (count - 1) * spacing
 
                             anchors.centerIn: parent
                             anchors.horizontalCenterOffset: implicitWidth > parent.width ? -(implicitWidth - parent.width) / 2 : 0
@@ -881,10 +910,10 @@ PanelWindow {
 
         required property int index
 
-        //* Static, and 1.0 * implicitHeight, so row spacing is unchanged.
-        //* Animating a layout property is what used to force the
-        //* nonAnimWidthScale bookkeeping in the ListView.
-        implicitWidth: charList.implicitHeight
+        //* Static, and exactly one dot wide, so the cell adds no dead space
+        //* around the dot. Animating a layout property is what used to force
+        //* the nonAnimWidthScale bookkeeping in the ListView.
+        implicitWidth: charList.dotSize
         implicitHeight: charList.implicitHeight
 
         ListView.onRemove: {
@@ -896,10 +925,9 @@ PanelWindow {
             id: charRect
 
             anchors.centerIn: parent
-            //* 0.8 * implicitHeight, which is what the old animation settled
-            //* on: 1.2 * 2/3 == 0.8, so a resting dot is the same size it
-            //* always was. Any other ratio would silently resize every dot.
-            width: charList.implicitHeight * 0.8
+            //* Exactly the cell width, so a row of these is charList.dotSize
+            //* per dot with no slack to accumulate into a clipped first dot.
+            width: charList.dotSize
             height: width
             radius: width / 2
             color: MsTheme.m3onSurface
