@@ -799,22 +799,26 @@ PanelWindow {
                                 }
                             }
 
-                            //* U+E862, nf-fa-return — the same glyph the
-                            //* lockscreen puts in this exact spot. It inverts
-                            //* with the fill: the circle goes from a dim
-                            //* #242424 to the #e0563b primary, so the glyph has
-                            //* to go light to dark.
+                            //* Material Symbols "keyboard_return" — the
+                            //* hooked return arrow.
                             //*
-                            //* CaskaydiaCove NF is already MsTheme.monoFamily
-                            //* and is verified to carry U+E862, so this costs
-                            //* no new font dependency. The lockscreen asks for
-                            //* "JetBrainsMono NFM", which is not installed
-                            //* under that exact name here.
-                            MsText {
+                            //* This was a Nerd Font codepoint, U+E862, on the
+                            //* assumption it was nf-fa-return. It is not: in
+                            //* CaskaydiaCove NF that codepoint is a ghost face,
+                            //* so the button drew a small white ghost instead
+                            //* of an arrow. Confirmed by rendering the
+                            //* candidates side by side.
+                            //*
+                            //* The ligature form is used instead because
+                            //* Material Symbols Rounded is already
+                            //* MsTheme.iconFamily and is what MsIcon has always
+                            //* used in this file, so it needs no extra
+                            //* fontconfig entry and cannot silently fall back
+                            //* to some other font the way a raw codepoint in an
+                            //* uninstalled family does.
+                            MsIcon {
                                 anchors.centerIn: parent
-                                text: "\ue862"
-                                font.family: MsTheme.monoFamily
-                                font.pointSize: MsTheme.bodyMedium
+                                text: "keyboard_return"
                                 color: root.buffer ? MsTheme.m3surfaceContainer : MsTheme.m3onSurfaceVariant
 
                                 Behavior on color {
