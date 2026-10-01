@@ -31,6 +31,12 @@ ShellRoot {
 
     property string openMon: ""
     property string openSurface: ""
+    /**
+     * Last monitor Hyprland reported as focused, so a surface opened with an
+     * empty monitor argument still lands on a real monitor while
+     * `Hyprland.focusedMonitor` is still null. See toggleSurface.
+     */
+    property string lastFocusedMon: ""
     property string peekMon: ""
 
     /**
@@ -233,10 +239,27 @@ ShellRoot {
      * An empty monitor argument resolves to the focused monitor here, so the
      * keybind scripts skip their hyprctl+jq round trip and a surface open costs
      * one IPC call instead of three process spawns.
+     *
+     * The fallback chain exists because `Hyprland.focusedMonitor` is null on a
+     * fresh launch — the same null the workspace dots work around
+     * (Workspaces.qml's header). Left as `""`, `openMon` matched no pill: each
+     * pill takes its surface from `root.openMon === modelData.name ? … : ""`
+     * (shell.qml:472), so the surface was set, no pill displayed it, and a
+     * second identical call matched `openMon === ""` and closed it again. The
+     * net effect was that every bare keybind — the documented form, passing `""`
+     * — silently did nothing until something else had populated the Hyprland
+     * models, while `ipc call … <monitor>` worked. Hence: last known focused
+     * monitor, then the first screen.
      */
     function toggleSurface(mon, surface) {
-        if (!mon || mon.length === 0)
-            mon = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+        if (!mon || mon.length === 0) {
+            if (Hyprland.focusedMonitor && Hyprland.focusedMonitor.name)
+                mon = Hyprland.focusedMonitor.name;
+            else if (root.lastFocusedMon.length > 0)
+                mon = root.lastFocusedMon;
+            else if (Quickshell.screens.length > 0)
+                mon = Quickshell.screens[0].name;
+        }
         if (root.openMon === mon && root.openSurface === surface) {
             root.close();
             return;
@@ -284,6 +307,18 @@ ShellRoot {
      */
     function dockBarShown(mon) {
         return Flags.dockEnabled && !root.fullscreenOn(mon) && !Flags.gameMode;
+    }
+
+    /**
+     * Remember the focused monitor for toggleSurface's fallback. Cheap: it only
+     * writes when the name actually changes.
+     */
+    Connections {
+        target: Hyprland
+        function onFocusedMonitorChanged() {
+            if (Hyprland.focusedMonitor && Hyprland.focusedMonitor.name !== root.lastFocusedMon)
+                root.lastFocusedMon = Hyprland.focusedMonitor.name;
+        }
     }
 
     IpcHandler {
