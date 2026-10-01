@@ -25,4 +25,6 @@ Tray Tray.qml
 VFader VFader.qml
 WheelScroller WheelScroller.qml
 WifiGlyph WifiGlyph.qml
+OverviewLayer OverviewLayer.qml
+OverviewTile OverviewTile.qml
 Workspaces Workspaces.qml
