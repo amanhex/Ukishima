@@ -11,12 +11,12 @@ Text {
     id: root
 
     property real fill: 0
-    property int grade: MsTheme.iconGrade
-    property real iconSize: MsTheme.iconMedium
+    property int grade: PolTheme.iconGrade
+    property real iconSize: PolTheme.iconMedium
     property int iconWeight: Font.Normal
 
     renderType: Text.NativeRendering
-    font.family: MsTheme.iconFamily
+    font.family: PolTheme.iconFamily
     font.pointSize: iconSize
     font.weight: iconWeight
     font.variableAxes: ({

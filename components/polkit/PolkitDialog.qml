@@ -9,7 +9,7 @@ import QtQuick.Effects
 
 /**
  * midnight-shell's PolkitDialog (components/PolkitDialog.qml), ported
- * 1:1 against the vendored MsTheme/MsAnim/MsIcon/MsText stand-ins for
+ * 1:1 against the vendored PolTheme/PolAnim/PolIcon/PolText stand-ins for
  * caelestia's Tokens/Colours/Anim/MaterialIcon/StyledText. Layout, message
  * splitting, shape-morph password dots, and open/close choreography are
  * unchanged. Only the focused monitor's instance activates.
@@ -22,7 +22,7 @@ PanelWindow {
     property bool isFocused: false
 
     readonly property real centerScale: Math.max(0.8, Math.min(1, root.height / 1440))
-    readonly property int centerWidth: root.modelData ? MsTheme.lockCenterWidth * centerScale : 0
+    readonly property int centerWidth: root.modelData ? PolTheme.lockCenterWidth * centerScale : 0
     readonly property int passwordMaxWidth: centerWidth * 0.8
     //* Ceiling for the password field itself, which is much narrower than the
     //* card it sits in. Deliberately not passwordMaxWidth: that also drives
@@ -241,17 +241,17 @@ PanelWindow {
 
         SequentialAnimation {
             ParallelAnimation {
-                MsAnim {
+                PolAnim {
                     target: dialogContainer
                     property: "opacity"
                     to: 1
-                    duration: MsTheme.durSmall
+                    duration: PolTheme.durSmall
                 }
-                MsAnim {
+                PolAnim {
                     target: dialogContainer
                     property: "scale"
                     to: 1
-                    type: MsAnim.Emphasized
+                    type: PolAnim.Emphasized
                     duration: 400
                 }
             }
@@ -262,38 +262,38 @@ PanelWindow {
                 value: true
             }
             ParallelAnimation {
-                MsAnim {
+                PolAnim {
                     target: lockIcon
                     property: "scale"
                     to: 0
-                    type: MsAnim.Emphasized
+                    type: PolAnim.Emphasized
                     duration: 400
                 }
-                MsAnim {
-                    type: MsAnim.DefaultEffects
+                PolAnim {
+                    type: PolAnim.DefaultEffects
                     target: lockIcon
                     property: "opacity"
                     to: 0
                     duration: 250
                 }
-                MsAnim {
-                    type: MsAnim.DefaultEffects
+                PolAnim {
+                    type: PolAnim.DefaultEffects
                     target: dialogContent
                     property: "opacity"
                     to: 1
                     duration: 500
                 }
-                MsAnim {
+                PolAnim {
                     target: dialogContent
                     property: "scale"
                     to: 1
-                    type: MsAnim.Emphasized
+                    type: PolAnim.Emphasized
                     duration: 500
                 }
-                MsAnim {
+                PolAnim {
                     target: dialogBg
                     property: "radius"
-                    to: MsTheme.roundingLarge
+                    to: PolTheme.roundingLarge
                     duration: 500
                 }
             }
@@ -304,8 +304,8 @@ PanelWindow {
         id: nonAnimPlaceholder
 
         text: root.authenticating ? "Authenticating" : root.fieldInError ? root.fieldErrorText : "Enter your password"
-        font.family: MsTheme.bodyFamily
-        font.pointSize: MsTheme.bodyMedium * centerScale
+        font.family: PolTheme.bodyFamily
+        font.pointSize: PolTheme.bodyMedium * centerScale
     }
 
     SequentialAnimation {
@@ -318,44 +318,44 @@ PanelWindow {
                 property: "isExpanded"
                 value: false
             }
-            MsAnim {
+            PolAnim {
                 target: dialogBg
                 property: "radius"
                 to: dialogContainer.initialRadius
             }
-            MsAnim {
+            PolAnim {
                 target: dialogContent
                 property: "scale"
                 to: 0
             }
-            MsAnim {
+            PolAnim {
                 target: dialogContent
                 property: "opacity"
                 to: 0
-                type: MsAnim.StandardSmall
+                type: PolAnim.StandardSmall
             }
-            MsAnim {
+            PolAnim {
                 target: lockIcon
                 property: "opacity"
                 to: 1
-                type: MsAnim.StandardLarge
+                type: PolAnim.StandardLarge
             }
-            MsAnim {
+            PolAnim {
                 target: lockIcon
                 property: "scale"
                 to: 1
-                type: MsAnim.StandardLarge
+                type: PolAnim.StandardLarge
             }
 
             SequentialAnimation {
                 PauseAnimation {
-                    duration: MsTheme.durSmall
+                    duration: PolTheme.durSmall
                 }
-                MsAnim {
+                PolAnim {
                     target: dialogContainer
                     property: "opacity"
                     to: 0
-                    type: MsAnim.Standard
+                    type: PolAnim.Standard
                 }
                 PropertyAction {
                     target: dialogContainer
@@ -375,11 +375,11 @@ PanelWindow {
 
         property bool isExpanded: false
 
-        readonly property int iconSize: lockIcon.implicitHeight + (root.modelData ? MsTheme.paddingLarge * 4 : 0)
-        readonly property int initialRadius: root.modelData ? iconSize / 4 * MsTheme.scale : 0
+        readonly property int iconSize: lockIcon.implicitHeight + (root.modelData ? PolTheme.paddingLarge * 4 : 0)
+        readonly property int initialRadius: root.modelData ? iconSize / 4 * PolTheme.scale : 0
 
-        property int targetWidth: Math.max(420, root.passwordMaxWidth + MsTheme.paddingExtraLarge * 2)
-        property int targetHeight: dialogContent.implicitHeight + (MsTheme.paddingLarge * 2)
+        property int targetWidth: Math.max(420, root.passwordMaxWidth + PolTheme.paddingExtraLarge * 2)
+        property int targetHeight: dialogContent.implicitHeight + (PolTheme.paddingLarge * 2)
 
         anchors.centerIn: parent
         implicitWidth: isExpanded ? targetWidth : iconSize
@@ -388,14 +388,14 @@ PanelWindow {
 
         // This prevents the snapshotting issue by persistently interpolating dynamically updating bindings
         Behavior on implicitWidth {
-            MsAnim {
-                type: MsAnim.Emphasized
+            PolAnim {
+                type: PolAnim.Emphasized
                 duration: 500
             }
         }
         Behavior on implicitHeight {
-            MsAnim {
-                type: MsAnim.Emphasized
+            PolAnim {
+                type: PolAnim.Emphasized
                 duration: 500
             }
         }
@@ -405,58 +405,58 @@ PanelWindow {
 
             anchors.fill: parent
             radius: dialogContainer.initialRadius
-            color: MsTheme.layer(MsTheme.m3surface, 0)
+            color: PolTheme.layer(PolTheme.m3surface, 0)
 
             layer.enabled: true
             layer.effect: MultiEffect {
                 shadowEnabled: true
                 blurMax: 15
-                shadowColor: Qt.alpha(MsTheme.m3shadow, 0.7)
+                shadowColor: Qt.alpha(PolTheme.m3shadow, 0.7)
             }
         }
 
-        MsIcon {
+        PolIcon {
             id: lockIcon
 
             anchors.centerIn: parent
             text: "shield_person"
             fill: 1
-            iconSize: MsTheme.iconExtraLarge * 2
+            iconSize: PolTheme.iconExtraLarge * 2
             iconWeight: Font.Medium
-            color: MsTheme.m3secondary
+            color: PolTheme.m3secondary
         }
 
         ColumnLayout {
             id: dialogContent
 
-            width: dialogContainer.targetWidth - MsTheme.paddingLarge * 2
+            width: dialogContainer.targetWidth - PolTheme.paddingLarge * 2
             anchors.centerIn: parent
 
             opacity: 0
             scale: 0
-            spacing: MsTheme.spacingLarge
+            spacing: PolTheme.spacingLarge
 
             // Title Container
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: titleLayout.implicitHeight + MsTheme.paddingLarge * 2
-                color: MsTheme.layer(MsTheme.m3surfaceContainer, 1)
-                radius: MsTheme.roundingLarge
+                implicitHeight: titleLayout.implicitHeight + PolTheme.paddingLarge * 2
+                color: PolTheme.layer(PolTheme.m3surfaceContainer, 1)
+                radius: PolTheme.roundingLarge
 
                 ColumnLayout {
                     id: titleLayout
 
                     anchors.fill: parent
-                    anchors.margins: MsTheme.paddingLarge
+                    anchors.margins: PolTheme.paddingLarge
                     spacing: 0
 
-                    MsText {
+                    PolText {
                         Layout.fillWidth: true
                         text: "Authentication Required"
-                        font.family: MsTheme.bodyFamily
-                        font.pointSize: MsTheme.titleLarge
+                        font.family: PolTheme.bodyFamily
+                        font.pointSize: PolTheme.titleLarge
                         font.weight: Font.Medium
-                        color: MsTheme.m3onSurface
+                        color: PolTheme.m3onSurface
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }
@@ -465,14 +465,14 @@ PanelWindow {
             // Message and Command
             Column {
                 Layout.fillWidth: true
-                spacing: MsTheme.spacingMedium
+                spacing: PolTheme.spacingMedium
 
-                MsText {
+                PolText {
                     width: parent.width
                     text: root.mainMessage
-                    font.family: MsTheme.bodyFamily
-                    font.pointSize: MsTheme.bodyMedium
-                    color: MsTheme.m3onSurfaceVariant
+                    font.family: PolTheme.bodyFamily
+                    font.pointSize: PolTheme.bodyMedium
+                    color: PolTheme.m3onSurfaceVariant
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
                 }
@@ -480,33 +480,33 @@ PanelWindow {
                 Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: root.commandText.length > 0
-                    width: Math.min(commandLabel.implicitWidth + MsTheme.paddingLarge * 2, parent.width)
-                    implicitHeight: commandLabel.implicitHeight + MsTheme.paddingSmall * 2
-                    color: MsTheme.layer(MsTheme.m3surfaceContainerHigh, 1)
-                    radius: MsTheme.roundingSmall
+                    width: Math.min(commandLabel.implicitWidth + PolTheme.paddingLarge * 2, parent.width)
+                    implicitHeight: commandLabel.implicitHeight + PolTheme.paddingSmall * 2
+                    color: PolTheme.layer(PolTheme.m3surfaceContainerHigh, 1)
+                    radius: PolTheme.roundingSmall
 
-                    MsText {
+                    PolText {
                         id: commandLabel
 
                         anchors.fill: parent
-                        anchors.margins: MsTheme.paddingSmall
-                        anchors.leftMargin: MsTheme.paddingLarge
-                        anchors.rightMargin: MsTheme.paddingLarge
+                        anchors.margins: PolTheme.paddingSmall
+                        anchors.leftMargin: PolTheme.paddingLarge
+                        anchors.rightMargin: PolTheme.paddingLarge
                         text: root.commandText
-                        font.family: MsTheme.monoFamily
-                        font.pointSize: MsTheme.monoMedium
-                        color: MsTheme.m3onSurface
+                        font.family: PolTheme.monoFamily
+                        font.pointSize: PolTheme.monoMedium
+                        color: PolTheme.m3onSurface
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WrapAnywhere
                     }
                 }
 
-                MsText {
+                PolText {
                     width: parent.width
                     text: root.daemonError
-                    font.family: MsTheme.bodyFamily
-                    font.pointSize: MsTheme.bodySmall
-                    color: root.daemonErrorIsError ? MsTheme.m3error : MsTheme.m3onSurfaceVariant
+                    font.family: PolTheme.bodyFamily
+                    font.pointSize: PolTheme.bodySmall
+                    color: root.daemonErrorIsError ? PolTheme.m3error : PolTheme.m3onSurfaceVariant
                     visible: text.length > 0
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
@@ -527,9 +527,9 @@ PanelWindow {
                 //* clips the placeholder, which is the failure that actually
                 //* shows: at a flat 208 the field cut "Enter your password" to
                 //* "your pas".
-                readonly property int chrome: MsTheme.paddingExtraSmall * 2
-                        + MsTheme.spacingMedium * 2
-                        + MsTheme.bodyMedium * 2   // the 28px enter button
+                readonly property int chrome: PolTheme.paddingExtraSmall * 2
+                        + PolTheme.spacingMedium * 2
+                        + PolTheme.bodyMedium * 2   // the 28px enter button
                         + 44                        // the icon cell, upper bound
                 //* Idle is floored by the placeholder so it can never clip;
                 //* typing widens to the lockscreen's 268 (lockscreen/
@@ -542,23 +542,23 @@ PanelWindow {
                 //* 28px plus 8. paddingLarge + paddingSmall is 24, so the field
                 //* is 52px: tall enough to aim at, without turning a text input
                 //* into a slab.
-                implicitHeight: passwordInputLayout.implicitHeight + MsTheme.paddingLarge + MsTheme.paddingSmall
-                color: MsTheme.layer(MsTheme.m3surfaceContainer, 1)
-                radius: MsTheme.roundingFull
-                border.color: root.fieldInError ? MsTheme.m3error : "transparent"
+                implicitHeight: passwordInputLayout.implicitHeight + PolTheme.paddingLarge + PolTheme.paddingSmall
+                color: PolTheme.layer(PolTheme.m3surfaceContainer, 1)
+                radius: PolTheme.roundingFull
+                border.color: root.fieldInError ? PolTheme.m3error : "transparent"
                 border.width: 1
 
                 focus: true
 
                 Behavior on implicitWidth {
-                    MsAnim {
+                    PolAnim {
                     }
                 }
                 Behavior on border.color {
                     ColorAnimation {
-                        duration: MsTheme.durFastEffects
+                        duration: PolTheme.durFastEffects
                         easing.type: Easing.BezierSpline
-                        easing.bezierCurve: MsTheme.curveFastEffects
+                        easing.bezierCurve: PolTheme.curveFastEffects
                     }
                 }
 
@@ -610,8 +610,8 @@ PanelWindow {
                     id: passwordInputLayout
 
                     anchors.fill: parent
-                    anchors.margins: MsTheme.paddingExtraSmall
-                    spacing: MsTheme.spacingMedium
+                    anchors.margins: PolTheme.paddingExtraSmall
+                    spacing: PolTheme.spacingMedium
 
                     Item {
                         id: iconWrapper
@@ -619,13 +619,13 @@ PanelWindow {
                         Layout.fillHeight: true
                         implicitWidth: height
 
-                        MsIcon {
+                        PolIcon {
                             id: fieldIcon
 
                             anchors.centerIn: parent
                             text: root.authenticating ? "progress_activity" : "lock"
-                            color: root.authenticating ? MsTheme.m3primary : root.fieldInError ? MsTheme.m3error : MsTheme.m3onSurfaceVariant
-                            iconSize: MsTheme.iconMedium * centerScale
+                            color: root.authenticating ? PolTheme.m3primary : root.fieldInError ? PolTheme.m3error : PolTheme.m3onSurfaceVariant
+                            iconSize: PolTheme.iconMedium * centerScale
 
                             RotationAnimation on rotation {
                                 from: 0
@@ -642,21 +642,21 @@ PanelWindow {
                         Layout.fillHeight: true
                         clip: true
 
-                        MsText {
+                        PolText {
                             id: placeholder
 
                             anchors.centerIn: parent
                             anchors.verticalCenterOffset: 1
                             text: root.fieldInError ? root.fieldErrorText : "Enter your password"
                             animate: true
-                            color: root.fieldInError ? MsTheme.m3error : MsTheme.m3outline
-                            font.family: MsTheme.bodyFamily
-                            font.pointSize: MsTheme.bodyMedium * centerScale
+                            color: root.fieldInError ? PolTheme.m3error : PolTheme.m3outline
+                            font.family: PolTheme.bodyFamily
+                            font.pointSize: PolTheme.bodyMedium * centerScale
                             opacity: root.buffer.length > 0 || root.authenticating ? 0 : 1
 
                             Behavior on opacity {
-                                MsAnim {
-                                    type: MsAnim.DefaultEffects
+                                PolAnim {
+                                    type: PolAnim.DefaultEffects
                                 }
                             }
                         }
@@ -677,14 +677,14 @@ PanelWindow {
                             height: shimmerBase.implicitHeight
                             visible: root.authenticating && root.buffer.length === 0
 
-                            MsText {
+                            PolText {
                                 id: shimmerBase
 
                                 anchors.centerIn: parent
                                 text: "Authenticating"
-                                color: MsTheme.m3outline
-                                font.family: MsTheme.bodyFamily
-                                font.pointSize: MsTheme.bodyMedium * centerScale
+                                color: PolTheme.m3outline
+                                font.family: PolTheme.bodyFamily
+                                font.pointSize: PolTheme.bodyMedium * centerScale
                             }
 
                             Item {
@@ -699,16 +699,16 @@ PanelWindow {
                                     anchors.fill: parent
                                     clip: true
 
-                                    MsText {
+                                    PolText {
                                         anchors.verticalCenter: shimmerWrap.verticalCenter
                                         x: (shimmerWrap.width - implicitWidth) / 2 - sheenMover.x
                                         width: implicitWidth
                                         height: implicitHeight
                                         text: "Authenticating"
-                                        color: MsTheme.m3onSurface
+                                        color: PolTheme.m3onSurface
                                         opacity: 0.45
-                                        font.family: MsTheme.bodyFamily
-                                        font.pointSize: MsTheme.bodyMedium * centerScale
+                                        font.family: PolTheme.bodyFamily
+                                        font.pointSize: PolTheme.bodyMedium * centerScale
                                     }
                                 }
 
@@ -719,15 +719,15 @@ PanelWindow {
                                     width: sheenMover.coreWidth
                                     clip: true
 
-                                    MsText {
+                                    PolText {
                                         anchors.verticalCenter: shimmerWrap.verticalCenter
                                         x: (shimmerWrap.width - implicitWidth) / 2 - sheenMover.x - (sheenMover.width - sheenMover.coreWidth) / 2
                                         width: implicitWidth
                                         height: implicitHeight
                                         text: "Authenticating"
-                                        color: MsTheme.m3onSurface
-                                        font.family: MsTheme.bodyFamily
-                                        font.pointSize: MsTheme.bodyMedium * centerScale
+                                        color: PolTheme.m3onSurface
+                                        font.family: PolTheme.bodyFamily
+                                        font.pointSize: PolTheme.bodyMedium * centerScale
                                     }
                                 }
 
@@ -766,10 +766,10 @@ PanelWindow {
                             anchors.horizontalCenterOffset: implicitWidth > parent.width ? -(implicitWidth - parent.width) / 2 : 0
 
                             implicitWidth: fullWidth
-                            implicitHeight: MsTheme.bodyMedium
+                            implicitHeight: PolTheme.bodyMedium
 
                             orientation: Qt.Horizontal
-                            spacing: MsTheme.spacingSmall
+                            spacing: PolTheme.spacingSmall
                             interactive: false
 
                             model: ScriptModel {
@@ -785,7 +785,7 @@ PanelWindow {
                             //* longer animate a layout property — that clash is
                             //* what bindImWidth() used to work around.
                             Behavior on implicitWidth {
-                                MsAnim {
+                                PolAnim {
                                 }
                             }
                         }
@@ -799,7 +799,7 @@ PanelWindow {
                         //* own implicitHeight. It is a fixed size now that the
                         //* glyph is a Nerd Font codepoint, and this lands on
                         //* almost exactly the old 30px.
-                        implicitHeight: MsTheme.bodyMedium * 2
+                        implicitHeight: PolTheme.bodyMedium * 2
 
                         //* The lockscreen's enter button, from
                         //* lockscreen/LockSurface.qml: a plain circle whose fill
@@ -812,19 +812,19 @@ PanelWindow {
 
                             anchors.fill: parent
                             radius: width / 2
-                            color: root.buffer ? MsTheme.m3primary : MsTheme.layer(MsTheme.m3surfaceContainerHigh, 2)
+                            color: root.buffer ? PolTheme.m3primary : PolTheme.layer(PolTheme.m3surfaceContainerHigh, 2)
                             scale: !root.buffer ? 1 : enterMouse.pressed ? 0.6 : enterMouse.containsMouse ? 0.8 : 0.7
 
                             Behavior on scale {
-                                MsAnim {
-                                    type: MsAnim.FastSpatial
+                                PolAnim {
+                                    type: PolAnim.FastSpatial
                                 }
                             }
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: MsTheme.durSlowEffects
+                                    duration: PolTheme.durSlowEffects
                                     easing.type: Easing.BezierSpline
-                                    easing.bezierCurve: MsTheme.curveSlowEffects
+                                    easing.bezierCurve: PolTheme.curveSlowEffects
                                 }
                             }
 
@@ -840,12 +840,12 @@ PanelWindow {
                             //*
                             //* The ligature form is used instead because
                             //* Material Symbols Rounded is already
-                            //* MsTheme.iconFamily and is what MsIcon has always
+                            //* PolTheme.iconFamily and is what PolIcon has always
                             //* used in this file, so it needs no extra
                             //* fontconfig entry and cannot silently fall back
                             //* to some other font the way a raw codepoint in an
                             //* uninstalled family does.
-                            MsIcon {
+                            PolIcon {
                                 anchors.centerIn: parent
                                 //* Optical centring, measured rather than
                                 //* guessed. Material Symbols draws its glyphs
@@ -864,13 +864,13 @@ PanelWindow {
                                 anchors.horizontalCenterOffset: 1
                                 anchors.verticalCenterOffset: 2
                                 text: "keyboard_return"
-                                color: root.buffer ? MsTheme.m3surfaceContainer : MsTheme.m3onSurfaceVariant
+                                color: root.buffer ? PolTheme.m3surfaceContainer : PolTheme.m3onSurfaceVariant
 
                                 Behavior on color {
                                     ColorAnimation {
-                                        duration: MsTheme.durSlowEffects
+                                        duration: PolTheme.durSlowEffects
                                         easing.type: Easing.BezierSpline
-                                        easing.bezierCurve: MsTheme.curveSlowEffects
+                                        easing.bezierCurve: PolTheme.curveSlowEffects
                                     }
                                 }
                             }
@@ -930,7 +930,7 @@ PanelWindow {
             width: charList.dotSize
             height: width
             radius: width / 2
-            color: MsTheme.m3onSurface
+            color: PolTheme.m3onSurface
             opacity: 0
             scale: 0.6
 
@@ -939,19 +939,19 @@ PanelWindow {
 
                 running: true
 
-                MsAnim {
+                PolAnim {
                     target: charRect
                     property: "opacity"
                     from: 0
                     to: 1
-                    type: MsAnim.FastEffects
+                    type: PolAnim.FastEffects
                 }
-                MsAnim {
+                PolAnim {
                     target: charRect
                     property: "scale"
                     from: 0.6
                     to: 1
-                    type: MsAnim.FastEffects
+                    type: PolAnim.FastEffects
                 }
             }
 
@@ -964,13 +964,13 @@ PanelWindow {
                     value: true
                 }
                 ParallelAnimation {
-                    MsAnim {
-                        type: MsAnim.FastEffects
+                    PolAnim {
+                        type: PolAnim.FastEffects
                         target: charRect
                         property: "opacity"
                         to: 0
                     }
-                    MsAnim {
+                    PolAnim {
                         target: charRect
                         property: "scale"
                         to: 0.5

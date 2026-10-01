@@ -11,6 +11,10 @@ pragma Singleton
  * fed by Dyn/matugen or Theme mode so the polkit dialog keeps its curated
  * identity on any wallpaper. layer() is the identity, matching midnight's
  * opaque defaults (transparency disabled -> Colours.layer returns unchanged).
+ *
+ * The Pol* prefix (PolTheme, PolAnim, PolIcon, PolText) marks the vendored
+ * midnight-shell/caelestia stand-ins, so a reader does not mistake them for
+ * real caelestia imports — they carry no external dependency.
  */
 Singleton {
     id: root

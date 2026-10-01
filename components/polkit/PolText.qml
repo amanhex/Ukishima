@@ -12,15 +12,15 @@ Text {
 
     renderType: Text.NativeRendering
     textFormat: Text.PlainText
-    color: MsTheme.m3onSurface
-    font.family: MsTheme.bodyFamily
-    font.pointSize: MsTheme.bodySmall
+    color: PolTheme.m3onSurface
+    font.family: PolTheme.bodyFamily
+    font.pointSize: PolTheme.bodySmall
 
     Behavior on color {
         ColorAnimation {
-            duration: MsTheme.durSlowEffects
+            duration: PolTheme.durSlowEffects
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: MsTheme.curveSlowEffects
+            easing.bezierCurve: PolTheme.curveSlowEffects
         }
 
     }
@@ -29,21 +29,21 @@ Text {
         enabled: root.animate
 
         SequentialAnimation {
-            MsAnim {
+            PolAnim {
                 target: root
                 property: "opacity"
                 to: 0
-                type: MsAnim.FastEffects
+                type: PolAnim.FastEffects
             }
 
             PropertyAction {
             }
 
-            MsAnim {
+            PolAnim {
                 target: root
                 property: "opacity"
                 to: 1
-                type: MsAnim.DefaultEffects
+                type: PolAnim.DefaultEffects
             }
 
         }
