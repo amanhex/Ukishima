@@ -334,6 +334,14 @@ ShellRoot {
         function record(mon: string): void { root.toggleSurface(mon, "recorder"); }
 
         /**
+         * 概 Workspace overview (SUPER+SHIFT+TAB). Not a pill surface, so it
+         * does not go through toggleSurface() — but it must live on this
+         * handler, because a second IpcHandler with target "ukishima" replaces
+         * this one wholesale rather than adding to it.
+         */
+        function overview(mon: string): void { overviewHost.toggle(mon); }
+
+        /**
          * Quick-record keybind (SUPER+D): one button cycles the whole flow with no
          * surface. Recording → stop. Counting down → cancel. A chooser already up
          * on this monitor → dismiss. Otherwise open the standalone source chooser on
@@ -1268,4 +1276,13 @@ ShellRoot {
     // shell.qml and nothing else, so a sibling root file is never loaded on its
     // own and polkitd silently falls back to a textual agent without this.
     Polkit { }
+
+    // 概 Workspace overview. Its own full-screen window rather than a pill
+    // surface — a rows x columns grid of screen replicas does not fit inside a
+    // top-anchored strip. The IPC entry point lives in the handler above, not
+    // in the scope: two IpcHandlers sharing target "ukishima" collide, and the
+    // second one silently replaces the first.
+    Overview {
+        id: overviewHost
+    }
 }
