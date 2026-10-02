@@ -76,9 +76,27 @@ Singleton {
      * Move a window to another workspace. `focus` false keeps the current window
      * focused, which is what a drag wants: focusing mid-gesture would let the
      * compositor pull focus away from the overview and abandon the drag.
+     *
+     * `follow = false` is the important half, and it is NOT the same thing as
+     * `focus`. A move to another workspace switches the *active workspace* to the
+     * destination by default, so dropping a window in a neighbouring cell yanked
+     * the user out of the workspace they were sitting in - the drag ended
+     * somewhere they had not asked to go. `focus` says "do not focus that
+     * window"; it says nothing about which workspace stays active. `follow` is
+     * the flag that answers the question the drag is actually asking.
+     *
+     * A/B'd on the running compositor, moving a window from ws 1 to ws 4:
+     *
+     *     focus = false                 -> active workspace becomes 4
+     *     focus = false, follow = false -> active workspace stays 1
+     *
+     * The overview itself stays up either way, but the grid's focus indicator
+     * and every later left-click are relative to the active workspace, so
+     * following it made the drop feel like it had moved the desktop out from
+     * under the pointer.
      */
     function moveWindowToWorkspace(address, workspaceId, focus) {
-        run("hl.dsp.window.move({ window = \"address:" + address + "\", workspace = " + workspaceId + ", focus = " + (focus ? "true" : "false") + " })");
+        run("hl.dsp.window.move({ window = \"address:" + address + "\", workspace = " + workspaceId + ", follow = false, focus = " + (focus ? "true" : "false") + " })");
     }
 
     //* Reposition a floating window in absolute screen coordinates.
