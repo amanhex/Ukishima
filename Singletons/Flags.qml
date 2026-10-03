@@ -88,20 +88,21 @@ Singleton {
     property alias nightLightOffMin: adapter.nightLightOffMin
     property alias memorySaver: adapter.memorySaver
     property alias unloadSec: adapter.unloadSec
-    //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
-    property alias lockShowAvatar: adapter.lockShowAvatar
-    //* Session lock: show the wifi indicator on lockscreen/LockSurface.qml.
-    property alias lockShowWifi: adapter.lockShowWifi
-    //* Session lock: show the battery indicator on lockscreen/LockSurface.qml.
-    property alias lockShowBattery: adapter.lockShowBattery
-    //* Session lock: how hard the captured desktop is blurred behind the lock.
-    property alias lockBlur: adapter.lockBlur
-    //* Session lock: "capture" grim-captures the desktop at lock time and blurs it, "wallpaper" uses the live wallpaper, "solid" paints an opaque backdrop.
-    property alias lockBackground: adapter.lockBackground
-    //* Which lock to take: "hyprlock" hands off to your own hyprlock.conf, "quickshell" runs the Quickshell lockscreen (which falls back to hyprlock by itself). Both are dispatched by scripts/lock.sh, which reads this flag, so the pill's power menu and any keybind stay in sync.
-    property alias lockMethod: adapter.lockMethod
-    //* Path to the avatar image shown on the lockscreen. Empty = none, and the lock draws a person glyph.
-    property alias lockAvatarPath: adapter.lockAvatarPath
+
+        //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
+        property alias lockShowAvatar: adapter.lockShowAvatar
+        //* Session lock: show the wifi indicator on lockscreen/LockSurface.qml.
+        property alias lockShowWifi: adapter.lockShowWifi
+        //* Session lock: show the battery indicator on lockscreen/LockSurface.qml.
+        property alias lockShowBattery: adapter.lockShowBattery
+        //* Session lock: how hard the captured desktop is blurred behind the lock.
+        property alias lockBlur: adapter.lockBlur
+        //* Session lock: "capture" grim-captures the desktop at lock time and blurs it, "wallpaper" uses the live wallpaper, "solid" paints an opaque backdrop.
+        property alias lockBackground: adapter.lockBackground
+        //* Which lock to take: "hyprlock" hands off to your own hyprlock.conf, "quickshell" runs the Quickshell lockscreen (which falls back to hyprlock by itself). Both are dispatched by scripts/lock.sh, which reads this flag, so the pill's power menu and any keybind stay in sync.
+        property alias lockMethod: adapter.lockMethod
+        //* Path to the avatar image shown on the lockscreen. Empty = none, and the lock draws a person glyph.
+        property alias lockAvatarPath: adapter.lockAvatarPath
 
     FileView {
         id: file
@@ -211,8 +212,8 @@ Singleton {
             property string lockMethod: "hyprlock"
             //* Path to the avatar image shown on the lockscreen. Empty = none, and the lock draws a person glyph.
             property string lockAvatarPath: ""
-        }
 
+        }
     }
 
 }
