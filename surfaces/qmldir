@@ -6,6 +6,7 @@ BtSurface BtSurface.qml
 Calendar Calendar.qml
 Clipboard Clipboard.qml
 DisplaySurface DisplaySurface.qml
+Profile Profile.qml
 DockSurface DockSurface.qml
 FontColorSurface FontColorSurface.qml
 FontPicker FontPicker.qml

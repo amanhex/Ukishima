@@ -88,7 +88,6 @@ Singleton {
     property alias nightLightOffMin: adapter.nightLightOffMin
     property alias memorySaver: adapter.memorySaver
     property alias unloadSec: adapter.unloadSec
-
         //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
         property alias lockShowAvatar: adapter.lockShowAvatar
         //* Session lock: show the wifi indicator on lockscreen/LockSurface.qml.
@@ -214,8 +213,8 @@ Singleton {
             property string lockMethod: "hyprlock"
             //* Path to the avatar image shown on the lockscreen. Empty = none, and the lock draws a person glyph.
             property string lockAvatarPath: ""
-
         }
+
     }
 
 }

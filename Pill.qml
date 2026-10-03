@@ -137,7 +137,8 @@ Item {
     readonly property bool fontpickerOpen: surface === "fontpicker"
     readonly property bool lockSettingsOpen: surface === "locksettings"
     readonly property bool updateOpen: surface === "update"
-    readonly property bool settingsLike: appearanceOpen || appcatOpen || displayOpen || themeOpen || accentOpen || glassOpen || fontColorOpen || interfaceOpen || fontpickerOpen || lockSettingsOpen || updateOpen
+    readonly property bool profileOpen: surface === "profile"
+    readonly property bool settingsLike: appearanceOpen || appcatOpen || displayOpen || themeOpen || accentOpen || glassOpen || fontColorOpen || interfaceOpen || fontpickerOpen || lockSettingsOpen || updateOpen || profileOpen
     readonly property bool hasMedia: Players.list.length > 0
 
     readonly property var netDevices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
@@ -366,6 +367,7 @@ Item {
     readonly property real sysmonW: 392 * s
     readonly property real settingsScale: 0.9
     readonly property real settingsW: 392 * s * settingsScale
+    readonly property real profileW: 560 * s * settingsScale
     readonly property real fontpickerW: 360 * s * settingsScale
     readonly property real toastW: 342 * s
     readonly property real quickChooseW: 344 * s
@@ -437,6 +439,7 @@ Item {
         interface:  { size: () => Qt.size(settingsW, surfaceItem("interface").implicitHeight + 29 * s), ame: () => surfaceItem("interface") },
         fontpicker: { size: () => Qt.size(fontpickerW, surfaceItem("fontpicker").implicitHeight + 29 * s), ame: () => surfaceItem("fontpicker") },
         update:     { size: () => Qt.size(settingsW, surfaceItem("update").implicitHeight + 29 * s), ame: () => surfaceItem("update") },
+        profile:   { size: () => Qt.size(profileW, surfaceItem("profile").implicitHeight + 29 * s), ame: () => surfaceItem("profile") },
         locksettings: { size: () => Qt.size(settingsW, surfaceItem("locksettings").implicitHeight + 29 * s), ame: () => surfaceItem("locksettings") }
     })
 
@@ -473,6 +476,7 @@ Item {
         interface:  () => ldInterface,
         fontpicker: () => ldFontpicker,
         update:     () => ldUpdate,
+        profile:   () => ldProfile,
         locksettings: () => ldLock
     })
 
@@ -660,6 +664,8 @@ Item {
             return ldInterface.item;
         if (pill.fontpickerOpen)
             return ldFontpicker.item;
+        if (pill.profileOpen)
+            return ldProfile.item;
         return null;
     }
 
@@ -1168,6 +1174,8 @@ Item {
             return launcherIcon.mapToItem(pill, launcherIcon.width / 2, launcherIcon.height + drop * 0.55);
         if (soulTarget === "appearance")
             return appearanceIcon.mapToItem(pill, appearanceIcon.width / 2, appearanceIcon.height + drop * 0.55);
+        if (soulTarget === "profile")
+            return profileIcon.mapToItem(pill, profileIcon.width / 2, profileIcon.height + drop * 0.55);
         if (soulTarget === "ws" && soulWsIndex >= 0) {
             void ws.activeName;
             void ws.width;
@@ -2729,6 +2737,31 @@ Item {
                     }
                 }
 
+                  Item {
+                    id: profileIcon
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 17 * pill.s
+                    height: 17 * pill.s
+
+                    GlyphIcon {
+                        anchors.fill: parent
+                        name: "user"
+                        color: profileArea.containsMouse ? Theme.cream : Theme.iconDim
+                        stroke: 1.7
+                    }
+
+                    MouseArea {
+                        id: profileArea
+                        anchors.fill: parent
+                        anchors.margins: -6 * pill.s
+                        hoverEnabled: true
+                        enabled: hover.live
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pill.requestSurface("profile")
+                        onContainsMouseChanged: if (containsMouse) pill.soulTarget = "profile"
+                    }
+                }
+
                 Item {
                     id: appearanceIcon
                     anchors.verticalCenter: parent.verticalCenter
@@ -3092,6 +3125,19 @@ sourceComponent: Media {
         sourceComponent: FontPicker {
             s: pill.s * pill.settingsScale
             open: pill.fontpickerOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+            onRequestSurface: (name) => pill.requestSurface(name)
+        }
+    }
+
+    Loader {
+        id: ldProfile
+        active: false
+        anchors.fill: parent
+        sourceComponent: Profile {
+            s: pill.s * pill.settingsScale
+            open: pill.profileOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
             onRequestSurface: (name) => pill.requestSurface(name)
