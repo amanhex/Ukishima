@@ -28,7 +28,6 @@ SettingsSurface {
 
     // Purely informational — no rows for the keyboard cursor to walk.
     rows: []
-
     // ── Avatar: auto-detected, no configuring ────────────────────────────
 
     /** First of the conventional ~/.face* files that exists, else "". */
@@ -135,6 +134,30 @@ SettingsSurface {
         stdout: SplitParser { onRead: (line) => root.pkgCount = line.trim() }
     }
 
+    /**
+     * CPU model name, e.g. "Ryzen 7 5700U". Taken from /proc/cpuinfo and
+     * trimmed to the part that identifies the chip: the vendor prefix
+     * ("AMD", "Intel") and the integrated-graphics suffix ("with Radeon
+     * Graphics", "with Intel UHD Graphics") are noise on a card this size,
+     * and leaving them in would triple the value column's width.
+     */
+    property string cpu: ""
+    FileView {
+        id: procCpuinfo
+        path: "file:///proc/cpuinfo"
+        printErrors: false
+        onLoaded: {
+            const m = procCpuinfo.text().match(/model name\s*:\s*(.+)/);
+            if (!m)
+                return;
+            let name = m[1].trim();
+            // Drop the vendor word and any trailing integrated-GPU clause.
+            name = name.replace(/^(AMD|Intel|Apple|AuthenticAMD)\s+/i, "");
+            name = name.replace(/\s+with\s+.*(Graphics|graphics)$/i, "");
+            root.cpu = name;
+        }
+    }
+
     /** Used / total RAM in GiB, from /proc/meminfo. */
     property string memUsed: ""
     FileView {
@@ -153,11 +176,11 @@ SettingsSurface {
         }
     }
 
-    /** Root filesystem, e.g. "42G / 476G". */
+    /** Root filesystem used / total, in GiB, so it reads like MEMORY. */
     property string diskUsed: ""
     Process {
         running: true
-        command: ["sh", "-c", "df -h / | awk 'NR==2 {print $3 \" / \" $2}'"]
+        command: ["sh", "-c", "df -B1 / | awk 'NR==2 {printf \"%.1f / %.1f GiB\", $3/1073741824, $2/1073741824}'"]
         stdout: SplitParser { onRead: (line) => root.diskUsed = line.trim() }
     }
 
@@ -179,7 +202,7 @@ SettingsSurface {
 
         Item {
             anchors.horizontalCenter: parent.horizontalCenter
-            implicitWidth: avatarCol.implicitWidth + 33 * root.s + factsCol.implicitWidth
+            implicitWidth: avatarCol.implicitWidth + 24 * root.s + factsCol.implicitWidth
             implicitHeight: Math.max(avatarCol.implicitHeight, factsCol.implicitHeight)
 
             // Avatar + name, vertically centred against the info block.
@@ -233,23 +256,12 @@ SettingsSurface {
                 }
             }
 
-            // Hairline divider
-            Rectangle {
-                id: divider
-                anchors.left: avatarCol.right
-                anchors.leftMargin: 16 * root.s
-                anchors.verticalCenter: parent.verticalCenter
-                width: 1
-                height: factsCol.implicitHeight
-                color: Theme.hairSoft
-            }
-
             // Facts: distro heading on top, then two label:value columns so
             // the card stays wide and short instead of one tall list.
             Column {
                 id: factsCol
-                anchors.left: divider.right
-                anchors.leftMargin: 16 * root.s
+                anchors.left: avatarCol.right
+                anchors.leftMargin: 24 * root.s
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 10 * root.s
 
@@ -325,9 +337,10 @@ SettingsSurface {
                         Repeater {
                             model: [
                                 { label: "UPTIME",   value: root.uptime },
+                                { label: "CPU",      value: root.cpu },
                                 { label: "PACKAGES", value: root.pkgCount },
                                 { label: "MEMORY",   value: root.memUsed },
-                                { label: "DISK",   value: root.diskUsed }
+                                { label: "DISK",     value: root.diskUsed }
                             ]
                             delegate: Fact {}
                         }
