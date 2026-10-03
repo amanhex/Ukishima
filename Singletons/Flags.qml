@@ -88,14 +88,14 @@ Singleton {
     property alias nightLightOffMin: adapter.nightLightOffMin
     property alias memorySaver: adapter.memorySaver
     property alias unloadSec: adapter.unloadSec
+
         //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
         property alias lockShowAvatar: adapter.lockShowAvatar
         //* Session lock: show the wifi indicator on lockscreen/LockSurface.qml.
         property alias lockShowWifi: adapter.lockShowWifi
         //* Session lock: show the battery indicator on lockscreen/LockSurface.qml.
         property alias lockShowBattery: adapter.lockShowBattery
-        //* Session lock: show the media player card under the clock on lockscreen/LockSurface.qml.
-        property alias lockShowMedia: adapter.lockShowMedia
+
         //* Session lock: how hard the captured desktop is blurred behind the lock.
         property alias lockBlur: adapter.lockBlur
         //* Session lock: "capture" grim-captures the desktop at lock time and blurs it, "wallpaper" uses the live wallpaper, "solid" paints an opaque backdrop.
@@ -213,8 +213,8 @@ Singleton {
             property string lockMethod: "hyprlock"
             //* Path to the avatar image shown on the lockscreen. Empty = none, and the lock draws a person glyph.
             property string lockAvatarPath: ""
-        }
 
+        }
     }
 
 }
