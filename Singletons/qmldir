@@ -23,3 +23,5 @@ singleton GameMode GameMode.qml
 singleton Config Config.qml
 singleton DockPins DockPins.qml
 singleton DockState DockState.qml
+singleton OverviewData OverviewData.qml
+singleton OverviewDispatch OverviewDispatch.qml

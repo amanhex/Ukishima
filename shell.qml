@@ -31,6 +31,12 @@ ShellRoot {
 
     property string openMon: ""
     property string openSurface: ""
+    /**
+     * Last monitor Hyprland reported as focused, so a surface opened with an
+     * empty monitor argument still lands on a real monitor while
+     * `Hyprland.focusedMonitor` is still null. See toggleSurface.
+     */
+    property string lastFocusedMon: ""
     property string peekMon: ""
 
     /**
@@ -233,10 +239,27 @@ ShellRoot {
      * An empty monitor argument resolves to the focused monitor here, so the
      * keybind scripts skip their hyprctl+jq round trip and a surface open costs
      * one IPC call instead of three process spawns.
+     *
+     * The fallback chain exists because `Hyprland.focusedMonitor` is null on a
+     * fresh launch — the same null the workspace dots work around
+     * (Workspaces.qml's header). Left as `""`, `openMon` matched no pill: each
+     * pill takes its surface from `root.openMon === modelData.name ? … : ""`
+     * (shell.qml:472), so the surface was set, no pill displayed it, and a
+     * second identical call matched `openMon === ""` and closed it again. The
+     * net effect was that every bare keybind — the documented form, passing `""`
+     * — silently did nothing until something else had populated the Hyprland
+     * models, while `ipc call … <monitor>` worked. Hence: last known focused
+     * monitor, then the first screen.
      */
     function toggleSurface(mon, surface) {
-        if (!mon || mon.length === 0)
-            mon = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+        if (!mon || mon.length === 0) {
+            if (Hyprland.focusedMonitor && Hyprland.focusedMonitor.name)
+                mon = Hyprland.focusedMonitor.name;
+            else if (root.lastFocusedMon.length > 0)
+                mon = root.lastFocusedMon;
+            else if (Quickshell.screens.length > 0)
+                mon = Quickshell.screens[0].name;
+        }
         if (root.openMon === mon && root.openSurface === surface) {
             root.close();
             return;
@@ -286,6 +309,18 @@ ShellRoot {
         return Flags.dockEnabled && !root.fullscreenOn(mon) && !Flags.gameMode;
     }
 
+    /**
+     * Remember the focused monitor for toggleSurface's fallback. Cheap: it only
+     * writes when the name actually changes.
+     */
+    Connections {
+        target: Hyprland
+        function onFocusedMonitorChanged() {
+            if (Hyprland.focusedMonitor && Hyprland.focusedMonitor.name !== root.lastFocusedMon)
+                root.lastFocusedMon = Hyprland.focusedMonitor.name;
+        }
+    }
+
     IpcHandler {
         target: "ukishima"
         function mixer(mon: string): void { root.toggleSurface(mon, "mixer"); }
@@ -297,6 +332,14 @@ ShellRoot {
         function recorder(mon: string): void { root.toggleSurface(mon, "recorder"); }
         function screenrec(mon: string): void { root.toggleSurface(mon, "recorder"); }
         function record(mon: string): void { root.toggleSurface(mon, "recorder"); }
+
+        /**
+         * 概 Workspace overview (SUPER+SHIFT+TAB). Not a pill surface, so it
+         * does not go through toggleSurface() — but it must live on this
+         * handler, because a second IpcHandler with target "ukishima" replaces
+         * this one wholesale rather than adding to it.
+         */
+        function overview(mon: string): void { overviewHost.toggle(mon); }
 
         /**
          * Quick-record keybind (SUPER+D): one button cycles the whole flow with no
@@ -1226,5 +1269,20 @@ ShellRoot {
                 }
             }
         }
+    }
+
+    // The built-in polkit authentication agent. Mounting it here is the only
+    // thing that instantiates it: a Quickshell config directory auto-loads
+    // shell.qml and nothing else, so a sibling root file is never loaded on its
+    // own and polkitd silently falls back to a textual agent without this.
+    Polkit { }
+
+    // 概 Workspace overview. Its own full-screen window rather than a pill
+    // surface — a rows x columns grid of screen replicas does not fit inside a
+    // top-anchored strip. The IPC entry point lives in the handler above, not
+    // in the scope: two IpcHandlers sharing target "ukishima" collide, and the
+    // second one silently replaces the first.
+    Overview {
+        id: overviewHost
     }
 }

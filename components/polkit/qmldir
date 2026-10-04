@@ -1,0 +1,5 @@
+singleton PolTheme PolTheme.qml
+PolAnim PolAnim.qml
+PolIcon PolIcon.qml
+PolText PolText.qml
+PolkitDialog PolkitDialog.qml
