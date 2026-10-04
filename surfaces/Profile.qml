@@ -10,10 +10,13 @@ import "../components"
 /**
  * 我 PROFILE sub-surface: who is at this machine. Horizontal card —
  * avatar (auto-detected from ~/.face) with the login name under it on the
- * left, distro / hostname / kernel / shell / session on the right.
+ * left, live system facts on the right.
  * Reached from the pill's monitor icon and folds back to the hover pill on
  * the back chevron or an empty click.
  *
+ * Each fact row is a small caps label plus its value (host, kernel, WM,
+ * shell, GPU on the left; uptime, CPU, packages, memory, disk on the right),
+ * sharing one text baseline so the values sit on a line.
  * Nothing here is editable, so the row registry stays empty and the pill's
  * row-soul never lands: the profile is read-only info, not settings.
  * Distro et al are read live rather than stored — a machine that changes
@@ -99,9 +102,28 @@ SettingsSurface {
         const i = sh.lastIndexOf("/");
         return i >= 0 ? sh.slice(i + 1) : sh;
     }
-    readonly property string sessionType: Quickshell.env("XDG_SESSION_TYPE") || ""
     readonly property string userName: Quickshell.env("USER") || Quickshell.env("LOGNAME") || ""
     readonly property string wmName: Quickshell.env("XDG_CURRENT_DESKTOP") || (Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") ? "Hyprland" : "")
+
+    /** First VGA/3D/display controller line from lspci, else "". */
+    property string gpuRaw: ""
+    Process {
+        running: true
+        command: ["sh", "-c", "lspci 2>/dev/null | grep -iE 'VGA|3D controller|Display controller' | head -n 1"]
+        stdout: SplitParser { onRead: (line) => root.gpuRaw = line.trim() }
+    }
+    /**
+     * GPU model, e.g. "Lucienne". Same trim treatment as the CPU: strip the
+     * bus address and class ("04:00.0 VGA compatible controller: "), the
+     * vendor ("Advanced Micro Devices, Inc. [AMD/ATI]"), and the revision
+     * ("(rev c1)"), so the value stays a chip name, not a PCI sentence.
+     */
+    readonly property string gpu: {
+        let t = root.gpuRaw.replace(/^[0-9a-fA-F:.]+\s+.*?:\s*/, "");
+        t = t.replace(/^(Advanced Micro Devices,?\s*Inc\.?(\s*\[AMD\/ATI\])?|NVIDIA Corporation|Intel Corporation)\s*/i, "");
+        t = t.replace(/\s*\(rev\s+[^)]*\)\s*$/i, "");
+        return t.trim();
+    }
 
     //* Seconds since boot, from /proc/uptime's first field.
     property real uptimeSec: 0
@@ -325,7 +347,7 @@ SettingsSurface {
                                 { label: "KERNEL",   value: root.kernel },
                                 { label: "WM",       value: root.wmName },
                                 { label: "SHELL",    value: root.shellName },
-                                { label: "SESSION",  value: root.sessionType }
+                                { label: "UPTIME",   value: root.uptime }
                             ]
                             delegate: Fact {}
                         }
@@ -335,8 +357,8 @@ SettingsSurface {
                         spacing: 7 * root.s
                         Repeater {
                             model: [
-                                { label: "UPTIME",   value: root.uptime },
                                 { label: "CPU",      value: root.cpu },
+                                { label: "GPU",      value: root.gpu },
                                 { label: "PACKAGES", value: root.pkgCount },
                                 { label: "MEMORY",   value: root.memUsed },
                                 { label: "DISK",     value: root.diskUsed }
