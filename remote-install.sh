@@ -18,8 +18,8 @@ warn() { printf '  \033[1;33m%s\033[0m\n' "$*"; }
 printf '\nChecking dependencies...\n'
 
 # The dependency list lives in dependencies.json, which the shell's post-update
-# report and DEPENDENCIES.md also read, so an update that adds a requirement
-# cannot leave the installer still describing the old set. This runs after the
+# report also reads, so an update that adds a requirement cannot leave the
+# installer still describing the old set. This runs after the
 # clone/pull above, so it always reports against the manifest just fetched.
 #
 # The `|| dep_rc=$?` form is deliberate: it keeps `set -e` from killing the

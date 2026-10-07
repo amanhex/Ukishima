@@ -7,6 +7,7 @@ import Quickshell.Io
 import "../Singletons"
 import "../components"
 import "../lib/fuzzy.js" as Fuzzy
+import "../lib/apps.js" as Apps
 
 /**
  * 泊 DOCK settings: the bottom app dock — its on/off switch and the dock's own
@@ -109,14 +110,7 @@ DockPanel {
 
     /** Every installed, displayable desktop entry — the launcher's own source,
      *  so the two can never disagree about what is installed. */
-    readonly property var allEntries: {
-        var src = DesktopEntries.applications.values;
-        var out = [];
-        for (var i = 0; i < src.length; i++)
-            if (src[i] && !src[i].noDisplay)
-                out.push(src[i]);
-        return out;
-    }
+    readonly property var allEntries: Apps.visibleApps(DesktopEntries.applications.values)
 
     /**
      * The pins the dock can actually render, in dock order: each pin resolved
@@ -880,10 +874,8 @@ DockPanel {
                         onActiveFocusChanged: if (!activeFocus) text = "";
 
                         function commit() {
-                            var raw = text.trim();
-                            var clean = raw.charAt(0) === "#" ? raw.slice(1) : raw;
-                            if (/^[0-9a-fA-F]{6}$/.test(clean)) {
-                                var c = Qt.color("#" + clean);
+                            var c = Theme.parseHex(text);
+                            if (c) {
                                 if (c.hslHue >= 0) {
                                     /* QML color hslHue/hslSaturation are 0-1 fractions;
                                      * the strip stores hue 0-359 and sat 0-1. */

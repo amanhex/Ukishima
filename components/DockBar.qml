@@ -5,6 +5,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import "../lib/apps.js" as Apps
 import "../Singletons"
 
 /**
@@ -936,13 +937,9 @@ Item {
      */
     function entryFor(cls) {
         if (!cls) return null;
-        var q = cls.toLowerCase();
         var apps = DesktopEntries.applications.values;
-        for (var i = 0; i < apps.length; i++) {
-            var e = apps[i];
-            if (e && e.id && e.id.toLowerCase() === q)
-                return e;
-        }
+        var exact = Apps.byId(apps, cls);
+        if (exact) return exact;
         var want = root.appKey(cls);
         if (!want) return null;
         for (var j = 0; j < apps.length; j++) {
@@ -966,21 +963,11 @@ Item {
     function entryById(id) {
         if (!id) return null;
         var apps = DesktopEntries.applications.values;
+        var exact = Apps.byId(apps, id);
+        if (exact) return exact;
         var q = id.toLowerCase();
-        for (var i = 0; i < apps.length; i++) {
-            var e = apps[i];
-            if (e && e.id && e.id.toLowerCase() === q)
-                return e;
-        }
-        if (q.endsWith(".desktop")) {
-            var bare = q.slice(0, -8);
-            for (var j = 0; j < apps.length; j++) {
-                var e2 = apps[j];
-                if (e2 && e2.id && e2.id.toLowerCase() === bare)
-                    return e2;
-            }
-        }
-        return null;
+        if (!q.endsWith(".desktop")) return null;
+        return Apps.byId(apps, q.slice(0, -8));
     }
 
     function classOf(t) {

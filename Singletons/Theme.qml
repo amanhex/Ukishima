@@ -89,6 +89,13 @@ Singleton {
         return hexOf(c).toUpperCase();
     }
 
+    /** A typed `#rrggbb` as a color, or null when the text is not a colour. */
+    function parseHex(text) {
+        var s = String(text).trim();
+        if (s.charAt(0) === "#") s = s.slice(1);
+        return /^[0-9a-fA-F]{6}$/.test(s) ? Qt.color("#" + s) : null;
+    }
+
     /**
      * Bright warm pop shared by the flame glow, charging glyphs, the recording
      * countdown, the unread inbox dot, the calendar's today cell and the held

@@ -303,10 +303,9 @@ Item { width: 1; height: 10 * root.s }
                         onActiveFocusChanged: if (!activeFocus) text = "";
 
                         function commit() {
-                            var raw = text.trim();
-                            var clean = raw.charAt(0) === "#" ? raw.slice(1) : raw;
-                            if (/^[0-9a-fA-F]{6}$/.test(clean)) {
-                                Flags.textOverride = "#" + clean.toUpperCase();
+                            var c = Theme.parseHex(text);
+                            if (c) {
+                                Flags.textOverride = Theme.hexUpper(c);
                                 fontHueSlider.value = root.fontHue01;
                                 fontSatSlider.value = root.fontSat01;
                             }

@@ -24,7 +24,7 @@ Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland built arou
 
 - Linux + Wayland, **Hyprland** (recent 0.4x/0.5x)
 - **Quickshell** 0.3.0+ (Hyprland, Wayland and Io modules)
-- CLI tools — the installer checks them; see [DEPENDENCIES](DEPENDENCIES.md)
+- CLI tools — the installer checks them; see [dependencies.json](dependencies.json)
 
 ## Install
 

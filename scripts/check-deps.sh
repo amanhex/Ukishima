@@ -2,7 +2,7 @@
 # Ukishima dependency check — the single reporter for what the shell needs.
 #
 # Everything it reports comes from dependencies.json at the repo root, so this
-# script, remote-install.sh and DEPENDENCIES.md cannot disagree about what a
+# script, remote-install.sh and the README link cannot disagree about what a
 # dependency is. The point of the manifest is that adding a dependency becomes a
 # one-line declarative change here, which is what lets the post-update report
 # tell an existing user "this update now needs X" without anyone writing a

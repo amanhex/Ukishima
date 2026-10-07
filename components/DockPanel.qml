@@ -88,9 +88,6 @@ Item {
 
     function reportRowHover(item, hovered) { nav.reportRowHover(item, hovered); }
     function activateRow(item) { nav.activateRow(item); }
-    function kbMove(dir) { nav.kbMove(dir); }
-    function kbAdjust(dir) { nav.kbAdjust(dir); }
-    function kbActivate() { nav.kbActivate(); }
 
     /**
      * Height and width follow the page, and the page owns both implicit sizes.
