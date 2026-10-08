@@ -22,7 +22,8 @@ PanelWindow {
         "h": modelData.height
     }
     readonly property bool isAnnot: shell.phase === "annotate" && shell.annotScreen === mon.name
-    readonly property bool selecting: shell.phase === "select" && stillImg.status === Image.Ready
+    readonly property bool selecting: shell.phase === "select"
+    readonly property bool frozen: !!shell.stills[mon.name] && stillImg.status === Image.Ready
     readonly property var lsel: localSel()
     property var hoverWin: null
     property real hoverX: 0
@@ -219,6 +220,24 @@ PanelWindow {
         fillMode: Image.Stretch
         cache: false
         asynchronous: true
+    }
+
+    // The still always exists before select begins (published after grim
+    // exits); this veil is only ever a one-frame flash. Clicks stay live
+    // under it — the re-capture is the pixels that ship, not the still.
+    Rectangle {
+        anchors.fill: parent
+        visible: !win.isAnnot && !win.frozen
+        color: "#ff0b0d0c"
+
+        Text {
+            anchors.centerIn: parent
+            text: "Freezing…"
+            color: shell.subtle
+            font.family: shell.font
+            font.pixelSize: 13
+        }
+
     }
 
     // Dim everything outside the selection (ryoshot scrim quartet).

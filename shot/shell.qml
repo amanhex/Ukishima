@@ -152,12 +152,10 @@ ShellRoot {
             return ;
         }
         var m = monitors[freezeIdx];
-        var path = stillName(m.name);
-        stills[m.name] = path;
-        // QML var maps do not notify; reassign so overlays see the still.
-        stills = Object.assign({
-        }, stills);
-        grimStill.command = ["grim", "-o", m.name, path];
+        // The path publishes in onExited, after grim has written it: an
+        // Image pointed at a not-yet-existing file errors once and never
+        // retries, which used to wedge the select gate shut behind it.
+        grimStill.command = ["grim", "-o", m.name, stillName(m.name)];
         grimStill.running = true;
     }
 
@@ -327,9 +325,17 @@ ShellRoot {
         id: grimStill
 
         onExited: (code) => {
-            // A still that fails still unblocks: the overlay shows dark and
-            // selection still resolves (the grim -g re-capture is the pixels
-            // that ship). Only count up, never stall.
+            // Publish after the write, even on failure: the overlay shows
+            // dark for a failed still but selection still resolves (the
+            // grim -g re-capture is the pixels that ship). Count up always,
+            // never stall.
+            var m = root.monitors[root.freezeIdx];
+            if (m) {
+                root.stills[m.name] = root.stillName(m.name);
+                // QML var maps do not notify; reassign so overlays reload.
+                root.stills = Object.assign({
+                }, root.stills);
+            }
             root.freezeIdx += 1;
             root.freezeOne();
         }
