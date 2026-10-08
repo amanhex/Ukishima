@@ -8,7 +8,7 @@ import "../components"
 /**
  * 面 INTERFACE sub-surface: general shell behaviour that is not tied to the
  * clock, the theme or the dock — the UI scale, reduced motion, whether the pill
- * auto-hides, and the memory saver. Reached from the Appearance index and folds
+ * auto-hides, whether it hides on special workspaces, and the memory saver. Reached from the Appearance index and folds
  * back to it on the back chevron or an empty click. Dock settings live on their
  * own 泊 DOCK sub-surface.
  */
@@ -22,6 +22,7 @@ SettingsSurface {
         { item: scaleRow, kind: "seg", vals: [0.9, 1.0, 1.1, 1.25], get: function () { return Flags.uiScale; }, set: function (v) { Flags.uiScale = v; } },
         { item: motionRow, kind: "toggle", get: function () { return Flags.reduceMotion; }, set: function (v) { Flags.reduceMotion = v; } },
         { item: autoHideRow, kind: "toggle", get: function () { return Flags.autoHide; }, set: function (v) { Flags.autoHide = v; } },
+        { item: hideSpecialRow, kind: "toggle", get: function () { return Flags.hideOnSpecial; }, set: function (v) { Flags.hideOnSpecial = v; } },
         { item: saverRow, kind: "toggle", get: function () { return Flags.memorySaver; }, set: function (v) { Flags.memorySaver = v; } }
     ]
 
@@ -77,6 +78,19 @@ Item { width: 1; height: 10 * root.s }
                 s: root.s
                 on: Flags.autoHide
                 onToggled: Flags.autoHide = !Flags.autoHide
+            }
+        }
+
+        SettingsRow {
+            id: hideSpecialRow
+            surface: root
+            name: "Hide on special"
+            icon: "layers"
+
+            LinkToggle {
+                s: root.s
+                on: Flags.hideOnSpecial
+                onToggled: Flags.hideOnSpecial = !Flags.hideOnSpecial
             }
         }
 

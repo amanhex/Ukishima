@@ -288,25 +288,75 @@ ShellRoot {
         if (!name)
             return false;
         var mons = Hyprland.monitors.values;
+        var specName = "";
         for (var i = 0; i < mons.length; i++) {
             if (mons[i].name === name) {
                 var ws = mons[i].activeWorkspace;
                 var o = ws ? ws.lastIpcObject : null;
-                return o ? !!o.hasfullscreen : false;
+                if (o && !!o.hasfullscreen)
+                    return true;
+                // A fullscreen window living on the shown special workspace
+                // reports on the special, not on the active workspace, so
+                // check it too -- otherwise fullscreening a video inside
+                // communication/music leaves the pill up.
+                var mo = mons[i].lastIpcObject;
+                var sw = (mo && mo.specialWorkspace) ? mo.specialWorkspace.name : "";
+                if (sw && sw.indexOf("special:") === 0)
+                    specName = sw;
+            }
+        }
+        if (!specName)
+            return false;
+        var wss = Hyprland.workspaces.values;
+        for (var j = 0; j < wss.length; j++) {
+            var wso = wss[j].lastIpcObject;
+            if (wso && wso.name === specName)
+                return !!wso.hasfullscreen;
+        }
+        return false;
+    }
+
+    /**
+     * True while the named monitor is presenting a special workspace
+     * (communication, music, …). Reads the MONITOR's lastIpcObject --
+     * the same object Pill.specialView uses for its "Music" label --
+     * because the workspace object has no specialWorkspace field.
+     * Empty when no special is shown, "special:<id>" while one is up.
+     */
+    function specialOn(name) {
+        if (!name)
+            return false;
+        var mons = Hyprland.monitors.values;
+        for (var i = 0; i < mons.length; i++) {
+            if (mons[i].name === name) {
+                var o = mons[i].lastIpcObject;
+                var sw = (o && o.specialWorkspace) ? o.specialWorkspace.name : "";
+                return !!sw && sw.indexOf("special:") === 0;
             }
         }
         return false;
     }
 
     /**
+     * Fullscreen-like suppression: a fullscreen client, or (when
+     * Flags.hideOnSpecial) any shown special workspace. The pill band,
+     * the overlay mask/opacity and the dock all read this, so the chrome
+     * and the space it reserves can never disagree.
+     */
+    function chromeHiddenOn(name) {
+        return root.fullscreenOn(name) || (Flags.hideOnSpecial && root.specialOn(name));
+    }
+
+    /**
      * Whether the dock bar is on screen on this monitor: enabled, and not
-     * retracted by a fullscreen client or by game mode. The bar window and the
-     * band that reserves its space both read this, so the two can never disagree
-     * about whether the dock is showing -- which is what left a reserved hole in
-     * the desktop whenever the dock hid while the band did not.
+     * retracted by a fullscreen client, a shown special workspace, or game
+     * mode. The bar window and the band that reserves its space both read
+     * this, so the two can never disagree about whether the dock is showing
+     * -- which is what left a reserved hole in the desktop whenever the
+     * dock hid while the band did not.
      */
     function dockBarShown(mon) {
-        return Flags.dockEnabled && !root.fullscreenOn(mon) && !Flags.gameMode;
+        return Flags.dockEnabled && !root.chromeHiddenOn(mon) && !Flags.gameMode;
     }
 
     /**
@@ -430,13 +480,14 @@ ShellRoot {
             /**
              * The band is reserved only while the pill is on screen. Game mode
              * keeps the pill up as a slim bar, so it keeps a slim band; a
-             * fullscreen client slides the pill clean off the top edge, and that
-             * case used to fall through to reservedH and leave a hole in the
-             * desktop with nothing in it, the same defect the dock's band had.
-             * The condition is named once because it drove both exclusiveZone and
-             * implicitHeight, which must agree.
+             * fullscreen client -- or a shown special workspace when
+             * hideOnSpecial is on -- slides the pill clean off the top edge,
+             * and that case used to fall through to reservedH and leave a hole
+             * in the desktop with nothing in it, the same defect the dock's
+             * band had. The condition is named once because it drove both
+             * exclusiveZone and implicitHeight, which must agree.
              */
-            readonly property bool monFullscreen: root.fullscreenOn(modelData.name)
+            readonly property bool monFullscreen: root.chromeHiddenOn(modelData.name)
             readonly property real bandH: monFullscreen ? 0 : (Flags.gameMode ? gameBarH : (Flags.autoHide ? 0 : reservedH))
 
             screen: modelData
@@ -517,11 +568,14 @@ ShellRoot {
             readonly property bool modal: surfaceOpen || pill.held || pill.quickChoosing || pill.expandLatch
 
             /**
-             * True while this monitor's active workspace reports a fullscreen
-             * client. The pill then retracts off the top edge and the whole
-             * layer becomes click-through so fullscreen content owns the screen.
+             * True while this monitor's chrome is suppressed: a fullscreen
+             * client owns the screen, or a special workspace is shown and
+             * hideOnSpecial is on. The pill then retracts off the top edge
+             * and the whole layer becomes click-through so the content owns
+             * the screen. (Property keeps the historical monFullscreen name
+             * so the mask/opacity/transform below stay untouched.)
              */
-            readonly property bool monFullscreen: root.fullscreenOn(modelData.name)
+            readonly property bool monFullscreen: root.chromeHiddenOn(modelData.name)
 
             onMonFullscreenChanged: if (monFullscreen) {
                 if (root.openMon === modelData.name) root.close();
