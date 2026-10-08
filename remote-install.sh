@@ -56,12 +56,16 @@ Add these to your Hyprland config:
     bind = SUPER, SHIFT+V, exec, %s ipc call ukishima clipboard ""
     bind = SUPER, slash,   exec, %s ipc call ukishima launcher ""
     bind = SUPER, L,       exec, %s/scripts/lock.sh
+    bind = , Print,        exec, %s/scripts/shot.sh screen
+    bind = SHIFT, Print,   exec, %s/scripts/shot.sh region
 
   Keybinds (lua):
     hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("%s ipc call ukishima wallpaper \\\"\\\""))
     hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("%s ipc call ukishima clipboard \\\"\\\""))
     hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("%s ipc call ukishima launcher \\\"\\\""))
     hl.bind(var_mainMod .. " + L",         hl.dsp.exec_cmd("%s/scripts/lock.sh"))
+    hl.bind("Print",                       hl.dsp.exec_cmd("%s/scripts/shot.sh screen"))
+    hl.bind("SHIFT + Print",               hl.dsp.exec_cmd("%s/scripts/shot.sh region"))
 
   Lock is a script, not an IPC surface. It uses hyprlock if you have it,
   otherwise its own Quickshell lockscreen — set the backend under Lock in
@@ -72,6 +76,6 @@ Add these to your Hyprland config:
 
   State: ~/.local/state/ukishima
   Cache: ~/.cache/ukishima
-' "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$INSTALL_ROOT"
+' "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$INSTALL_ROOT" "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$INSTALL_ROOT" "$INSTALL_ROOT"
 
 [ "$missing" -eq 0 ] || printf '\n\033[1;31mSome core dependencies are missing — install them for full functionality.\033[0m\n' >&2

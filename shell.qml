@@ -371,6 +371,15 @@ ShellRoot {
         }
     }
 
+    /**
+     * Screenshot studio door behind the `shot*` IPC handlers: execs
+     * scripts/shot.sh detached (empty monitor = the script resolves the
+     * focused one), so the overlay never blocks the calling keybind.
+     */
+    function shoot(mon, mode) {
+        Quickshell.execDetached([Config.hyprPath("scripts", "shot.sh"), mode, mon || ""]);
+    }
+
     IpcHandler {
         target: "ukishima"
         function mixer(mon: string): void { root.toggleSurface(mon, "mixer"); }
@@ -411,6 +420,19 @@ ShellRoot {
                 ScreenRec.quickChoosing = true;
             }
         }
+
+        /**
+         * Screenshot studio (Print and friends): a separate `shot/` config via
+         * scripts/shot.sh, so captures never live in a pill surface. Region
+         * freezes and annotates, screen shoots the monitor straight away,
+         * window hover-picks a client, color runs hyprpicker; `shot` is the
+         * region alias. The overlay quits when the still lands.
+         */
+        function shot(mon: string): void { root.shoot(mon, "region"); }
+        function shotRegion(mon: string): void { root.shoot(mon, "region"); }
+        function shotScreen(mon: string): void { root.shoot(mon, "screen"); }
+        function shotWindow(mon: string): void { root.shoot(mon, "window"); }
+        function shotColor(mon: string): void { root.shoot(mon, "color"); }
         function gameMode(mon: string): void { Flags.gameMode = !Flags.gameMode; }
         function sysmon(mon: string): void { root.toggleSurface(mon, "sysmon"); }
         function system(mon: string): void { root.toggleSurface(mon, "sysmon"); }
