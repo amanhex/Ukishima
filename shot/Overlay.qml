@@ -387,6 +387,9 @@ PanelWindow {
 
     Toolbar {
         shell: win.shell
+        // Above the fullscreen draw MouseArea below: without this the draw
+        // layer swallows every toolbar click (same for the editor).
+        z: 10
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 26
@@ -396,6 +399,7 @@ PanelWindow {
     TextInput {
         id: editor
 
+        z: 10
         visible: win.isAnnot && shell.textAt !== null
         x: shell.textAt ? shell.textAt.x - mon.x : 0
         y: shell.textAt ? shell.textAt.y - mon.y : 0
