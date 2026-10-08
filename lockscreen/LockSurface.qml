@@ -58,6 +58,15 @@ Rectangle {
     //* the legacy current_wallpaper.jpg only when that state file is missing.
     property string currentWallpaper: ""
     readonly property string wallpaperSource: currentWallpaper.length > 0 ? currentWallpaper : wallpaperFallback
+    //* A video file cannot be painted by an Image, and the shell's wallpaper
+    //* dir scan happily writes one (.mp4/.webm/.mkv/.mov) into the state file
+    //* — locking on a video wallpaper used to land this layer on status=Error
+    //* and paint nothing but the base colour. lock.sh grim-captures the desktop
+    //* on every lock regardless of mode, and that capture IS the video's
+    //* current frame, so it takes over. If the capture is missing too, the
+    //* Image errors and the base colour shows, same as any other absent
+    //* backdrop.
+    readonly property bool wallpaperIsVideo: /\.(mp4|webm|mkv|mov)$/i.test(wallpaperSource)
 
     //* lock.sh redirects the lock's stderr into its own log
     //* (${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/lock.log), so one
@@ -69,7 +78,7 @@ Rectangle {
         console.log("[lock] wallpaper " + how + ": mode=" + background
             + " state=" + stateWallpaper
             + " current=" + (currentWallpaper || "<empty>")
-            + " using=" + wallpaperSource
+            + " using=" + (wallpaperIsVideo ? lockShot + " (capture, video wallpaper)" : wallpaperSource)
             + " fallbackUsed=" + (currentWallpaper.length === 0));
         root.reportCapture(how);
     }
@@ -122,6 +131,7 @@ Rectangle {
     property bool showAvatar: true
     property bool showWifi: true
     property bool showBattery: true
+    property bool showMedia: true
     property int blurMax: 64
     //* "capture" grim-captures the desktop at lock time, "wallpaper" uses the
     //* live wallpaper, "solid" paints the opaque backdrop colour.
@@ -171,6 +181,9 @@ Rectangle {
             if (shared && typeof shared.lockShowBattery === "boolean")
                 root.showBattery = shared.lockShowBattery;
 
+            if (shared && typeof shared.lockShowMedia === "boolean")
+                root.showMedia = shared.lockShowMedia;
+
             if (shared && typeof shared.lockBlur === "number")
                 root.blurMax = shared.lockBlur;
 
@@ -200,6 +213,7 @@ Rectangle {
             root.showAvatar = true;
             root.showWifi = true;
             root.showBattery = true;
+            root.showMedia = true;
             root.blurMax = 64;
             root.background = "capture";
             root.avatarPath = "";
@@ -570,7 +584,7 @@ Rectangle {
             //* produced nothing.
             visible: root.background === "wallpaper"
                 || (root.background === "capture" && grimShot.status !== Image.Ready && !bgShot.hasContent)
-            source: "file://" + root.wallpaperSource
+            source: "file://" + (root.wallpaperIsVideo ? root.lockShot : root.wallpaperSource)
             fillMode: Image.PreserveAspectCrop
             //* Decode at screen resolution, never at the file's native size.
             //* A 5842x3286 wallpaper is 19.2 megapixels of RGBA — 77MB of
@@ -1299,6 +1313,24 @@ Rectangle {
 
         }
 
+    }
+
+    // ── Media — under the clock, its own MPRIS transport ──
+    LockMedia {
+        id: lockMedia
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: clockCol.bottom
+        anchors.topMargin: 28
+        // Same window as the battery/wifi corners, and back down with `held`
+        // on unlock. clockCol.bottom is the layout edge, so the clock's drift
+        // transform never drags the card along with it.
+        opacity: root.stage(120 / root.entranceMs, 320 / root.entranceMs, 1) * root.held
+        // Same arrangement as the corners: the card's own presence check
+        // (hasPlayer, its binding inside LockMedia) and the showMedia flag
+        // from the LOCK settings on top of that — this instance-level binding
+        // replaces the internal one, so both halves live here.
+        visible: root.showMedia && hasPlayer
     }
 
     // keep focus on the key handler (Hyprland unfocuses on wake — Noctalia

@@ -242,7 +242,8 @@ SettingsSurface {
         //* explicit activate instead, and that is the whole entry point.
         { item: avatarPathRow, kind: "text", activate: function () { root.toggleAvatarEdit(); } },
         { item: wifiRow, kind: "toggle", get: function () { return Flags.lockShowWifi; }, set: function (v) { Flags.lockShowWifi = v; } },
-        { item: batteryRow, kind: "toggle", get: function () { return Flags.lockShowBattery; }, set: function (v) { Flags.lockShowBattery = v; } }
+        { item: batteryRow, kind: "toggle", get: function () { return Flags.lockShowBattery; }, set: function (v) { Flags.lockShowBattery = v; } },
+        { item: mediaRow, kind: "toggle", get: function () { return Flags.lockShowMedia; }, set: function (v) { Flags.lockShowMedia = v; } }
     ]
 
     /**
@@ -510,6 +511,22 @@ SettingsSurface {
                 s: root.s
                 on: Flags.lockShowBattery
                 onToggled: Flags.lockShowBattery = !Flags.lockShowBattery
+            }
+        }
+
+        SettingsRow {
+            id: mediaRow
+            surface: root
+            name: "Media player"
+            icon: "music"
+            //* LockSurface's card under the clock, same arrangement as wifiRow;
+            //* hyprlock draws no media card of its own.
+            visible: root.quickshellLock
+
+            LinkToggle {
+                s: root.s
+                on: Flags.lockShowMedia
+                onToggled: Flags.lockShowMedia = !Flags.lockShowMedia
             }
         }
 
