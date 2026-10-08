@@ -6,6 +6,12 @@
 # working set. This script resolves its own location, so it works from any
 # install path (just point your autostart at it).
 export MALLOC_CONF="background_thread:true,dirty_decay_ms:100,muzzy_decay_ms:100"
+# QtMultimedia's FFmpeg backend announces its build on start and dumps an
+# "Input #0, ..." block for every video it opens (the wallpaper preview), and
+# both land in the session log on every reload. Both are info-level messages
+# under qt.multimedia.*; quickshell's own INFO/WARN lines and any real playback
+# warning or error keep flowing. Appended so it wins over pre-set rules.
+export QT_LOGGING_RULES="${QT_LOGGING_RULES:+$QT_LOGGING_RULES;}qt.multimedia.*.info=false"
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 if command -v quickshell >/dev/null 2>&1; then

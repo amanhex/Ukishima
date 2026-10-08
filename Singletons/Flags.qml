@@ -76,10 +76,11 @@ Singleton {
     //* load-bearing: GameMode.enter() writes them and leave() reads them back, so
     //* dropping one does not throw -- the desktop just stays quiet after a game
     //* because the pre-game value was never restored. They look identical to
-    //* gamePrevProfile below, which nothing reads, so a pass that prunes "unused
-    //* flags" is one line away from taking the block with it. Prune per flag, never
-    //* as a group. gamePrevProfile stays as the reserved slot for restoring the
-    //* power profile, which game mode does not yet touch.
+    //* gamePrevProfile below, which a pass that prunes "unused flags" could take
+    //* for dead, so it is one line away from taking the block with it. Prune per
+    //* flag, never as a group. gamePrevProfile holds the power profile (as a
+    //* string-encoded PowerProfile value) that game mode replaced with
+    //* Performance; "" means game mode did not change it.
     property alias gamePrevDnd: adapter.gamePrevDnd
     property alias gamePrevViz: adapter.gamePrevViz
     property alias gamePrevAwake: adapter.gamePrevAwake

@@ -54,12 +54,6 @@ except Exception:
 PYEOF
 }
 
-wh_state() {
-    local base="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima"
-    mkdir -p "$base"
-    printf '%s\n' "$base"
-}
-
 # Shared rate gate for every wallhaven-bound request (API searches, thumbnail
 # fetches, picks), so the strip can never trip wallhaven's limits again: the
 # documented API cap is 45 calls/min (429 past it), and a Cloudflare WAF has
@@ -133,40 +127,92 @@ wh_gate() {
     flock -u 9
 }
 
-# Wallhaven browse/search. An empty query returns the default hot feed —
-# clicking the strip's wallhaven chip lands there; a query tags it. The third
-# arg picks the sort bucket (hot, latest, top, random, favorites). Each maps to
-# the API's own sort, so the UI labels mean exactly what the site's tabs show:
-# hot -> the Hot feed (rolls over constantly), latest -> date_added, top ->
-# toplist over the last month (its topRange window rolls, so it is not frozen),
-# random -> random, favorites -> all-time Top Liked (kept for API parity, not
-# exposed in the UI because it never changes). A typed query keeps the chosen
-# sort — there is no silent favorites fallback, which used to make tag searches
-# show the same static most-favorited wallpapers forever. The API serves
-# ready-made thumbs, so results are URLs handed over to `thumbget` for a paced
-# local copy: nothing is downloaded until the strip actually shows it.
+# Wallhaven browse/search. An empty query returns the default feed — clicking the
+# strip's wallhaven chip lands there; a query tags it. The third arg picks the sort
+# bucket, each mapping to the API's own sort: hot -> the site-wide trending feed
+# (browse only), favorites -> all-time Top Liked, top -> toplist over a rolling
+# month (widened to a year for a tag with nothing that recent), latest ->
+# date_added, random -> random. The UI drops hot from the offered set once a tag
+# search is in effect, so a query never reaches it here. A typed query otherwise
+# keeps the chosen sort, and there is no silent favorites fallback, which used to
+# make tag searches show the same static most-favorited wallpapers forever. The API
+# serves ready-made thumbs, so results are URLs handed over to `thumbget` for a
+# paced local copy: nothing is downloaded until the strip actually shows it.
+
+# One wallhaven search request, mapped to the strip's entry shape. Echoes the
+# JSON array on success and returns non-zero for a response that must not be
+# trusted as data: no HTTP response at all (offline, DNS failure, time-out), a
+# throttle, or a WAF block. The throttle and block paths latch their cooldown
+# here, so every caller gets the same protection.
+wh_fetch() {
+    local sort="$1" extra="$2" enc="$3" query="$4" page="$5"
+    local raw code
+    wh_gate
+    raw=$(curl -s --max-time 15 -w $'\n%{http_code}' -A "$UA" \
+        "https://wallhaven.cc/api/v1/search?${query:+q=${enc}&}sorting=${sort}&${extra}order=desc&page=${page}")
+    code="${raw##*$'\n'}"
+    raw="${raw%$'\n'*}"
+    [ -n "$code" ] || code=000
+    if [ "$code" = "000" ]; then
+        # No HTTP response at all — a network hiccup, not wallhaven blocking us:
+        # don't latch a phantom cooldown or a blocked chip, just let the UI sit
+        # idle until connectivity returns.
+        return 1
+    fi
+    if [ "$code" != "200" ]; then
+        # 429 = the documented rate cap (45/min); 403/5xx = WAF block or edge
+        # hiccup. Either way latch a hard cooldown so no part of the UI can
+        # keep requesting. The marker that stops the UI is emitted by the
+        # caller, and this path is never cached.
+        case "$code" in
+            429) wh_backoff 120 ;;
+            *)   wh_backoff 60 ;;
+        esac
+        return 1
+    fi
+    [ -n "$raw" ] || return 1
+
+    # Map the wallhaven JSON to the strip's entry shape.
+    printf '%s' "$raw" | jq -c '
+        .data // []
+        | map({
+            image: .path,
+            thumb: (.thumbs.large // .thumbs.original // ""),
+            w: (.dimension_x // 0),
+            h: (.dimension_y // 0)
+          })
+        | map(select(.image != null and .image != ""))
+    ' 2>/dev/null
+}
+
 whsearch() {
     local query="${1:-}" page="${2:-1}" want="${3:-}"
     case "$page" in
         ''|*[!0-9]*) page=1 ;;
     esac
 
-    local enc sort extra raw code base key mapped
+    local enc sort extra base key mapped wide
     enc=$(jq -rn --arg q "$query" '$q|@uri') || { printf '[]\n'; return 0; }
-    sort="hot"
+    # wallhaven's own Hot is kept for the untagged browse feed, where it is exactly
+    # right: without a tag the site-wide trending window *is* the whole query. It
+    # is not offered for a tag search, because that window rolls over the whole
+    # site rather than over the tag and the API exposes no way to rank one tag by
+    # trending -- sao, naruto, ghibli, titan, one piece, bleach, jujutsu, slayer,
+    # studio and attack titan are all empty or under ten there while holding
+    # hundreds of wallpapers each.
+    #
+    # Favourites (all-time most loved), Latest (newest first) and Random (shuffled)
+    # each span the entire tag. Top is toplist over a rolling month, widened to a
+    # year below when a tag has nothing that recent.
+    sort="date_added"
     extra=""
     case "$want" in
-        latest)    sort="date_added" ;;
-        top)       sort="toplist"; extra="topRange=1M&" ;;
-        random)    sort="random" ;;
-        favorites) sort="favorites" ;;
         hot)       sort="hot" ;;
+        favorites) sort="favorites" ;;
+        top)       sort="toplist"; extra="topRange=1m&" ;;
+        random)    sort="random" ;;
+        latest)    sort="date_added" ;;
     esac
-    # Hot is the default browse bucket and the API's real Hot sort: it rolls
-    # over constantly, unlike toplist/views/favorites which sit on the same
-    # mega-popular page one for weeks. Top maps to toplist (with a rolling 1M
-    # window) so it changes over time instead of freezing on all-time views.
-    # A typed query keeps the picked sort; there is no implied favorites.
 
     base=$(wh_state)
     key=$(printf '%s' "$query|$page|$sort" | sha1sum | cut -c1-24)
@@ -180,53 +226,41 @@ whsearch() {
         return 0
     fi
 
-    wh_gate
-    raw=$(curl -s --max-time 15 -w $'\n%{http_code}' -A "$UA" \
-        "https://wallhaven.cc/api/v1/search?${query:+q=${enc}&}sorting=${sort}&${extra}order=desc&page=${page}")
-    code="${raw##*$'\n'}"
-    raw="${raw%$'\n'*}"
-    [ -n "$code" ] || code=000
-    if [ "$code" = "000" ]; then
-        # No HTTP response at all — offline, DNS failure, or a time-out. That
-        # is a network hiccup, not wallhaven blocking us: don't latch a phantom
-        # cooldown or a blocked chip, just hand back an empty page and let the
-        # UI sit idle until connectivity returns.
-        printf '[]\n'
-        return 0
-    fi
-    if [ "$code" != "200" ]; then
-        # 429 = the documented rate cap (45/min); 403/5xx = WAF block or edge
-        # hiccup. Either way latch a hard cooldown so no part of the UI can
-        # keep requesting, and hand the UI a pause marker — its slow retry
-        # timer owns the re-checks, and this is never cached.
-        case "$code" in
-            429) wh_backoff 120 ;;
-            *)   wh_backoff 60 ;;
-        esac
+    mapped=$(wh_fetch "$sort" "$extra" "$enc" "$query" "$page")
+    if [ -z "$mapped" ]; then
+        # Unusable response, not an empty result set. The marker is what stops
+        # the UI and starts its slow retry timer.
         printf '%s\n' '{"wallhaven":"blocked"}'
         return 0
     fi
-    [ -n "$raw" ] || { printf '%s\n' '{"wallhaven":"blocked"}'; return 0; }
 
-    # Map the wallhaven JSON to the strip's entry shape and keep the mapped
-    # chunk as the dedupe cache line.
-    mapped=$(printf '%s' "$raw" | jq -c '
-        .data // []
-        | map({
-            image: .path,
-            thumb: (.thumbs.large // .thumbs.original // ""),
-            w: (.dimension_x // 0),
-            h: (.dimension_y // 0)
-          })
-        | map(select(.image != null and .image != ""))
-    ' 2>/dev/null || true)
-    if [ -n "$mapped" ]; then
-        mkdir -p "$base/wh-cache"
-        printf '%s\n' "$mapped" > "$cache"
-        printf '%s\n' "$mapped"
-    else
-        printf '%s\n' '{"wallhaven":"blocked"}'
+    # Top's month window is still a rolling window, and a niche tag can have
+    # nothing in it: sao, naruto, ghibli and titan are all empty at one month
+    # while holding hundreds of wallpapers each. Widen to a year rather than
+    # showing an empty strip for a filter the user can see is a real ordering.
+    #
+    # This is not a substitution. Both windows answer "most loved, recently" —
+    # toplist counts favourites *gained* inside the window, so widening trades
+    # recency for coverage and never changes what the ranking means. The
+    # distinction from Favourites is preserved either way: that one is the
+    # all-time total.
+    #
+    # Only for a real tag, and only when the month came back with nothing at all.
+    # An empty result here is the tag genuinely having no wallpapers, which the
+    # empty state already reports honestly. Costs one extra request, and only in
+    # the case that would otherwise have been an empty strip.
+    if [ "$want" = "top" ] && [ -n "$query" ] && [ "$mapped" = "[]" ]; then
+        wide=$(wh_fetch "toplist" "topRange=1y&" "$enc" "$query" "$page")
+        if [ -z "$wide" ]; then
+            printf '%s\n' '{"wallhaven":"blocked"}'
+            return 0
+        fi
+        mapped="$wide"
     fi
+
+    mkdir -p "$base/wh-cache"
+    printf '%s\n' "$mapped" > "$cache"
+    printf '%s\n' "$mapped"
 }
 
 # Fetch one wallhaven thumb into a disk cache at the same shared pace.

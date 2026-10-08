@@ -907,8 +907,9 @@ ShellRoot {
      * so the pointer can always pull the bar back in, and the whole layer goes
      * click-through while the monitor runs fullscreen or game mode is active
      * (surfaces do not suppress it: opening the launcher or a settings page
-     * keeps the dock on screen and usable). Keyboard focus is never taken, so
-     * the dock can not steal focus from a tiled window below.
+     * keeps the dock on screen and usable). Keyboard focus is taken only while
+     * the settings panel is open, so the bar never steals focus from a tiled
+     * window below, but the panel's search field can still take a keystroke.
      */
     Variants {
         model: Quickshell.screens
@@ -993,7 +994,14 @@ ShellRoot {
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            /* Mirrors the pill: the dock must not steal focus while the bar is
+             * just sitting there, but the settings panel has a search field that
+             * can never take a keystroke from a window that refuses keyboard
+             * focus. KEYED ON THE PANEL, not `surfaceOpen` — that one is the
+             * pill's own stack (root.openSurface) and stays empty while the
+             * dock's gear is open, which is exactly when typing has to land
+             * here. Exclusive while the panel is open, None again on close. */
+            WlrLayershell.keyboardFocus: dock.settingsOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             WlrLayershell.namespace: "ukishima-dock"
 
             anchors { top: true; left: true; right: true; bottom: true }

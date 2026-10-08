@@ -301,10 +301,9 @@ Item { width: 1; height: 10 * root.s }
                         onActiveFocusChanged: if (!activeFocus) text = "";
 
                         function commit() {
-                            var raw = text.trim();
-                            var clean = raw.charAt(0) === "#" ? raw.slice(1) : raw;
-                            if (/^[0-9a-fA-F]{6}$/.test(clean)) {
-                                Flags.accentOverride = "#" + clean.toUpperCase();
+                            var c = Theme.parseHex(text);
+                            if (c) {
+                                Flags.accentOverride = Theme.hexUpper(c);
                                 accentHueSlider.value = root.accentHue01;
                                 accentSatSlider.value = root.accentSat01;
                             }

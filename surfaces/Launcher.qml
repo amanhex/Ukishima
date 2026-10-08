@@ -6,6 +6,7 @@ import Quickshell.Io
 import "../Singletons"
 import "../lib/fuzzy.js" as Fuzzy
 import "../lib/calc.js" as Calc
+import "../lib/apps.js" as Apps
 import "../components"
 
 /**
@@ -80,13 +81,7 @@ PillSurface {
 
     readonly property string usageFile: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima/launcher-usage.json"
 
-    readonly property var allEntries: {
-        var src = DesktopEntries.applications.values;
-        var out = [];
-        for (var i = 0; i < src.length; i++)
-            if (src[i] && !src[i].noDisplay) out.push(src[i]);
-        return out;
-    }
+    readonly property var allEntries: Apps.visibleApps(DesktopEntries.applications.values)
     readonly property int totalCount: allEntries.length
     readonly property var results: Fuzzy.rank(allEntries, query, usage)
 

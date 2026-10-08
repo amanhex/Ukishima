@@ -74,13 +74,36 @@ PillSurface {
     property int thumbTick: 0
     property bool thumbBusy: false
     property int whPage: 1
-    /** Wallhaven sort bucket: hot (default), latest, top, random. No favorites:
-     * it is all-time static, so the dropdown deliberately omits it. */
+    /**
+     * The wallhaven search that still has to run, when one was asked for while
+     * the fetcher was already busy: `{cmd, gen}`. Only one is ever kept, so a
+     * burst costs two requests rather than one per keystroke.
+     */
+    property var whPending: null
+    /**
+     * Bumped by every `refreshWallhaven`. A reply tagged with an older number
+     * has been superseded, and `searchProc` drops it instead of letting it
+     * repaint the strip behind the newer request's back.
+     */
+    property int whGen: 0
+    /** Wallhaven order. Hot browses the site-wide trending window and is only
+     * offered while no tag is in effect; Favourites (all-time most loved), Top
+     * (most loved this month, widened to a year when a tag has nothing that
+     * recent), Latest (newest first) and Random (shuffled) each span the whole
+     * tag, so those four are offered for searches too. */
     property string whSort: "hot"
     readonly property string whSortLabel: {
-        var m = { hot: "Hot", latest: "Latest", top: "Top", random: "Random" };
+        var m = { hot: "Hot", favorites: "Favourites", top: "Top", latest: "Latest", random: "Random" };
         return m[root.whSort] || "Hot";
     }
+    /**
+     * True once a tag search is actually in effect, which is what the filter row
+     * keys off — not `query`, which tracks the field keystroke by keystroke. The
+     * point where a search begins is when results start showing, and swapping the
+     * filters out from under someone mid-word would be both premature and
+     * distracting.
+     */
+    property bool whTagSearch: false
     /** The chip/dropdown occupying the slot left of the wallhaven chip: the sort dropdown while browsing, else the kind filter. */
     readonly property Item whSlot: root.whSource ? whSortRow : filterRow
 
@@ -452,6 +475,10 @@ PillSurface {
         searchField.text = "";
         if (root.whSource) {
             root.wallResults = [];
+            // Back to the untagged browse feed, so Hot is on offer again. The
+            // order itself is left alone: the user picked it, and a tag search
+            // only ever had to move it if it was Hot.
+            root.whTagSearch = false;
             root.refreshWallhaven();
         } else {
             centerOnCurrent();
@@ -462,9 +489,34 @@ PillSurface {
      * (Re)load a wallhaven page. `query` refines a tag search (empty = default
      * feed), `page` selects the chunk. Results replace the whole strip; a
      * pickton then re-fetches so a stale chunk never lingers.
+     *
+     * A `Process` that is already running silently swallows a new
+     * `running = true`, so firing straight through dropped the request outright
+     * whenever a second search landed while the first was in flight. The pending
+     * slot behind it is only one deep, so a burst of three lost the middle one
+     * entirely, and the strip was left showing whichever query happened to land
+     * first — the "sometimes it works" behaviour, since it depended purely on
+     * whether the previous search had finished.
+     *
+     * So a request arriving mid-flight is latched rather than dropped, and
+     * `searchProc` re-arms it on exit. Only the newest request is kept: a burst
+     * collapses to the one the user actually cares about instead of replaying
+     * every intermediate query against the rate gate.
+     *
+     * Each call takes the next `whGen`, which is how a superseded reply
+     * recognises itself and steps aside.
      */
     function refreshWallhaven(page) {
-        searchProc.command = ["bash", root.searchScript, "whsearch", root.query, page !== undefined ? page : root.whPage, root.whSort];
+        const gen = ++root.whGen;
+        const cmd = ["bash", root.searchScript, "whsearch", root.query,
+            page !== undefined ? page : root.whPage, root.whSort];
+        if (searchProc.running) {
+            root.whPending = { cmd: cmd, gen: gen };
+            return;
+        }
+        root.whPending = null;
+        searchProc.command = cmd;
+        searchProc.gen = gen;
         searchProc.running = true;
     }
 
@@ -499,6 +551,14 @@ PillSurface {
         root.wallResults = [];
         root.focusIndex = 0;
         root.pos = 0;
+        root.whTagSearch = root.query.trim().length > 0;
+        // Hot's window rolls over the whole site rather than over the tag, so it
+        // is not offered for a search — leaving it selected would leave the chip
+        // naming an order that is not in the list, and the strip empty. Favourites
+        // is the nearest honest landing spot: still "the good ones", and still
+        // spanning the tag. Any other pick is left exactly as the user chose it.
+        if (root.whTagSearch && root.whSort === "hot")
+            root.whSort = "favorites";
         root.refreshWallhaven(1);
         searchField.input.focus = false;
     }
@@ -511,6 +571,7 @@ PillSurface {
         root.menuClose();
         if (root.whSource) {
             root.whSource = false;
+            root.whTagSearch = false;
             root.wallResults = [];
             if (root.searching)
                 root.exitSearch();
@@ -589,6 +650,7 @@ PillSurface {
         if (root.whSource) {
             focusIndex = 0;
             pos = 0;
+            whTagSearch = false;
             refreshWallhaven();
         } else {
             centerOnCurrent();
@@ -604,6 +666,13 @@ PillSurface {
         searchField.text = "";
         wallResults = [];
         whSource = false;
+        whTagSearch = false;
+        // Drop a latched search too: it belongs to the browsing session that just
+        // ended, and re-arming it on exit would repopulate the strip the close
+        // deliberately emptied. The generation bump also retires any reply still
+        // in flight for the session being torn down.
+        whPending = null;
+        whGen++;
         thumbQueue = [];
         thumbLocal = {};
         thumbBusy = false;
@@ -743,6 +812,32 @@ PillSurface {
 
     Process {
         id: searchProc
+        /**
+         * The `whGen` of the request this run was issued for. A reply carrying an
+         * older number is a straggler from a request the user has already
+         * replaced, and the latched re-run will paint over it anyway.
+         */
+        property int gen: 0
+
+        onExited: function (exitCode) {
+            // Re-arm whatever arrived while this run was up. Ordered here rather
+            // than in the collector because the collector's streamFinished can
+            // land before the process is marked not-running.
+            if (!root.whPending)
+                return;
+            const next = root.whPending;
+            root.whPending = null;
+            // Leaving wallhaven mid-fetch is not just closing the surface — the
+            // chip does the same thing to `whSource` — and a re-arm would spend a
+            // rate-budgeted request on results nothing is going to show. Always
+            // clear the latch above so it cannot outlive the session.
+            if (!root.whSource)
+                return;
+            searchProc.command = next.cmd;
+            searchProc.gen = next.gen;
+            searchProc.running = true;
+        }
+
         stdout: StdioCollector {
             onStreamFinished: {
                 var out = [];
@@ -761,6 +856,18 @@ PillSurface {
                     root.searching = false;
                     return;
                 }
+                // A straggler must not win the race to paint the strip: if a newer
+                // request was issued while this run was up, that one is already
+                // latched and will repaint with the right results.
+                //
+                // Deliberately keyed on the generation rather than on `query`
+                // matching: `query` tracks the field text keystroke by keystroke,
+                // so comparing against it would throw away a perfectly good feed
+                // reply just because the user had begun typing a tag without
+                // pressing Enter yet. Nothing is requested until Enter, so an
+                // uncommitted keystroke must not count as replacing anything.
+                if (searchProc.gen < root.whGen)
+                    return;
                 if (Array.isArray(parsed))
                     out = parsed;
                 if (root.whSource) {
@@ -948,15 +1055,35 @@ PillSurface {
         z: 55
         s: root.s
         visible: root.whSource
-        options: [
-            { label: "Hot", value: "hot" },
-            { label: "Latest", value: "latest" },
+        // Hot is offered only while browsing. Its window is wallhaven's site-wide
+        // trending feed rather than a ranking of the tag, so it answers nothing
+        // for a search — sao, naruto, ghibli, titan, one piece, bleach, jujutsu,
+        // slayer, studio and attack titan are all empty or under ten there while
+        // holding hundreds of wallpapers each. Offering a filter that returns
+        // nothing is worse than not offering it, so the row narrows for searches
+        // and every remaining filter is one that shows something.
+        options: root.whTagSearch ? [
+            { label: "Favourites", value: "favorites" },
             { label: "Top", value: "top" },
+            { label: "Latest", value: "latest" },
+            { label: "Random", value: "random" }
+        ] : [
+            { label: "Hot", value: "hot" },
+            { label: "Favourites", value: "favorites" },
+            { label: "Top", value: "top" },
+            { label: "Latest", value: "latest" },
             { label: "Random", value: "random" }
         ]
         value: root.whSort
         title: "Sort: " + root.whSortLabel
-        desc: "How wallhaven orders the browse feed"
+        // Top's window is the one caveat worth stating on hover: it counts
+        // favourites gained inside a rolling month, so a tag with nothing that
+        // recent is answered from a year instead.
+        desc: root.whSort === "top"
+            ? "Most loved recently — this month, or this year when a tag has nothing that recent"
+            : root.whTagSearch
+                ? "How wallhaven orders the results for “" + root.query + "”"
+                : "How wallhaven orders the browse feed"
         onChipClicked: root.toggleMenu(whSortRow)
         onPicked: (v) => {
             root.whSort = v;

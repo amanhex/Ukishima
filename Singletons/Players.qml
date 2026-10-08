@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
 import Quickshell.Hyprland
+import "../lib/apps.js" as Apps
 
 /**
  * The one now-playing source the pill views read: the media surface, the source
@@ -193,11 +194,8 @@ Singleton {
         if (id.length === 0)
             return "";
         var apps = DesktopEntries.applications.values;
-        for (var i = 0; i < apps.length; i++) {
-            var e = apps[i];
-            if (e && e.id && e.id.toLowerCase() === id.toLowerCase() && e.icon)
-                return root.iconSourceFor(e.icon);
-        }
+        var exact = Apps.byId(apps, id, true);
+        if (exact) return root.iconSourceFor(exact.icon);
         /**
          * Browsers expose no desktop entry, only an identity like "Mozilla zen";
          * match the entry whose id or name carries one of its words so the real

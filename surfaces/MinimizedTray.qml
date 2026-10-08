@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Hyprland
 import "../Singletons"
 import "../components"
+import "../lib/apps.js" as Apps
 
 /**
  * Row of icon buttons for windows parked on Hyprland's `special:minimized`
@@ -52,12 +53,8 @@ Row {
             : (t && t.wayland && t.wayland.appId ? t.wayland.appId : "");
         if (!cls)
             return "";
-        var apps = DesktopEntries.applications.values;
-        for (var i = 0; i < apps.length; i++) {
-            var e = apps[i];
-            if (e && e.id && e.id.toLowerCase() === cls.toLowerCase() && e.icon)
-                return root.iconSourceFor(e.icon);
-        }
+        var e = Apps.byId(DesktopEntries.applications.values, cls, true);
+        if (e) return root.iconSourceFor(e.icon);
         return root.iconSourceFor(cls);
     }
 
