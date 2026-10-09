@@ -367,7 +367,7 @@ Item {
     readonly property real sysmonW: 392 * s
     readonly property real settingsScale: 0.9
     readonly property real settingsW: 392 * s * settingsScale
-    readonly property real profileW: 560 * s * settingsScale
+    readonly property real profileW: 620 * s * settingsScale
     readonly property real fontpickerW: 360 * s * settingsScale
     readonly property real toastW: 342 * s
     readonly property real quickChooseW: 344 * s

@@ -222,8 +222,10 @@ SettingsSurface {
         Item { width: 1; height: 8 * root.s }
 
         Item {
-            anchors.horizontalCenter: parent.horizontalCenter
-            implicitWidth: avatarCol.implicitWidth + 24 * root.s + factsCol.implicitWidth
+            anchors.left: parent.left
+            anchors.leftMargin: 18 * root.s
+            anchors.right: parent.right
+            anchors.rightMargin: 18 * root.s
             implicitHeight: Math.max(avatarCol.implicitHeight, factsCol.implicitHeight)
 
             // Avatar + name, vertically centred against the info block.
@@ -282,13 +284,14 @@ SettingsSurface {
             Column {
                 id: factsCol
                 anchors.left: avatarCol.right
-                anchors.leftMargin: 24 * root.s
+                anchors.leftMargin: 20 * root.s
+                anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 10 * root.s
 
                 component Fact: Item {
                     required property var modelData
-                    implicitWidth: valueText.implicitWidth + 64 * root.s + 8 * root.s
+                    width: parent.width
                     implicitHeight: valueText.implicitHeight
 
                     Text {
@@ -309,11 +312,13 @@ SettingsSurface {
                         id: valueText
                         anchors.left: parent.left
                         anchors.leftMargin: 64 * root.s + 8 * root.s
+                        anchors.right: parent.right
                         anchors.top: parent.top
                         text: modelData.value !== "" ? modelData.value : "—"
                         color: Theme.subtle
                         font.family: Theme.font
-                        font.pixelSize: 13 * root.s
+                        font.pixelSize: 12.5 * root.s
+                        elide: Text.ElideRight
                     }
                 }
 
@@ -330,17 +335,21 @@ SettingsSurface {
                         text: root.distro !== "" ? root.distro : "—"
                         color: Theme.cream
                         font.family: Theme.font
-                        font.pixelSize: 16 * root.s
+                        font.pixelSize: 15 * root.s
                         font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                        width: parent.width - 26 * root.s - 8 * root.s
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
 
                 Row {
-                    spacing: 28 * root.s
+                    spacing: 20 * root.s
+                    width: parent.width
 
                     Column {
                         spacing: 7 * root.s
+                        width: (parent.width - 20 * root.s) / 2
                         Repeater {
                             model: [
                                 { label: "HOSTNAME", value: root.hostName },
@@ -355,6 +364,7 @@ SettingsSurface {
 
                     Column {
                         spacing: 7 * root.s
+                        width: (parent.width - 20 * root.s) / 2
                         Repeater {
                             model: [
                                 { label: "CPU",      value: root.cpu },
