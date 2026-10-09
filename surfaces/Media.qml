@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Widgets
 import "../Singletons"
 import "../components"
+import "../lib/format.js" as Fmt
 
 /**
  * Now-playing card. A small square cover floats detached on the left; the
@@ -111,27 +112,19 @@ PillSurface {
             if (root.btDevices[i] && root.btDevices[i].connected) out.push(root.btDevices[i]);
         return out;
     }
-    function batteryOf(d) {
-        if (!d || d.battery === undefined || d.battery === null || d.battery <= 0)
-            return -1;
-        var b = d.battery;
-        if (b <= 1)
-            b = b * 100;
-        return Math.round(b);
-    }
     readonly property var btPick: {
         var first = null;
         for (var i = 0; i < root.btConnected.length; i++) {
             var d = root.btConnected[i];
             if (!first)
                 first = d;
-            if (root.batteryOf(d) >= 0)
+            if (Fmt.batteryPct(d) >= 0)
                 return d;
         }
         return first;
     }
     readonly property string btName: btPick ? (btPick.deviceName || btPick.name || "Bluetooth device") : ""
-    readonly property int btBat: btPick ? root.batteryOf(btPick) : -1
+    readonly property int btBat: btPick ? Fmt.batteryPct(btPick) : -1
     readonly property color btBatColor: root.btBat >= 50 ? Theme.cream : root.btBat >= 20 ? Theme.dim : Theme.vermDeep
     readonly property string btGlyph: {
         var icon = btPick ? (btPick.icon || "") : "";
@@ -240,15 +233,6 @@ PillSurface {
     ameForm: "seam"
     amePoint: Qt.point(seamHeadX, seamHeadY)
 
-    function fmt(sec) {
-        if (!(sec > 0))
-            return "0:00";
-        var t = Math.floor(sec);
-        var m = Math.floor(t / 60);
-        var ss = t % 60;
-        return m + ":" + (ss < 10 ? "0" + ss : ss);
-    }
-
     function mix(a, b, t) {
         return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1);
     }
@@ -295,14 +279,60 @@ PillSurface {
     onActiveChanged: {
         if (!active)
             picking = false;
-        else if (!netProc.running)
-            netProc.running = true;
     }
 
     SequentialAnimation {
         id: pulseAnim
         NumberAnimation { target: root; property: "sealPulse"; to: 1; duration: Motion.fast; easing.type: Motion.easeStandard }
         NumberAnimation { target: root; property: "sealPulse"; to: 0; duration: Motion.standard; easing.type: Motion.easeStandard }
+    }
+
+    component RailLine: Row {
+        id: line
+
+        required property string glyph
+        required property string label
+        required property color labelColor
+        property string badge: ""
+        property color badgeColor: Theme.cream
+        property real gap: 6
+        property real s: 1
+
+        width: infoStack.width
+        height: 15 * line.s
+        spacing: line.gap * line.s
+
+        GlyphIcon {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 12 * line.s
+            height: 12 * line.s
+            name: line.glyph
+            color: Theme.iconDim
+        }
+
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            width: Math.max(0, parent.width - (12 + line.gap) * line.s - (line.badge.length > 0 ? 27 * line.s : 0))
+            text: line.label
+            elide: Text.ElideRight
+            color: line.labelColor
+            font.family: Theme.font
+            font.pixelSize: 10 * line.s
+            font.features: { "tnum": 1 }
+        }
+
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: line.badge.length > 0
+            width: 22 * line.s
+            text: line.badge
+            horizontalAlignment: Text.AlignRight
+            color: line.badgeColor
+            font.family: Theme.font
+            font.pixelSize: 10 * line.s
+            font.weight: Font.DemiBold
+            font.features: { "tnum": 1 }
+        }
     }
 
     component KanjiSkip: Item {
@@ -484,69 +514,24 @@ PillSurface {
             anchors.right: parent.right
             spacing: 14 * root.s
 
-            Row {
-                width: infoStack.width
-                height: 15 * root.s
-                spacing: 6 * root.s
-
-                GlyphIcon {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 12 * root.s
-                    height: 12 * root.s
-                    name: "wifi"
-                    color: Theme.iconDim
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Math.max(0, parent.width - 18 * root.s)
-                    text: root.netOk
-                        ? "↓ " + root.fmtNet(root.netDown) + "  ↑ " + root.fmtNet(root.netUp)
-                        : "Not connected"
-                    elide: Text.ElideRight
-                    color: root.netOk ? Theme.cream : Theme.subtle
-                    font.family: Theme.font
-                    font.pixelSize: 10 * root.s
-                    font.features: { "tnum": 1 }
-                }
+            RailLine {
+                s: root.s
+                glyph: "wifi"
+                gap: 6
+                label: root.netOk
+                    ? "↓ " + root.fmtNet(root.netDown) + "  ↑ " + root.fmtNet(root.netUp)
+                    : "Not connected"
+                labelColor: root.netOk ? Theme.cream : Theme.subtle
             }
 
-            Row {
-                width: infoStack.width
-                height: 15 * root.s
-                spacing: 5 * root.s
-
-                GlyphIcon {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 12 * root.s
-                    height: 12 * root.s
-                    name: root.btGlyph
-                    color: Theme.iconDim
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Math.max(0, parent.width - 12 * root.s - 5 * root.s - (root.btBat >= 0 ? 22 * root.s : 0) - 5 * root.s)
-                    text: root.btName.length > 0 ? root.btName : "Not connected"
-                    elide: Text.ElideRight
-                    color: root.btName.length > 0 ? Theme.dim : Theme.subtle
-                    font.family: Theme.font
-                    font.pixelSize: 10 * root.s
-                    font.features: { "tnum": 1 }
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: root.btBat >= 0
-                    width: 22 * root.s
-                    text: root.btBat >= 0 ? root.btBat + "%" : ""
-                    horizontalAlignment: Text.AlignRight
-                    color: root.btBatColor
-                    font.family: Theme.font
-                    font.pixelSize: 10 * root.s
-                    font.weight: Font.DemiBold
-                    font.features: { "tnum": 1 }
-                }
+            RailLine {
+                s: root.s
+                glyph: root.btGlyph
+                gap: 5
+                label: root.btName.length > 0 ? root.btName : "Not connected"
+                labelColor: root.btName.length > 0 ? Theme.dim : Theme.subtle
+                badge: root.btBat >= 0 ? root.btBat + "%" : ""
+                badgeColor: root.btBatColor
             }
 
             Item {
@@ -601,8 +586,8 @@ PillSurface {
 
             readonly property string tail: root.live
                 ? " - Live"
-                : " / " + root.fmt(root.dragging ? root.dragFrac * root.lengthSec : root.positionSec)
-                    + " - " + root.fmt(root.lengthSec)
+                : " / " + Fmt.fmtDuration(root.dragging ? root.dragFrac * root.lengthSec : root.positionSec)
+                    + " - " + Fmt.fmtDuration(root.lengthSec)
 
             Item {
                 id: infoRow
@@ -795,7 +780,7 @@ PillSurface {
                 id: posLbl
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.fmt(root.dragging ? root.dragFrac * root.lengthSec : root.positionSec)
+                text: Fmt.fmtDuration(root.dragging ? root.dragFrac * root.lengthSec : root.positionSec)
                 color: Theme.dim
                 font.family: Theme.font
                 font.pixelSize: 8.5 * root.s
@@ -874,7 +859,7 @@ PillSurface {
                 anchors.right: loopBtn.visible ? loopBtn.left : parent.right
                 anchors.rightMargin: loopBtn.visible ? 7 * root.s : 0
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.fmt(root.lengthSec)
+                text: Fmt.fmtDuration(root.lengthSec)
                 color: Theme.dim
                 font.family: Theme.font
                 font.pixelSize: 8.5 * root.s

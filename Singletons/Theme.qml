@@ -158,6 +158,22 @@ Singleton {
     readonly property string font: (Flags.uiFont.length > 0 && fontFamilies.indexOf(Flags.uiFont) >= 0) ? Flags.uiFont : "Inter"
 
     /**
+     * Monospace face for the scratchpad's body editor, resolved the same way
+     * fontJp is — a code-ish buffer wants columns that line up, and a note is
+     * mostly prose pasted from somewhere that had columns. Falls back through
+     * the usual suspects to the generic `monospace` family, which Qt always
+     * resolves, so this is never empty.
+     */
+    readonly property var monoFamilies: ["JetBrains Mono", "Iosevka", "Berkeley Mono", "Fira Code", "Cascadia Code", "DejaVu Sans Mono"]
+    readonly property string fontMono: {
+        for (let i = 0; i < monoFamilies.length; i++) {
+            if (fontFamilies.indexOf(monoFamilies[i]) >= 0)
+                return monoFamilies[i];
+        }
+        return "monospace";
+    }
+
+    /**
      * Kanji face for the decorative glyphs, resolved against the installed
      * families rather than hardcoded. A missing name is not cosmetic here:
      * fontconfig answers "Zen Kaku Gothic New" with **Noto Sans CJK KR**, so

@@ -115,6 +115,7 @@ Item {
     readonly property bool calendarOpen: surface === "calendar"
     readonly property bool launcherOpen: surface === "launcher"
     readonly property bool clipboardOpen: surface === "clipboard"
+    readonly property bool scratchOpen: surface === "scratch"
     readonly property bool wallpaperOpen: surface === "wallpaper"
     readonly property bool powerOpen: surface === "power"
     readonly property bool mediaOpen: surface === "media"
@@ -349,6 +350,9 @@ Item {
     readonly property real launcherH: 332 * s
     readonly property real clipboardW: 360 * s
     readonly property real clipboardH: 332 * s
+    //* Three card columns on the deck, and a full-surface line length once a note is open.
+    readonly property real scratchW: 556 * s
+    readonly property real scratchH: 348 * s
     readonly property real wallpaperW: 720 * s
     readonly property real wallpaperH: 172 * s
     readonly property real powerW: 330 * s
@@ -412,6 +416,7 @@ Item {
         weather:   { size: () => { const it = surfaceItem("weather"); return Qt.size((it.implicitWidth > 0 ? it.implicitWidth : 282 * s) + 36 * s, it.implicitHeight + 32 * s); }, ame: () => surfaceItem("weather") },
         launcher:  { size: () => { surfaceItem("launcher"); return Qt.size(launcherW, launcherH); }, ame: () => surfaceItem("launcher") },
         clipboard: { size: () => { surfaceItem("clipboard"); return Qt.size(clipboardW, clipboardH); }, ame: () => surfaceItem("clipboard") },
+        scratch:   { size: () => { surfaceItem("scratch"); return Qt.size(scratchW, scratchH); }, ame: () => surfaceItem("scratch") },
         wallpaper: { size: () => { surfaceItem("wallpaper"); return Qt.size(wallpaperW, wallpaperH); }, ame: () => null },
         power:     { size: () => { surfaceItem("power"); return Qt.size(powerW, powerH); }, ame: () => surfaceItem("power") },
         media:     { size: () => { surfaceItem("media"); return Qt.size(mediaW, mediaH); }, ame: () => surfaceItem("media") },
@@ -447,6 +452,7 @@ Item {
         weather:    () => ldWeather,
         launcher:   () => ldLauncher,
         clipboard:  () => ldClip,
+        scratch:    () => ldScratch,
         wallpaper:  () => ldWall,
         power:      () => ldPower,
         media:      () => ldMedia,
@@ -1156,6 +1162,8 @@ Item {
             return wallpaperIcon.mapToItem(pill, wallpaperIcon.width / 2, wallpaperIcon.height + drop * 0.55);
         if (soulTarget === "clipboard")
             return clipboardIcon.mapToItem(pill, clipboardIcon.width / 2, clipboardIcon.height + drop * 0.55);
+        if (soulTarget === "scratch")
+            return scratchIcon.mapToItem(pill, scratchIcon.width / 2, scratchIcon.height + drop * 0.55);
         if (soulTarget === "launcher")
             return launcherIcon.mapToItem(pill, launcherIcon.width / 2, launcherIcon.height + drop * 0.55);
         if (soulTarget === "appearance")
@@ -1814,7 +1822,7 @@ Item {
             readonly property string recTime: {
                 const m = Math.floor(recSecs / 60);
                 const s = recSecs % 60;
-                return (m < 10 ? "0" + m : "" + m) + ":" + (s < 10 ? "0" + s : "" + s);
+                return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
             }
             Timer {
                 interval: 1000
@@ -2672,6 +2680,31 @@ Item {
                 }
 
                 Item {
+                    id: scratchIcon
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 17 * pill.s
+                    height: 17 * pill.s
+
+                    GlyphIcon {
+                        anchors.fill: parent
+                        name: "type"
+                        color: scratchArea.containsMouse ? Theme.cream : Theme.iconDim
+                        stroke: 1.7
+                    }
+
+                    MouseArea {
+                        id: scratchArea
+                        anchors.fill: parent
+                        anchors.margins: -6 * pill.s
+                        hoverEnabled: true
+                        enabled: hover.live
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pill.requestSurface("scratch")
+                        onContainsMouseChanged: if (containsMouse) pill.soulTarget = "scratch"
+                    }
+                }
+
+                Item {
                     id: launcherIcon
                     anchors.verticalCenter: parent.verticalCenter
                     width: 17 * pill.s
@@ -2814,6 +2847,18 @@ Item {
         sourceComponent: Clipboard {
             s: pill.s
             open: pill.clipboardOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+        }
+    }
+
+    Loader {
+        id: ldScratch
+        active: false
+        anchors.fill: parent
+        sourceComponent: Scratchpad {
+            s: pill.s
+            open: pill.scratchOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
         }

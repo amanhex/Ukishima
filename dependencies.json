@@ -1,7 +1,7 @@
 {
   "_schema": "Declared dependency manifest. This file is the single source of truth: scripts/check-deps.sh reads it, remote-install.sh reads it, and DEPENDENCIES.md documents it. Add a dependency HERE rather than to a script's own list, so the installer, the post-update report and the docs cannot drift apart. The schema of one entry:",
   "_entry": "{ \"id\": stable identifier, \"check\": how to detect presence, \"pkg\": package name(s) that provide it, \"why\": what breaks without it, \"nudge\": (optional, default false) true only if the installer should mention it when absent }",
-  "_checks": "{ \"bin\": one executable on PATH } | { \"bins\": ALL of these executables } | { \"anyBin\": at least one of these executables } | { \"path\": a filesystem path that must exist (for things with no executable, e.g. a QML module) }",
+  "_checks": "{ \"bin\": one executable on PATH } | { \"bins\": ALL of these executables } | { \"anyBin\": at least one of these executables } | { \"service\": a systemd unit that must be active }",
   "_core": "Required for the shell to work. A missing core dependency is reported loudly.",
   "_optional": "Adds a feature that degrades gracefully when absent. Never blocks anything.",
 

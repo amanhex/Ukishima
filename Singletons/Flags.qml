@@ -25,7 +25,6 @@ Singleton {
     property alias paletteMode: adapter.paletteMode
     property alias wallpaperDir: adapter.wallpaperDir
     property alias wallpaperFit: adapter.wallpaperFit
-    property alias randomScope: adapter.randomScope
     property alias uiScale: adapter.uiScale
     property alias reduceMotion: adapter.reduceMotion
     property alias manualHue: adapter.manualHue
@@ -141,8 +140,6 @@ Singleton {
             property string wallpaperDir: ""
             //* Still/video wallpaper scaling: awww --resize "no" (center), "crop" (cover), "fit" (contain) or "stretch", driving the strip's Cover/Contain/Stretch/Center control.
             property string wallpaperFit: "crop"
-            //* Super+B random target: "all" repaints every monitor, "cursor" only the one under the pointer.
-            property string randomScope: "all"
             property real uiScale: 1
             property bool reduceMotion: false
             property int manualHue: 30

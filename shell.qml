@@ -322,6 +322,7 @@ ShellRoot {
         function sysmon(mon: string): void { root.toggleSurface(mon, "sysmon"); }
         function system(mon: string): void { root.toggleSurface(mon, "sysmon"); }
         function clipboard(mon: string): void { root.toggleSurface(mon, "clipboard"); }
+        function scratch(mon: string): void { root.toggleSurface(mon, "scratch"); }
         function wallpaper(mon: string): void { root.toggleSurface(mon, "wallpaper"); }
         function media(mon: string): void {
             if (Players.list.length > 0)

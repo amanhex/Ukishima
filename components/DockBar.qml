@@ -423,7 +423,6 @@ Item {
         edge: root.dockBorder
         accentInk: root.dockCream
         accent: root.dockAccent
-        accentDeep: root.dockActive
         paneTop: root.dockPaneTop
         paneBot: root.dockPaneBot
     }

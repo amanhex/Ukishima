@@ -54,12 +54,14 @@ Add these to your Hyprland config:
   Keybinds (hyprlang):
     bind = SUPER, SHIFT+W, exec, %s ipc call ukishima wallpaper ""
     bind = SUPER, SHIFT+V, exec, %s ipc call ukishima clipboard ""
+    bind = SUPER, SHIFT+S, exec, %s ipc call ukishima scratch ""
     bind = SUPER, slash,   exec, %s ipc call ukishima launcher ""
     bind = SUPER, L,       exec, %s/scripts/lock.sh
 
   Keybinds (lua):
     hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("%s ipc call ukishima wallpaper \\\"\\\""))
     hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("%s ipc call ukishima clipboard \\\"\\\""))
+    hl.bind(var_mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("%s ipc call ukishima scratch \\\"\\\""))
     hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("%s ipc call ukishima launcher \\\"\\\""))
     hl.bind(var_mainMod .. " + L",         hl.dsp.exec_cmd("%s/scripts/lock.sh"))
 
@@ -72,6 +74,6 @@ Add these to your Hyprland config:
 
   State: ~/.local/state/ukishima
   Cache: ~/.cache/ukishima
-' "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$INSTALL_ROOT"
+' "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$INSTALL_ROOT"
 
 [ "$missing" -eq 0 ] || printf '\n\033[1;31mSome core dependencies are missing — install them for full functionality.\033[0m\n' >&2

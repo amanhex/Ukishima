@@ -737,49 +737,14 @@ DockPanel {
                 bottomPadding: 16 * root.s
                 spacing: 14 * root.s
 
-                Item {
-                    width: parent.width
-                    height: 14 * root.s
-
-                    Rectangle {
-                        id: hueStrip
-                        anchors.fill: parent
-                        radius: 7 * root.s
-                        gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: Qt.hsla(0.0, 0.7, 0.5, 1) }
-                            GradientStop { position: 1 / 6; color: Qt.hsla(1 / 6, 0.7, 0.5, 1) }
-                            GradientStop { position: 2 / 6; color: Qt.hsla(2 / 6, 0.7, 0.5, 1) }
-                            GradientStop { position: 3 / 6; color: Qt.hsla(3 / 6, 0.7, 0.5, 1) }
-                            GradientStop { position: 4 / 6; color: Qt.hsla(4 / 6, 0.7, 0.5, 1) }
-                            GradientStop { position: 5 / 6; color: Qt.hsla(5 / 6, 0.7, 0.5, 1) }
-                            GradientStop { position: 1.0; color: Qt.hsla(1.0, 0.7, 0.5, 1) }
-                        }
-
-                        Rectangle {
-                            id: hueThumb
-                            width: 16 * root.s
-                            height: 16 * root.s
-                            radius: width / 2
-                            anchors.verticalCenter: parent.verticalCenter
-                            x: (Flags.dockManualHue / 359) * (hueStrip.width - width)
-                            color: root.accentColor
-                            border.width: 2.5 * root.s
-                            border.color: root.pal ? root.pal.ink : "white"
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            function setHue(mx) {
-                                if (Flags.dockManualSat < 0.05)
-                                    Flags.dockManualSat = 0.5;
-                                Flags.dockManualHue = Math.round(Math.max(0, Math.min(1, mx / hueStrip.width)) * 359);
-                            }
-                            onPressed: (mouse) => setHue(mouse.x)
-                            onPositionChanged: (mouse) => setHue(mouse.x)
-                        }
-                    }
+                HueStrip {
+                    s: root.s
+                    hue: Flags.dockManualHue
+                    sat: Flags.dockManualSat
+                    thumbColor: root.accentColor
+                    thumbBorder: root.pal ? root.pal.ink : "white"
+                    onSatSeeded: Flags.dockManualSat = 0.5
+                    onHuePicked: (h) => Flags.dockManualHue = h
                 }
 
                 Item {
@@ -836,85 +801,19 @@ DockPanel {
                     }
                 }
 
-                Item {
-                    width: parent.width
-                    height: 30 * root.s
-
-                    Text {
-                        id: hexHint
-                        anchors.left: parent.left
-                        anchors.leftMargin: 12 * root.s
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "#"
-                        color: root.pal ? root.pal.faint : "gray"
-                        font.family: Theme.font
-                        font.pixelSize: 14 * root.s
-                        font.weight: Font.DemiBold
-                    }
-
-                    TextField {
-                        id: hexField
-                        anchors.left: hexHint.right
-                        anchors.leftMargin: 6 * root.s
-                        anchors.right: parent.right
-                        anchors.rightMargin: 12 * root.s
-                        anchors.verticalCenter: parent.verticalCenter
-                        background: null
-                        padding: 0
-                        color: root.pal ? root.pal.ink : "white"
-                        font.family: Theme.font
-                        font.pixelSize: 13 * root.s
-                        font.features: { "tnum": 1 }
-                        placeholderText: root.currentHex
-                        placeholderTextColor: root.pal ? root.pal.faint : "gray"
-                        selectByMouse: true
-                        selectionColor: root.pal ? root.pal.accent : "gray"
-                        maximumLength: 7
-
-                        onActiveFocusChanged: if (!activeFocus) text = "";
-
-                        function commit() {
-                            var c = Theme.parseHex(text);
-                            if (c) {
-                                if (c.hslHue >= 0) {
-                                    /* QML color hslHue/hslSaturation are 0-1 fractions;
-                                     * the strip stores hue 0-359 and sat 0-1. */
-                                    Flags.dockManualHue = Math.round(c.hslHue * 359);
-                                    Flags.dockManualSat = Math.min(1, c.hslSaturation);
-                                } else {
-                                    Flags.dockManualSat = 0;
-                                }
-                            }
-                            text = "";
-                            focus = false;
+                HexField {
+                    s: root.s
+                    placeholder: root.currentHex
+                    ink: root.pal ? root.pal.ink : "white"
+                    faint: root.pal ? root.pal.faint : "gray"
+                    accent: root.pal ? root.pal.accent : "gray"
+                    onCommitted: (hue, sat) => {
+                        if (hue >= 0) {
+                            Flags.dockManualHue = hue;
+                            Flags.dockManualSat = sat;
+                        } else {
+                            Flags.dockManualSat = 0;
                         }
-
-                        onAccepted: commit()
-                        onEditingFinished: commit()
-
-                        /* Enter/Space must apply, not leak into the surface's row
-                         * activation (which would toggle the focused manual row and
-                         * revert the hex). Accepting the key at the field stops it
-                         * before the shell's settings-activate handler sees it. */
-                        Keys.onPressed: (e) => {
-                            if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
-                                commit();
-                                e.accepted = true;
-                            } else if (e.key === Qt.Key_Space) {
-                                e.accepted = true;
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.left: hexField.left
-                        anchors.right: hexField.right
-                        anchors.top: hexField.bottom
-                        anchors.topMargin: 3 * root.s
-                        height: 1
-                        color: root.pal ? root.pal.faint : "gray"
-                        opacity: hexField.activeFocus ? 0.7 : 0.18
-                        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
                     }
                 }
             }

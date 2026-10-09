@@ -4,6 +4,9 @@ LiquidGlass LiquidGlass.qml
 GlyphIcon GlyphIcon.qml
 HeatHold HeatHold.qml
 HFader HFader.qml
+HexField HexField.qml
+HueStrip HueStrip.qml
+IconChip IconChip.qml
 KbLayout KbLayout.qml
 LinkToggle LinkToggle.qml
 Marquee Marquee.qml

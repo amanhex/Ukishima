@@ -39,8 +39,6 @@ QtObject {
     property color accentInk: "#ff00ff"
     /** The accent, lit — the selected segment's tint and the toggle's fill. */
     property color accent: "#ff00ff"
-    /** The accent darkened, for pressed or de-emphasised accent text. */
-    property color accentDeep: "#ff00ff"
     /** Panel fill, top and bottom, for a host that paints its own backdrop. */
     property color paneTop: "#ff00ff"
     property color paneBot: "#ff00ff"

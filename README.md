@@ -16,7 +16,7 @@ Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland built arou
 
 - **Dynamic island** — one morphing pill per monitor; every module grows its own surface out of it, in place.
 - **泊 Dock** — pinned and running apps with hover magnification and multi-window previews (no cursor warp), auto-hide, and its own theme (Light / Dark / Dynamic / Manual) and glass.
-- **Surfaces** — launcher, weather, calendar, media, mixer, wallpaper strip + wallhaven search, screen recorder, clipboard, wifi, bluetooth, battery, power menu, system monitor, notifications, OSD, toasts, settings.
+- **Surfaces** — launcher, weather, calendar, media, mixer, wallpaper strip + wallhaven search, screen recorder, clipboard, wifi, bluetooth, battery, power menu, system monitor, notifications, OSD, toasts, scratchpad, settings.
 - **Wallpapers** — shuffled `awww` bag, live `mpvpaper` videos, per-wallpaper fit, and a palette that retints the UI.
 - **Extras** — night light, game mode, keep-awake, in-app updater.
 
@@ -51,12 +51,14 @@ Clones to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints 
   ```conf
   bind = SUPER, SHIFT+W, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper ""
   bind = SUPER, SHIFT+V, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima clipboard ""
+  bind = SUPER, SHIFT+S, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima scratch ""
   bind = SUPER, slash,   exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher ""
   ```
 
   ```lua
   hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper \"\""))
   hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima clipboard \"\""))
+  hl.bind(var_mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima scratch \"\""))
   hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher \"\""))
   ```
 

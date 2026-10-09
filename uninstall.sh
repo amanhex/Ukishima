@@ -16,8 +16,13 @@ pkill -f "[q]uickshell .*[Uu]kishima" 2>/dev/null || true
 rm -rf "$SHARE/quickshell/ukishima"
 rm -rf "$CONF/quickshell/ukishima"
 
-# State: flags, events, gamemode snapshot, wallpaper selection.
+# State: flags, scratchpad notes, dock pins, gamemode snapshot, wallpaper
+# selection, and the wallhaven rate-gate journal.
 rm -rf "$STATE/ukishima"
+
+# Calendar events still live in a "pill" sibling rather than under ukishima/,
+# so the scrub above never caught them. Remove it on its own.
+rm -rf "$STATE/pill"
 
 # Wallpaper state lives in siblings of that dir, one file per setting, and the
 # set keeps growing — a .lock file for the bag was missed when the list was
@@ -30,9 +35,10 @@ for f in "$STATE"/ukishima-wallpaper*; do
   rm -rf "$f"
 done
 
-# Cache: weather, rec thumbs, wallpaper + clipboard previews, dynamic
-# colors — all under the single ~/.cache/ukishima root. The scattered legacy
-# dirs are removed too so an old install is cleaned out fully.
+# Cache: weather, rec thumbs, wallpaper + clipboard previews, wallhaven
+# search results and thumbs, dynamic colors — all under the single
+# ~/.cache/ukishima root. The scattered legacy dirs are removed too so an old
+# install is cleaned out fully.
 rm -rf "$CACHE/ukishima"
 rm -rf "$CACHE/ukishima-wp-thumbs"
 rm -rf "$CACHE/cliphist-thumbs"

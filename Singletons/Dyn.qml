@@ -21,7 +21,6 @@ Singleton {
     readonly property string primary: adapter.primary
     readonly property string primaryContainer: adapter.primary_container
     readonly property string onPrimaryContainer: adapter.on_primary_container
-    readonly property string outline: adapter.outline
     readonly property string outlineVariant: adapter.outline_variant
     readonly property string cream: adapter.cream
     readonly property string bright: adapter.bright
@@ -50,7 +49,6 @@ Singleton {
             property string primary: "#f5bd6f"
             property string primary_container: "#633f00"
             property string on_primary_container: "#ffddb3"
-            property string outline: "#9c8f80"
             property string outline_variant: "#4f4539"
             property string cream: "#e6d6cb"
             property string bright: "#fff6f0"

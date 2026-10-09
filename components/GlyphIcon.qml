@@ -230,6 +230,10 @@ Item {
             "d": "M6 14l6-6 6 6",
             "fill": false
         },
+        "plus": {
+            "d": "M12 5v14 M5 12h14",
+            "fill": false
+        },
         "close": {
             "d": "M6 6l12 12 M18 6l-12 12",
             "fill": false

@@ -7,6 +7,7 @@ import Quickshell.Widgets
 import Quickshell.Services.Pipewire
 import "../Singletons"
 import "../components"
+import "../lib/format.js" as Fmt
 
 /**
  * 録 RECORD surface: drives gpu-screen-recorder through the ScreenRec singleton,
@@ -84,12 +85,6 @@ PillSurface {
     Process {
         id: rmClipProc
         onExited: ScreenRec.refreshRecent()
-    }
-
-    function fmtTime(sec) {
-        var m = Math.floor(sec / 60);
-        var s = sec % 60;
-        return m + ":" + (s < 10 ? "0" + s : s);
     }
 
     function press() {
@@ -426,7 +421,7 @@ PillSurface {
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: ScreenRec.recording ? root.fmtTime(root.elapsed)
+                    text: ScreenRec.recording ? Fmt.fmtDuration(root.elapsed)
                         : (root.counting ? "GET READY" : "IDLE")
                     color: ScreenRec.recording ? Theme.vermLit : Theme.dim
                     font.family: Theme.font

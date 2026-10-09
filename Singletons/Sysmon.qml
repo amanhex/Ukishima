@@ -77,9 +77,7 @@ Singleton {
         var d = Math.floor(sec / 86400);
         var h = Math.floor((sec % 86400) / 3600);
         var m = Math.floor((sec % 3600) / 60);
-        var hh = h < 10 ? "0" + h : "" + h;
-        var mm = m < 10 ? "0" + m : "" + m;
-        return "UP " + d + "D " + hh + ":" + mm;
+        return "UP " + d + "D " + String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
     }
 
     Component.onCompleted: detectProc.running = true

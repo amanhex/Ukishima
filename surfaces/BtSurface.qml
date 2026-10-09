@@ -5,6 +5,7 @@ import Quickshell.Io
 import Quickshell.Bluetooth
 import "../Singletons"
 import "../components"
+import "../lib/format.js" as Fmt
 
 /**
  * 歯 BLUETOOTH surface: kanji header, scan with 25s auto-stop, adapter toggle,
@@ -81,14 +82,6 @@ PillSurface {
         }
         if (d.address && d.address.length) parts.push(d.address);
         return parts.join(" · ");
-    }
-
-    function batteryLevel(d) {
-        if (!d || d.battery === undefined || d.battery === null) return -1;
-        var b = d.battery;
-        if (b <= 0) return -1;
-        if (b <= 1) b = b * 100;
-        return Math.round(b);
     }
 
     /**
@@ -341,7 +334,7 @@ PillSurface {
                                 || modelData.state === BluetoothDeviceState.Disconnecting)
                             : false
                         readonly property bool confirming: addr.length > 0 && root.expandedAddress === addr
-                        readonly property int battery: root.batteryLevel(modelData)
+                        readonly property int battery: Fmt.batteryPct(modelData)
                         width: devCol.width
                         spacing: 2 * root.s
 

@@ -48,7 +48,6 @@ PillSurface {
         edge: Theme.border
         accentInk: Theme.cream
         accent: Theme.verm
-        accentDeep: Theme.verm
     }
 
     /** The behaviour, shared with any other host that wants it. */

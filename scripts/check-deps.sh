@@ -182,7 +182,7 @@ fi
 TSV=$(jq -r '
   # Normalise a check argument to a single space-separated string. Accepts
   # either shape, because a one-element list is not a list anyone wants to read:
-  # { "pkgdb": "jq" } and { "pkgdb": ["jq"] } should not be a way to make the
+  # { "bin": "jq" } and { "bin": ["jq"] } should not be a way to make the
   # manifest fail to parse. A bare string is passed through, an array is joined.
   def flat($v): if ($v | type) == "array" then ($v | join(" "))
                 elif ($v | type) == "string" then $v
@@ -190,12 +190,10 @@ TSV=$(jq -r '
   def arg($c): if ($c.bin?) then flat($c.bin)
                elif ($c.bins?) then flat($c.bins)
                elif ($c.anyBin?) then flat($c.anyBin)
-               elif ($c.pkgdb?) then flat($c.pkgdb)
                elif ($c.service?) then flat($c.service)
                else flat($c.path // "") end;
   def kind($c): if ($c.bin?) then "bin" elif ($c.bins?) then "bins"
-                elif ($c.anyBin?) then "anyBin" elif ($c.pkgdb?) then "pkgdb"
-                elif ($c.service?) then "service"
+                elif ($c.anyBin?) then "anyBin" elif ($c.service?) then "service"
                 else "path" end;
   def pkgs($p): (($p // []) | join(" "));
   # Package names for the detected manager. `pkg` holds the Arch name; an entry
@@ -210,20 +208,6 @@ TSV=$(jq -r '
   | @tsv' --arg pm "$PM_ID" "$MANIFEST") || {
   printf 'check-deps: could not read entries out of %s\n' "$MANIFEST" >&2
   exit 2
-}
-
-# Expand a leading ~/ or $HOME/ in a path that arrived via a variable. The shell
-# performs tilde expansion during parsing, not on the result of a parameter
-# expansion, so `$HOME` in a manifest value stays literal unless we do it here.
-# Deliberately not `eval`: the manifest is repo data, and handing it to the
-# evaluator would make "editing a JSON file" an arbitrary-code-execution path
-# for no benefit, since these two prefixes are the only ones anyone needs.
-expand_path() {
-  case "$1" in
-    "~/"*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
-    '$HOME/'*) printf '%s/%s' "$HOME" "${1#\$HOME/}" ;;
-    *) printf '%s' "$1" ;;
-  esac
 }
 
 # ---------------------------------------------------------------------------
@@ -329,26 +313,10 @@ pkg_installed() {
 # True when the package database is one we can actually read. Separate from
 # pkg_installed so a manifest entry can distinguish "not installed" from "we
 # have no way of knowing", which are very different things to print at someone.
-pkgdb_readable() {
-  load_pkgdb
-  [ "$PKGDB_READABLE" -eq 1 ]
-}
-
 present() {
   case "$1" in
     bin)
       command -v "$2" >/dev/null 2>&1
-      ;;
-    pkgdb)
-      # At least one of the named packages is installed, read from the local
-      # package database. The one check form that needs no binary, no running
-      # daemon and no path — the right tool for a dependency that exists only
-      # as a set of files, such as a font or a kernel module package.
-      local one
-      for one in $2; do
-        pkg_installed "$one" && return 0
-      done
-      return 1
       ;;
     bins)
       # Every listed binary must be present.
@@ -378,32 +346,6 @@ present() {
       command -v systemctl >/dev/null 2>&1 || return 1
       systemctl is-active --quiet "$2" 2>/dev/null
       ;;
-    path)
-      # Any one pattern is enough, and each may contain a glob.
-      #
-      # This is where distribution independence actually matters. A dependency
-      # delivered as a QML module has no executable, so `command -v` can never
-      # find it and a filesystem path is the only option — but hardcoding one
-      # absolute path would report every non-Arch user as missing something they
-      # have, because the Qt module directory is not in the same place
-      # everywhere: /usr/lib/qt6/qml on Arch, /usr/lib64/qt6/qml on Fedora,
-      # /usr/lib/x86_64-linux-gnu/qt6/qml on Debian, elsewhere again under Nix.
-      #
-      # The any-of *list* is what covers those, because a glob cannot: in bash's
-      # pathname expansion `*` stops at `/`, so `/usr/lib*/qt6/qml/Foo` reaches
-      # Arch and Fedora but never Debian's extra `x86_64-linux-gnu` component.
-      # Two patterns do: "/usr/lib*/qt6/qml/Foo /usr/lib/*/qt6/qml/Foo".
-      #
-      # A glob is still worth having, for the case where one distribution nests
-      # the module under a version-suffixed directory of its own.
-      local pat hit
-      for pat in $2; do
-        for hit in $(expand_path "$pat"); do
-          [ -e "$hit" ] && return 0
-        done
-      done
-      return 1
-      ;;
     *)
       return 1
       ;;
@@ -423,7 +365,7 @@ opt_total=0
 
 # Why a check failed is not always the same thing. "The package is not
 # installed" and "the package is installed but the thing I looked for is not
-# where I looked" produce identical results from a binary or path check, and
+# where I looked" produce identical results from a binary check, and
 # they call for opposite remedies: install the package, or fix $PATH. Telling
 # them apart is what the package database is for, and it is a distinction worth
 # making automatically because the wrong one produces advice that cannot work.
@@ -442,8 +384,6 @@ pkg_present_hint() {
           printf '%s is installed, so the binary is probably just not on your $PATH' "$p" ;;
         service)
           printf '%s is installed, so the unit is present but not running — start it rather than reinstalling' "$p" ;;
-        path)
-          printf '%s is installed, but the expected path is absent — usually a package layout other than the one this manifest assumes' "$p" ;;
         *)
           printf '%s is installed, so what this checks for is present but not where it looked' "$p" ;;
       esac
@@ -458,13 +398,10 @@ while IFS="$(printf '\t')" read -r section id why pkgs kind arg nudge; do
   if present "$kind" "$arg"; then
     continue
   fi
-  # Not for pkgdb entries: those already consult the database, so a failure is
-  # the absence being real and there is nothing left to disambiguate.
-  hint=""
-  if [ "$kind" != pkgdb ]; then
-    hint=$(pkg_present_hint "$pkgs" "$kind")
-    [ -n "$hint" ] && missing_pkg_present=1
-  fi
+  # A missing check may still be satisfiable by an installed package the check
+  # looked for in the wrong place; the hint names the likely remedy.
+  hint=$(pkg_present_hint "$pkgs" "$kind")
+  [ -n "$hint" ] && missing_pkg_present=1
   case "$section" in
     core)
       core_total=$((core_total + 1))
@@ -517,8 +454,6 @@ dep_entry_rows() {
       bins) printf '<span class="tag">%s</span>' "$(esc "${arg// / + }")" ;;
       anyBin) printf '<span class="tag">%s</span>' "$(esc "${arg// / | }")" ;;
       service) printf '<span class="tag">systemd: %s</span>' "$(esc "$arg")" ;;
-      pkgdb) printf '<span class="tag">package: %s</span>' "$(esc "${arg// / | }")" ;;
-      path) printf '<span class="tag">%s</span>' "$(esc "$arg")" ;;
     esac
     printf '</div><div class="why">%s</div>' "$(esc "$why")"
     # When the package is installed anyway, the reason this was reported is not

@@ -216,7 +216,12 @@ whsearch() {
 
     base=$(wh_state)
     key=$(printf '%s' "$query|$page|$sort" | sha1sum | cut -c1-24)
-    cache="$base/wh-cache/$key.json"
+    # Search results are a cache, not state: they belong under the XDG cache
+    # root, and they are pruned by age below — the dedupe window is 20s, so
+    # anything older is dead weight. Keeping them in the state dir was both a
+    # misplacement and an unbounded leak.
+    cachedir="${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/wh-cache"
+    cache="$cachedir/$key.json"
     # Dedupe: a repeat of the same query+page+sort within the window replays the
     # stored chunk without any network. The UI re-fires the current page on
     # picks, sort changes and surface re-entry, which used to be a fresh request
@@ -258,8 +263,9 @@ whsearch() {
         mapped="$wide"
     fi
 
-    mkdir -p "$base/wh-cache"
+    mkdir -p "$cachedir"
     printf '%s\n' "$mapped" > "$cache"
+    find "$cachedir" -maxdepth 1 -type f -name '*.json' -mmin +10 -delete 2>/dev/null
     printf '%s\n' "$mapped"
 }
 
@@ -288,6 +294,39 @@ thumbget() {
     local max_mb total old
     max_mb="${WH_THUMB_MAX_MB:-20}"
     { [ "$max_mb" -gt 0 ] 2>/dev/null; } || max_mb=20
+    total=$(du -sk "$base" 2>/dev/null | awk '{print $1}')
+    while [ "${total:-0}" -gt $(( max_mb * 1024 )) ]; do
+        old=$(find "$base" -maxdepth 1 -type f ! -name '.*' \
+              -printf '%T@ %p\n' | sort -n | head -1 | cut -d' ' -f2-)
+        [ -n "$old" ] || break
+        rm -f "$old"
+        total=$(du -sk "$base" 2>/dev/null | awk '{print $1}')
+    done
+    printf '%s\n' "$cache"
+}
+
+# Fetch one remote live-wallpaper preview clip into a disk cache, shaped like
+# `thumbget`: cached hits are served instantly, and every fresh store prunes the
+# least-recently used clips so a long browsing session cannot leave hundreds of
+# megabytes of webm behind. The clips are only needed while the strip is open,
+# so a size cap is enough — no TTL bookkeeping.
+prevget() {
+    local url="${1:-}"
+    [ -n "$url" ] || exit 1
+    local base digest cache tmp
+    base="${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/previews"
+    mkdir -p "$base"
+    digest=$(printf '%s\n' "$url" | md5sum | cut -d' ' -f1)
+    cache="$base/ukishima-wp-preview-$digest.webm"
+    [ -s "$cache" ] && { printf '%s\n' "$cache"; exit 0; }
+    tmp="$base/.$digest.tmp"
+    trap 'rm -f "$tmp"' EXIT
+    curl -fsL --max-time 25 -A "$UA" -o "$tmp" "$url" || exit 1
+    [ -s "$tmp" ] || exit 1
+    mv "$tmp" "$cache"
+    local max_mb total old
+    max_mb="${WH_PREVIEW_MAX_MB:-50}"
+    { [ "$max_mb" -gt 0 ] 2>/dev/null; } || max_mb=50
     total=$(du -sk "$base" 2>/dev/null | awk '{print $1}')
     while [ "${total:-0}" -gt $(( max_mb * 1024 )) ]; do
         old=$(find "$base" -maxdepth 1 -type f ! -name '.*' \
@@ -415,6 +454,7 @@ case "${1:-}" in
     search)   search "${2:-}" "${3:-all}" ;;
     whsearch) whsearch "${2:-}" "${3:-1}" "${4:-}" ;;
     thumbget) thumbget "${2:-}" ;;
+    prevget)  prevget "${2:-}" ;;
     download) download "${2:-}" ;;
     *)        printf '[]\n'; exit 0 ;;
 esac

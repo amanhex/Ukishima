@@ -92,6 +92,12 @@ PillSurface {
      * recent), Latest (newest first) and Random (shuffled) each span the whole
      * tag, so those four are offered for searches too. */
     property string whSort: "hot"
+    readonly property var whSortBase: [
+        { label: "Favourites", value: "favorites" },
+        { label: "Top", value: "top" },
+        { label: "Latest", value: "latest" },
+        { label: "Random", value: "random" }
+    ]
     readonly property string whSortLabel: {
         var m = { hot: "Hot", favorites: "Favourites", top: "Top", latest: "Latest", random: "Random" };
         return m[root.whSort] || "Hot";
@@ -182,8 +188,19 @@ PillSurface {
         dFit.open = false;
     }
 
+    function isVideo(path) {
+        return /\.(mp4|webm|mkv|mov)$/i.test(path);
+    }
+
     function isMotion(path) {
-        return /\.(gif|mp4|webm|mkv|mov)$/i.test(path);
+        return /\.gif(\?|$)/i.test(path) || isVideo(path);
+    }
+
+    /** Drop the current results and restart the strip at its top. */
+    function resetStrip() {
+        root.wallResults = [];
+        root.focusIndex = 0;
+        root.pos = 0;
     }
 
     /**
@@ -531,9 +548,7 @@ PillSurface {
         if (next < 1)
             return;
         root.whPage = next;
-        root.wallResults = [];
-        root.focusIndex = 0;
-        root.pos = 0;
+        root.resetStrip();
         root.refreshWallhaven(next);
     }
 
@@ -548,9 +563,7 @@ PillSurface {
         if (!root.whSource)
             return;
         root.whPage = 1;
-        root.wallResults = [];
-        root.focusIndex = 0;
-        root.pos = 0;
+        root.resetStrip();
         root.whTagSearch = root.query.trim().length > 0;
         // Hot's window rolls over the whole site rather than over the tag, so it
         // is not offered for a search — leaving it selected would leave the chip
@@ -584,9 +597,7 @@ PillSurface {
                 searchField.text = "";
             }
             root.whSource = true;
-            root.wallResults = [];
-            root.focusIndex = 0;
-            root.pos = 0;
+            root.resetStrip();
             root.refreshWallhaven();
         }
     }
@@ -712,10 +723,11 @@ PillSurface {
 
     /**
      * Remote video previews. Qt's MediaPlayer chokes on streaming https, so
-     * the focused result's preview clip (small webm) is pulled into /tmp by
-     * curl and played from disk. The fetch is debounced behind the focus and
+     * the focused result's preview clip (small webm) is fetched into the cache
+     * dir and played from disk. The fetch is debounced behind the focus and
      * keyed by url hash, so paging back to a seen result replays instantly and
-     * a stale download can never attach to the wrong tile.
+     * a stale download can never attach to the wrong tile. The clip cache is
+     * size-capped by the fetcher, so browsing cannot leak webm forever.
      */
     property string previewFile: ""
 
@@ -739,9 +751,7 @@ PillSurface {
             if (!root.active || root.focusedPreviewUrl === "")
                 return;
             prevFetch.url = root.focusedPreviewUrl;
-            prevFetch.command = ["bash", "-c",
-                "d=\"${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/previews\"; mkdir -p \"$d\"; f=\"$d/ukishima-wp-preview-$(printf %s \"$1\" | md5sum | cut -d' ' -f1).webm\"; [ -s \"$f\" ] || curl -fsL --max-time 25 -A 'Mozilla/5.0' -o \"$f\" \"$1\" || { rm -f \"$f\"; exit 1; }; printf %s \"$f\"",
-                "_", root.focusedPreviewUrl];
+            prevFetch.command = ["bash", root.searchScript, "prevget", root.focusedPreviewUrl];
             prevFetch.running = true;
         }
     }
@@ -1062,18 +1072,8 @@ PillSurface {
         // holding hundreds of wallpapers each. Offering a filter that returns
         // nothing is worse than not offering it, so the row narrows for searches
         // and every remaining filter is one that shows something.
-        options: root.whTagSearch ? [
-            { label: "Favourites", value: "favorites" },
-            { label: "Top", value: "top" },
-            { label: "Latest", value: "latest" },
-            { label: "Random", value: "random" }
-        ] : [
-            { label: "Hot", value: "hot" },
-            { label: "Favourites", value: "favorites" },
-            { label: "Top", value: "top" },
-            { label: "Latest", value: "latest" },
-            { label: "Random", value: "random" }
-        ]
+        options: root.whTagSearch ? root.whSortBase
+            : [{ label: "Hot", value: "hot" }].concat(root.whSortBase)
         value: root.whSort
         title: "Sort: " + root.whSortLabel
         // Top's window is the one caveat worth stating on hover: it counts
@@ -1088,9 +1088,7 @@ PillSurface {
         onPicked: (v) => {
             root.whSort = v;
             root.whPage = 1;
-            root.wallResults = [];
-            root.focusIndex = 0;
-            root.pos = 0;
+            root.resetStrip();
             root.refreshWallhaven(1);
         }
     }
@@ -1100,48 +1098,22 @@ PillSurface {
      * wallpaper glyph and loads the default wallhaven feed; typing the query
      * then refines it. A second click returns to the local strip.
      */
-    Rectangle {
+    IconChip {
         id: whChip
         anchors.top: parent.top
         anchors.topMargin: 9 * root.s
         anchors.right: root.whSlot.left
         anchors.rightMargin: 8 * root.s
         z: 55
-        width: 22 * root.s
-        height: 22 * root.s
-        radius: height / 2
-        color: "transparent"
-
-        GlyphIcon {
-            id: whGlyph
-            anchors.centerIn: parent
-            width: 13 * root.s
-            height: 13 * root.s
-            name: "wallpaper"
-            color: root.whSource ? Theme.vermLit : Theme.iconDim
-            stroke: 1.8
-            Behavior on color { ColorAnimation { duration: Motion.fast } }
-        }
-
-        HoverHandler {
-            id: whChipHover
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.toggleWallhaven()
-        }
-
-        Tooltip {
-            placement: "below"
-            align: "right"
-            title: "Wallhaven"
-            desc: root.whSource
-                ? "Browsing wallhaven — click to return to local"
-                : "Click to browse wallhaven wallpapers"
-            show: whChipHover.hovered
-        }
+        s: root.s
+        glyph: "wallpaper"
+        glyphColor: root.whSource ? Theme.vermLit : Theme.iconDim
+        hoverFill: false
+        tooltipTitle: "Wallhaven"
+        tooltipDesc: root.whSource
+            ? "Browsing wallhaven — click to return to local"
+            : "Click to browse wallhaven wallpapers"
+        onClicked: root.toggleWallhaven()
     }
     Dropdown {
         id: dFit
@@ -1190,63 +1162,20 @@ PillSurface {
      * glyph spins while the pipeline is in flight and the strip re-centres on
      * the current wallpaper when it lands.
      */
-    Rectangle {
+    IconChip {
         id: refreshBtn
         anchors.top: parent.top
         anchors.topMargin: 9 * root.s
         anchors.right: parent.right
         anchors.rightMargin: 14 * root.s
         z: 40
-        width: 22 * root.s
-        height: 22 * root.s
-        radius: height / 2
-        color: refHover.hovered ? Theme.frameBg : "transparent"
-        border.width: refHover.hovered ? 1 : 0
-        border.color: Theme.hairSoft
-
-        GlyphIcon {
-            id: refIcon
-            anchors.centerIn: parent
-            width: 13 * root.s
-            height: 13 * root.s
-            name: "refresh"
-            color: refHover.hovered ? Theme.vermLit : Theme.iconDim
-            Behavior on color { ColorAnimation { duration: Motion.fast } }
-
-            RotationAnimation on rotation {
-                running: Walls.refreshing
-                from: 0
-                to: 360
-                duration: 900
-                loops: Animation.Infinite
-            }
-
-            Connections {
-                target: Walls
-                function onRefreshingChanged() {
-                    if (!Walls.refreshing)
-                        refIcon.rotation = 0;
-                }
-            }
-        }
-
-        HoverHandler {
-            id: refHover
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: Walls.refresh()
-        }
-
-        Tooltip {
-            placement: "below"
-            align: "right"
-            title: "Refresh thumbnails"
-            desc: "Regenerate missing previews"
-            show: refHover.hovered
-        }
+        s: root.s
+        glyph: "refresh"
+        hoverBorder: true
+        spinning: Walls.refreshing
+        tooltipTitle: "Refresh thumbnails"
+        tooltipDesc: "Regenerate missing previews"
+        onClicked: Walls.refresh()
     }
 
     /**
@@ -1399,7 +1328,7 @@ PillSurface {
             readonly property string videoSource: dead
                 ? ""
                 : (remote ? (focused && root.previewFile !== "" ? "file://" + root.previewFile : "")
-                  : (/\.(mp4|webm|mkv|mov)$/i.test(modelData.path) ? "file://" + modelData.path : ""))
+                  : (root.isVideo(modelData.path) ? "file://" + modelData.path : ""))
             readonly property bool showPreview: !dead && focused && root.previewArmed && ao < 0.5
             readonly property string resLabel: dead
                 ? ""
@@ -1408,7 +1337,7 @@ PillSurface {
             readonly property bool motion: dead
                 ? false
                 : (remote ? (modelData.preview !== undefined || isGif)
-                  : /\.(gif|mp4|webm|mkv|mov)$/i.test(modelData.path))
+                  : root.isMotion(modelData.path))
 
             readonly property real off: gridIndex - root.pos
             readonly property real ao: Math.abs(off)
@@ -1778,64 +1707,32 @@ PillSurface {
      * missed), so nothing accumulates and the strip never grows unboundedly.
      * Hidden unless the strip is in wallhaven browse mode.
      */
-    Rectangle {
+    IconChip {
         id: whPrev
         anchors.left: parent.left
         anchors.leftMargin: 8 * root.s
         anchors.verticalCenter: parent.verticalCenter
         visible: root.whSource && root.whPage > 1
         z: 40
-        width: 22 * root.s
-        height: 22 * root.s
-        radius: height / 2
-        color: whPrevHover.hovered ? Theme.frameBg : "transparent"
-
-        GlyphIcon {
-            anchors.centerIn: parent
-            width: 12 * root.s
-            height: 12 * root.s
-            name: "chevron-left"
-            color: whPrevHover.hovered ? Theme.vermLit : Theme.iconDim
-            stroke: 2
-        }
-
-        HoverHandler { id: whPrevHover }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.whPageMove(-1)
-        }
+        s: root.s
+        glyph: "chevron-left"
+        glyphSize: 12 * root.s
+        stroke: 2
+        onClicked: root.whPageMove(-1)
     }
 
-    Rectangle {
+    IconChip {
         id: whNext
         anchors.right: parent.right
         anchors.rightMargin: 8 * root.s
         anchors.verticalCenter: parent.verticalCenter
         visible: root.whSource
         z: 40
-        width: 22 * root.s
-        height: 22 * root.s
-        radius: height / 2
-        color: whNextHover.hovered ? Theme.frameBg : "transparent"
-
-        GlyphIcon {
-            anchors.centerIn: parent
-            width: 12 * root.s
-            height: 12 * root.s
-            name: "chevron-right"
-            color: whNextHover.hovered ? Theme.vermLit : Theme.iconDim
-            stroke: 2
-        }
-
-        HoverHandler { id: whNextHover }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.whPageMove(1)
-        }
+        s: root.s
+        glyph: "chevron-right"
+        glyphSize: 12 * root.s
+        stroke: 2
+        onClicked: root.whPageMove(1)
     }
 
     Text {

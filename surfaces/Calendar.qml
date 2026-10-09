@@ -25,6 +25,47 @@ import "../components"
 PillSurface {
     id: root
 
+    component UnderlinedField: Item {
+        id: ufield
+
+        property real s: 1
+        property string placeholder: ""
+        property int hints: 0
+        property bool tnum: false
+        signal changed(string text)
+        signal committed()
+
+        TextField {
+            id: uIn
+            anchors.fill: parent
+            background: null
+            padding: 0
+            leftPadding: 2 * ufield.s
+            verticalAlignment: TextInput.AlignVCenter
+            color: Theme.cream
+            font.family: Theme.font
+            font.pixelSize: 13 * ufield.s
+            font.features: ufield.tnum ? ({ "tnum": 1 }) : ({})
+            placeholderText: ufield.placeholder
+            placeholderTextColor: Theme.faint
+            inputMethodHints: ufield.hints
+            selectByMouse: true
+            selectionColor: Theme.verm
+            onTextChanged: ufield.changed(text)
+            Keys.onReturnPressed: ufield.committed()
+        }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: Theme.faint
+            opacity: uIn.activeFocus ? 0.7 : 0.2
+            Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+        }
+    }
+
     mTop: 16
     mLeft: 18
     mRight: 18
@@ -115,11 +156,12 @@ PillSurface {
      * (the calendar's lantern, mirroring Sysmon) rather than floating over a
      * random date cell — which is what read as Ame jumping somewhere random.
      */
-    readonly property bool selectedInView: selectedDate.length > 0
-        && Number(selectedDate.split("-")[1]) === viewMonth + 1
-        && Number(selectedDate.split("-")[0]) === viewYear
+    readonly property var selParts: selectedDate.length > 0 ? selectedDate.split("-") : []
+    readonly property bool selectedInView: selParts.length === 3
+        && Number(selParts[1]) === viewMonth + 1
+        && Number(selParts[0]) === viewYear
     readonly property int focusDay: selectedInView
-        ? Number(selectedDate.split("-")[2])
+        ? Number(selParts[2])
         : (todayVisible ? today.getDate() : 0)
     readonly property bool focused: focusDay > 0
     readonly property int focusIndex: offset + focusDay - 1
@@ -161,9 +203,7 @@ PillSurface {
     /** "YYYY-MM-DD" for a day number in the viewed month, zero-padded for keys. */
     function dateKey(day) {
         var m = viewMonth + 1;
-        var mm = m < 10 ? "0" + m : "" + m;
-        var dd = day < 10 ? "0" + day : "" + day;
-        return viewYear + "-" + mm + "-" + dd;
+        return viewYear + "-" + String(m).padStart(2, "0") + "-" + String(day).padStart(2, "0");
     }
 
     function shiftMonth(delta) {
@@ -721,36 +761,13 @@ PillSurface {
                 width: parent.width
                 spacing: 8 * root.s
 
-                Item {
+                UnderlinedField {
                     width: parent.width - addBtn.width - 8 * root.s
                     height: 28 * root.s
-
-                    TextField {
-                        id: titleField
-                        anchors.fill: parent
-                        background: null
-                        padding: 0
-                        leftPadding: 2 * root.s
-                        verticalAlignment: TextInput.AlignVCenter
-                        color: Theme.cream
-                        font.family: Theme.font
-                        font.pixelSize: 13 * root.s
-                        placeholderText: "what's on"
-                        placeholderTextColor: Theme.faint
-                        selectByMouse: true
-                        selectionColor: Theme.verm
-                        onTextChanged: { editor.titleVal = text; editor.autoRecur(); }
-                        Keys.onReturnPressed: editor.commit()
-                    }
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 1
-                        color: Theme.faint
-                        opacity: titleField.activeFocus ? 0.7 : 0.2
-                        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
-                    }
+                    s: root.s
+                    placeholder: "what's on"
+                    onChanged: (t) => { editor.titleVal = t; editor.autoRecur(); }
+                    onCommitted: editor.commit()
                 }
 
                 Rectangle {
@@ -800,72 +817,26 @@ PillSurface {
                 spacing: 8 * root.s
                 visible: editor.mode === "timed"
 
-                Item {
+                UnderlinedField {
                     width: (parent.width - 8 * root.s) / 2
                     height: 26 * root.s
-
-                    TextField {
-                        id: startField
-                        anchors.fill: parent
-                        background: null
-                        padding: 0
-                        leftPadding: 2 * root.s
-                        verticalAlignment: TextInput.AlignVCenter
-                        color: Theme.cream
-                        font.family: Theme.font
-                        font.pixelSize: 13 * root.s
-                        font.features: { "tnum": 1 }
-                        placeholderText: "09:00"
-                        placeholderTextColor: Theme.faint
-                        inputMethodHints: Qt.ImhPreferNumbers
-                        selectByMouse: true
-                        selectionColor: Theme.verm
-                        onTextChanged: editor.startVal = text
-                        Keys.onReturnPressed: editor.commit()
-                    }
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 1
-                        color: Theme.faint
-                        opacity: startField.activeFocus ? 0.7 : 0.2
-                        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
-                    }
+                    s: root.s
+                    placeholder: "09:00"
+                    hints: Qt.ImhPreferNumbers
+                    tnum: true
+                    onChanged: (t) => editor.startVal = t
+                    onCommitted: editor.commit()
                 }
 
-                Item {
+                UnderlinedField {
                     width: (parent.width - 8 * root.s) / 2
                     height: 26 * root.s
-
-                    TextField {
-                        id: endField
-                        anchors.fill: parent
-                        background: null
-                        padding: 0
-                        leftPadding: 2 * root.s
-                        verticalAlignment: TextInput.AlignVCenter
-                        color: Theme.cream
-                        font.family: Theme.font
-                        font.pixelSize: 13 * root.s
-                        font.features: { "tnum": 1 }
-                        placeholderText: "until"
-                        placeholderTextColor: Theme.faint
-                        inputMethodHints: Qt.ImhPreferNumbers
-                        selectByMouse: true
-                        selectionColor: Theme.verm
-                        onTextChanged: editor.endVal = text
-                        Keys.onReturnPressed: editor.commit()
-                    }
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        height: 1
-                        color: Theme.faint
-                        opacity: endField.activeFocus ? 0.7 : 0.2
-                        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
-                    }
+                    s: root.s
+                    placeholder: "until"
+                    hints: Qt.ImhPreferNumbers
+                    tnum: true
+                    onChanged: (t) => editor.endVal = t
+                    onCommitted: editor.commit()
                 }
             }
 

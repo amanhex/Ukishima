@@ -28,3 +28,4 @@ UpdateSurface UpdateSurface.qml
 Wallpaper Wallpaper.qml
 WeatherSurface WeatherSurface.qml
 WifiSurface WifiSurface.qml
+Scratchpad Scratchpad.qml
