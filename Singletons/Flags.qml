@@ -104,6 +104,7 @@ Singleton {
         property alias lockMethod: adapter.lockMethod
         //* Path to the avatar image shown on the lockscreen. Empty = none, and the lock draws a person glyph.
         property alias lockAvatarPath: adapter.lockAvatarPath
+        property alias lockShowMedia: adapter.lockShowMedia
 
     FileView {
         id: file
