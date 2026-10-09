@@ -453,10 +453,14 @@ PillSurface {
                         name: "pin"
                         stroke: 1.8
                         visible: slot.card.pinned === true
-                        //* The one place the hue earns its keep: this mark is what
-                        //* separates a pinned card from the rest, and it sits on the
-                        //* card's own tile rather than the bare surface.
-                        color: Theme.accent
+                        //* This mark is what separates a pinned card from the rest.
+                        //* `lit` rather than the accent: the surface's design notes
+                        //* document the accent as nearly invisible on the light
+                        //* surface (1.64:1), which made the pin look missing there —
+                        //* exactly the "pin did nothing" report this fixes. A pin
+                        //* state marker follows the same lit token the header glyph
+                        //* uses, which clears 3:1 in both modes.
+                        color: root.lit
                     }
 
                     Text {
@@ -978,7 +982,7 @@ PillSurface {
                 selectByMouse: true
                 color: Theme.cream
                 font.family: Theme.fontMono
-                font.pixelSize: 11.5 * root.s
+                font.pixelSize: 13 * root.s
                 //* Same reasoning as the title field's selection.
                 selectionColor: Theme.verm
                 selectedTextColor: Theme.cream
