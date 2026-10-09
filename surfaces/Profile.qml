@@ -32,10 +32,38 @@ SettingsSurface {
     rows: []
     // ── Avatar: auto-detected, no configuring ────────────────────────────
 
-    /** First of the conventional ~/.face* files that exists, else "". */
+    /** Avatar: prefer lock avatar path if set, else first of ~/.face* files, else "". */
     property string faceFile: ""
+    function expandPath(p) {
+        if (!p || p === "")
+            return "";
+        if (p === "~")
+            return Quickshell.env("HOME");
+        if (p.indexOf("~/") === 0)
+            return (Quickshell.env("HOME") || "") + p.slice(1);
+        return p;
+    }
+    FileView {
+        id: flagsView
+        path: "file://" + (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima/flags.json"
+        printErrors: false
+        onLoaded: {
+            try {
+                const f = JSON.parse(flagsView.text());
+                let path = f.lockAvatarPath || "";
+                if (path) {
+                    root.faceFile = root.expandPath(path);
+                    if (root.faceFile)
+                        return;
+                }
+            } catch (e) {}
+            // fall back to ~/.face*
+            faceProc.running = true;
+        }
+    }
     Process {
-        running: true
+        id: faceProc
+        running: false
         command: ["sh", "-c", "for f in \"$HOME/.face\" \"$HOME/.face.icon\" \"$HOME/.face.png\" \"$HOME/.face.jpg\"; do if [ -f \"$f\" ]; then echo \"$f\"; break; fi; done"]
         stdout: SplitParser { onRead: (line) => root.faceFile = line.trim() }
     }
