@@ -8,7 +8,6 @@ Quickshell (QML) "dynamic island" shell for Hyprland: one morphing pill per moni
 - `Singletons/` — shared state/services (qmldir registers `singleton X X.qml`). Add new shared state here, not in surfaces.
 - `surfaces/` — per-surface QML (launcher, mixer, …). `components/` — reusable widgets. Both have qmldir import files.
 - `lockscreen/` — **separate Quickshell config** (`lockscreen/shell.qml`), launched only via `scripts/lock.sh`. Never treat it as part of the main shell's import graph.
-- `shot/` — **separate Quickshell config** (`shot/shell.qml`, the screenshot studio), launched only via `scripts/shot.sh`. Same rule: no singletons, no Theme, hardcoded palette.
 - `lib/` — plain JS helpers + `apps.test.mjs`.
 - `scripts/` — shell/python helpers; `dependencies.json` is the single source of truth consumed by `check-deps.sh`, `remote-install.sh`, and `DEPENDENCIES.md` — update it there, nowhere else.
 - Runtime state: `~/.local/state/ukishima/flags.json` (e.g. `lockMethod`), cache `~/.cache/ukishima/`.

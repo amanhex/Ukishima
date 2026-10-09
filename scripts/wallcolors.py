@@ -306,6 +306,9 @@ def main():
         # and the dock's dynamic modes). --hue keeps it untouched so a manual
         # slider never restyles the other side's dynamic palette.
         (CACHE / "colors.json").write_text(json.dumps(pill, indent=2) + "\n")
+        # colors-dark.json is the same hue on the dark ramp, for dark-only
+        # consumers (GTK dark file, the screenshot studio). Same --hue rule.
+        (CACHE / "colors-dark.json").write_text(json.dumps(dark_pill, indent=2) + "\n")
     render_fastfetch(pill)
     render_gtk(pill, dark_pill)
 

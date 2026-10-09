@@ -158,14 +158,7 @@
       "id": "grim",
       "check": { "bin": "grim" },
       "pkg": ["grim"],
-      "why": "all screenshot-studio captures, plus the capture behind the lock's backdrop — without it that backdrop falls back to the wallpaper",
-      "nudge": true
-    },
-    {
-      "id": "hyprpicker",
-      "check": { "bin": "hyprpicker" },
-      "pkg": ["hyprpicker"],
-      "why": "the color-picker mode of the screenshot studio (copies the hex itself)",
+      "why": "the screen capture behind the lock's capture backdrop — without it that backdrop falls back to the wallpaper",
       "nudge": true
     },
     {

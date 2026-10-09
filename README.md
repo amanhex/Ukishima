@@ -74,19 +74,6 @@ Clones to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints 
 
   It uses `hyprlock` if you have it, otherwise its own Quickshell lockscreen — set the backend under **Lock** in settings. Point it at your own `hyprlock.conf` if you'd rather configure the lock your own way.
 
-- **Screenshots** go through the separate studio overlay (`scripts/shot.sh`), so they get their own binds — region freezes and annotates, screen shoots the monitor, window hover-picks a client, color copies a hex:
-
-  ```conf
-  bind = , Print,       exec, ~/.local/share/quickshell/ukishima/scripts/shot.sh screen
-  bind = SHIFT, Print,  exec, ~/.local/share/quickshell/ukishima/scripts/shot.sh region
-  bind = ALT, Print,    exec, ~/.local/share/quickshell/ukishima/scripts/shot.sh window
-  ```
-
-  ```lua
-  hl.bind("Print",         hl.dsp.exec_cmd("/home/username/.local/share/quickshell/ukishima/scripts/shot.sh screen"))
-  hl.bind("SHIFT + Print", hl.dsp.exec_cmd("/home/username/.local/share/quickshell/ukishima/scripts/shot.sh region"))
-  ```
-
 - **Uninstall**:
 
   ```bash

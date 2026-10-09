@@ -38,8 +38,7 @@ ones you actually want.
 | `kdialog` / `zenity` | the native folder picker for the record output directory |
 | `power-profiles-daemon` | the power-profile picker on the battery hover — the row shows "Not installed" without it, and it isn't needed on desktops |
 | `hyprlock` | the lock backend the shell prefers — without it the lock falls back to the Quickshell lockscreen, which has its own background, blur, avatar and indicator settings |
-| `grim` | all screenshot-studio captures, plus the capture behind the lock's backdrop — without it that backdrop falls back to the wallpaper |
-| `hyprpicker` | the color-picker mode of the screenshot studio (copies the hex itself) |
+| `grim` | the screen capture behind the lock's capture backdrop — without it that backdrop falls back to the wallpaper |
 | `kitty` | live terminal palette reload via `kitty @ set-colors` (needs `allow_remote_control yes`, and `include ~/.cache/ukishima/kitty-colors` for persistence) |
 | `ghostty` | live terminal palette reload over D-Bus |
 | `fastfetch` | the recoloured system readout (needs `~/.config/fastfetch/config.jsonc.in`) |

@@ -2781,29 +2781,7 @@ Item {
                     }
                 }
 
-                Item {
-                    id: shotIcon
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 17 * pill.s
-                    height: 17 * pill.s
-
-                    GlyphIcon {
-                        anchors.fill: parent
-                        name: "camera"
-                        color: shotArea.containsMouse ? Theme.cream : Theme.iconDim
-                        stroke: 1.7
-                    }
-
-                    MouseArea {
-                        id: shotArea
-                        anchors.fill: parent
-                        anchors.margins: -6 * pill.s
-                        hoverEnabled: true
-                        enabled: hover.live
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Quickshell.execDetached([Config.hyprPath("scripts", "shot.sh"), "region"])
-                    }
-                }
+               
             }
         }
     }
