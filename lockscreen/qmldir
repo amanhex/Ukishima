@@ -2,3 +2,4 @@ LockContext LockContext.qml
 LockSurface LockSurface.qml
 LockBattery LockBattery.qml
 LockWifi LockWifi.qml
+LockMedia LockMedia.qml
