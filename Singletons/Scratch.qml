@@ -281,6 +281,13 @@ Singleton {
         root.currentSlug = slug;
         root.draft = "";
         root.dirty = false;
+        //* Push the empty body through the same load path every other selection uses,
+        //* or the editor keeps rendering the *previous* note's text under the new
+        //* name (the TextArea only ever receives bodies via onBodyLoaded). Bump the
+        //* read token too, so a cat still in flight from a note opened moments ago
+        //* cannot land on this fresh, still-empty buffer.
+        root.readToken++;
+        root.bodyLoaded(slug, "");
         //* The seeded entry is enough to draw and select; the file is only needed so
         //* the note survives a restart. So no select() and no rescan here: both would
         //* race the caller, which focuses the body on the very next statement, and a
