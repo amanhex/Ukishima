@@ -320,8 +320,7 @@ Rectangle {
     //* black flash on every unlock. Nothing fades to nothing now. The lock
     //* *becomes* the desktop: the furniture leaves, and the blur relaxes until
     //* the picture is the desktop, so the compositor's handover lands on a
-    //* frame that is already what is behind it. impasto does the same thing
-    //* with its `clearing` property.
+    //* frame that is already what is behind it.
     //
     //* One value drives the whole release so its parts cannot drift apart.
     readonly property bool closing: context.closing
