@@ -7,10 +7,12 @@ Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland built arou
 ## Preview
 
 <p align="center">
-<a href="https://youtu.be/5aSVFX3FqvM">
-  <img src="https://img.youtube.com/vi/5aSVFX3FqvM/maxresdefault.jpg" width="80%" alt="Ukishima demo on YouTube">
+<a href="https://ukishima.uklab.workers.dev/">
+  <img src="https://ukishima.uklab.workers.dev/images/ukishima/desktop.webp" width="80%" alt="Ukishima running on a live Hyprland desktop">
 </a>
 </p>
+
+Explore the animated showcase, features and settings on the [Ukishima website](https://ukishima.uklab.workers.dev/).
 
 ## Features
 
