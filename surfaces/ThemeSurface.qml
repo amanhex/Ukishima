@@ -242,34 +242,35 @@ Item { width: 1; height: 10 * root.s }
             surface: root
             name: "Wallpaper folder"
             icon: "wallpaper"
-            sub: wpDirRow.editing ? "Return to save · Esc to cancel" : Walls.wpDir
+            //* Cleared while the field is open — the wallpaper surface's
+            //* header path has no caption beside its field either, and a
+            //* wrapping sub re-laid out at a width near zero would spike the
+            //* row height. The path comes back with it on Return/Esc.
+            sub: wpDirRow.editing ? "" : Walls.wpDir
             captionOnFocus: true
             last: true
 
             property bool editing: false
 
+            //* Wallpaper-surface style field (see Wallpaper.qml folderRow):
+            //* a bare TextInput, no box, opening instantly at full row width.
+            //* 58* is where the name's text column ends — its 44* left offset
+            //* plus its 14* gap — so the name elides to nothing as the field
+            //* claims the space instead of sitting under it. No width
+            //* animation: the swap is instant on the wallpaper surface too,
+            //* and an animated close would re-wrap the caption mid-move.
             Item {
-                width: wpDirRow.editing ? 200 * root.s : 26 * root.s
+                width: wpDirRow.editing ? wpDirRow.width - 58 * root.s : 26 * root.s
                 height: 26 * root.s
-                Behavior on width { NumberAnimation { duration: Motion.fast } }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 9 * root.s
-                    visible: wpDirRow.editing
-                    color: Qt.alpha(Theme.frameBg, 0.7)
-                    border.width: 1
-                    border.color: wpDirField.activeFocus ? Qt.alpha(Theme.vermLit, 0.7) : Theme.hairSoft
-                }
 
                 TextInput {
                     id: wpDirField
                     anchors.left: parent.left
                     anchors.right: parent.right
+                    anchors.rightMargin: 12 * root.s
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 10 * root.s
-                    anchors.rightMargin: 10 * root.s
                     visible: wpDirRow.editing
+                    enabled: wpDirRow.editing
                     clip: true
                     color: Theme.cream
                     font.family: Theme.font
@@ -289,6 +290,20 @@ Item { width: 1; height: 10 * root.s }
                             focus = false;
                             e.accepted = true;
                         }
+                    }
+
+                    //* The resolved dir as the hint while the flag is empty —
+                    //* the same placeholder the wallpaper surface's field
+                    //* shows for the same flag.
+                    Text {
+                        anchors.fill: parent
+                        verticalAlignment: Text.AlignVCenter
+                        visible: wpDirField.text.length === 0
+                        text: Walls.wpDir
+                        elide: Text.ElideMiddle
+                        color: Theme.faint
+                        font.family: Theme.font
+                        font.pixelSize: 11 * root.s
                     }
                 }
 

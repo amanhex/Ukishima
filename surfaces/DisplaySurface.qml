@@ -12,6 +12,10 @@ import "../components"
  * Reached from the Appearance index and folds back to it on the back chevron or
  * an empty click.
  *
+ * The expanded pill's module switches keep their own 器 PILL MODULES
+ * sub-surface, linked from the `modulesTile` row below, so they do not bury
+ * the clock controls; both fold back to DISPLAY on the chevron.
+ *
  * The dock's switch is the only dock control here; the rest of the dock's
  * settings are on the dock, in the panel its own gear opens. See `dockRow` for
  * why the switch has to live where the dock cannot reach.
@@ -29,6 +33,7 @@ SettingsSurface {
         { item: secRow, kind: "toggle", get: function () { return Flags.clockSeconds; }, set: function (v) { Flags.clockSeconds = v; } },
         { item: glyphRow, kind: "toggle", get: function () { return Flags.showGlyphs; }, set: function (v) { Flags.showGlyphs = v; } },
         { item: vizRow, kind: "toggle", get: function () { return Flags.musicViz; }, set: function (v) { Flags.musicViz = v; } },
+        { item: modulesTile, kind: "nav", surface: "modules" },
         { item: dockRow, kind: "toggle", get: function () { return Flags.dockEnabled; }, set: function (v) { Flags.dockEnabled = v; } }
     ]
 
@@ -150,6 +155,28 @@ Item { width: 1; height: 10 * root.s }
                 s: root.s
                 on: Flags.musicViz
                 onToggled: Flags.musicViz = !Flags.musicViz
+            }
+        }
+
+        /**
+         * Which icons the expanded pill's hover row draws keeps its own
+         * surface — 器 PILL MODULES, opened by this row — so the optional
+         * module switches do not bury the clock settings. See that file for
+         * the list and for why the Appearance cog is not among them.
+         */
+        SettingsRow {
+            id: modulesTile
+            surface: root
+            glyph: "器"
+            name: "Pill modules"
+            sub: "Optional icons the bar shows"
+
+            GlyphIcon {
+                width: 16 * root.s
+                height: 16 * root.s
+                name: "chevron-right"
+                color: root.focusRowItem === modulesTile ? Theme.cream : Theme.iconDim
+                stroke: 1.9
             }
         }
 

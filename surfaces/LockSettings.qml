@@ -173,8 +173,8 @@ SettingsSurface {
 
     /**
      * Open or close the avatar field. One function for both the row's activate
-     * (Return, or a click on the row body) and the click on the box, so the two
-     * entry points cannot drift.
+     * (Return, or a click on the row body) and a click on the field at rest,
+     * so the two entry points cannot drift.
      */
     function toggleAvatarEdit() {
         if (avatarPathRow.editing) {
@@ -409,45 +409,35 @@ SettingsSurface {
             //* a path field here is editing a setting that has no effect.
             //* And pointless under hyprlock, which draws no avatar at all.
             visible: root.quickshellLock && Flags.lockShowAvatar
-            //* While editing, the sub explains how to get out of the field,
-            //* the same way the wallpaper folder row does. At rest it reports
-            //* the one thing the box cannot: whether the path resolved, and
-            //* what an empty flag means.
-            sub: avatarPathRow.editing ? "Return to save · Esc to cancel" : root.avatarSub
+            //* While the field is open the caption clears, the way the
+            //* wallpaper surface's header path does beside its own field:
+            //* at rest it carries the one thing the field cannot say —
+            //* whether the path resolved, and what an empty flag means.
+            sub: avatarPathRow.editing ? "" : root.avatarSub
             captionOnFocus: true
 
             property bool editing: false
 
-            //* Built to match the wallpaper folder row (surfaces/ThemeSurface.qml
-            //* wpDirRow) element for element: a 26px tile at rest carrying just
-            //* the row's icon, animating open to 200px on edit, a bordered box
-            //* that only exists while editing, a bare TextInput, and
-            //* sub switching to the save/cancel hint. An earlier attempt kept a
-            //* permanently-open box showing the path instead, on the reasoning
-            //* that the resting state ought to display the value — but that is
-            //* a different control, not this one, and it read as neither.
+            //* Wallpaper-surface style field (see Wallpaper.qml folderRow):
+            //* a bare TextInput, no box, opening instantly at full row width
+            //* with the current value as its hint when cleared. 58* is where
+            //* the name's text column ends — its 44* left offset plus its 14*
+            //* gap — so the name elides to nothing as the field claims the
+            //* space instead of sitting under it. No width animation: the
+            //* swap is instant on the wallpaper surface too, and an animated
+            //* close would re-wrap the caption mid-move.
             Item {
-                width: avatarPathRow.editing ? 200 * root.s : 26 * root.s
+                width: avatarPathRow.editing ? avatarPathRow.width - 58 * root.s : 26 * root.s
                 height: 26 * root.s
-                Behavior on width { NumberAnimation { duration: Motion.fast } }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 9 * root.s
-                    visible: avatarPathRow.editing
-                    color: Qt.alpha(Theme.frameBg, 0.7)
-                    border.width: 1
-                    border.color: avatarInput.activeFocus ? Qt.alpha(Theme.vermLit, 0.7) : Theme.hairSoft
-                }
 
                 TextInput {
                     id: avatarInput
                     anchors.left: parent.left
                     anchors.right: parent.right
+                    anchors.rightMargin: 12 * root.s
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 10 * root.s
-                    anchors.rightMargin: 10 * root.s
                     visible: avatarPathRow.editing
+                    enabled: avatarPathRow.editing
                     clip: true
                     color: Theme.cream
                     font.family: Theme.font
@@ -463,6 +453,20 @@ SettingsSurface {
                             root.endAvatarEdit(false, "");
                             e.accepted = true;
                         }
+                    }
+
+                    //* The stored path as the hint when the field is empty —
+                    //* "no image" while the flag is unset, mirroring how the
+                    //* wallpaper surface's field hints the dir it would use.
+                    Text {
+                        anchors.fill: parent
+                        verticalAlignment: Text.AlignVCenter
+                        visible: avatarInput.text.length === 0
+                        text: root.avatarStored !== "" ? root.avatarStored : root.avatarPlaceholder
+                        elide: Text.ElideMiddle
+                        color: Theme.faint
+                        font.family: Theme.font
+                        font.pixelSize: 11 * root.s
                     }
                 }
 

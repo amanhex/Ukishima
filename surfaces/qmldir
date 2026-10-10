@@ -18,6 +18,7 @@ LockSettings LockSettings.qml
 Media Media.qml
 MinimizedTray MinimizedTray.qml
 Mixer Mixer.qml
+ModulesSurface ModulesSurface.qml
 Osd Osd.qml
 OsdPopup OsdPopup.qml
 Power Power.qml

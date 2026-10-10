@@ -6,9 +6,10 @@ import "../Singletons"
 import "../components"
 
 /**
- * Mixer surface: header with DND / Keep-Awake chips and a row of four vertical
- * ink-faders wired to real hardware (brightness via ddcutil, vibrance via
- * nvibrant, volume and mic via Pipewire). Fills the lower body of the pill.
+ * Mixer surface: header with the device pickers and Keep-Awake / Night-light /
+ * Game-mode chips, and a row of four vertical ink-faders wired to real
+ * hardware (brightness via ddcutil, vibrance via nvibrant, volume and mic via
+ * Pipewire). Fills the lower body of the pill.
  */
 PillSurface {
     id: root
@@ -331,13 +332,6 @@ PillSurface {
                 open: root.openPicker === "in"
                 tip: "Input device"
                 onToggled: root.openPicker = root.openPicker === "in" ? "" : "in"
-            }
-            IconChip {
-                glyph: "dnd"
-                on: Flags.dnd
-                tipTitle: "Do not disturb"
-                tipDesc: "Silence notifications"
-                onToggled: Flags.dnd = !Flags.dnd
             }
             IconChip {
                 glyph: "awake"

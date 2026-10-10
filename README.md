@@ -53,6 +53,7 @@ Clones to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints 
   bind = SUPER, SHIFT+V, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima clipboard ""
   bind = SUPER, SHIFT+S, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima scratch ""
   bind = SUPER, slash,   exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher ""
+  bind = SUPER, N,       exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima notifications ""
   ```
 
   ```lua
@@ -60,6 +61,7 @@ Clones to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints 
   hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima clipboard \"\""))
   hl.bind(var_mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima scratch \"\""))
   hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher \"\""))
+  hl.bind(var_mainMod .. " + N",         hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima notifications \"\""))
   ```
 
   Other handlers: mixer, calendar, media, power, battery, sysmon, recorder, gameMode, peek, hide, page …

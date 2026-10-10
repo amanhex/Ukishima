@@ -89,6 +89,18 @@ Singleton {
     property alias memorySaver: adapter.memorySaver
     property alias unloadSec: adapter.unloadSec
 
+    //* Expanded-pill modules: each hides one optional item from the hover row.
+    //* Everything core — workspaces, the wifi/bluetooth/battery cluster, the
+    //* clock, weather, notifications, mixer and clipboard — always draws. The
+    //* Appearance cog is deliberately not here: it is the only way into
+    //* settings, so a switch that hides it would hide the switch itself.
+    property alias pillShowSysmon: adapter.pillShowSysmon
+    property alias pillShowRecorder: adapter.pillShowRecorder
+    property alias pillShowWallpaper: adapter.pillShowWallpaper
+    property alias pillShowScratch: adapter.pillShowScratch
+    property alias pillShowLauncher: adapter.pillShowLauncher
+    property alias pillShowPower: adapter.pillShowPower
+
         //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
         property alias lockShowAvatar: adapter.lockShowAvatar
         //* Session lock: show the wifi indicator on lockscreen/LockSurface.qml.
@@ -198,6 +210,14 @@ Singleton {
             property bool memorySaver: true
             //* Wallpaper-tier idle in seconds when memorySaver is on; the other tiers scale off it.
             property real unloadSec: 30
+            //* Expanded-pill modules (see Flags above). All true on a fresh install,
+            //* so nothing leaves the bar until asked.
+            property bool pillShowSysmon: true
+            property bool pillShowRecorder: true
+            property bool pillShowWallpaper: true
+            property bool pillShowScratch: true
+            property bool pillShowLauncher: true
+            property bool pillShowPower: true
             //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
             property bool lockShowAvatar: true
             //* Session lock: show the wifi indicator on lockscreen/LockSurface.qml.

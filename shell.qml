@@ -292,7 +292,7 @@ ShellRoot {
         function calendar(mon: string): void { root.toggleSurface(mon, "calendar"); }
         function launcher(mon: string): void { root.toggleSurface(mon, "launcher"); }
         function power(mon: string): void { root.toggleSurface(mon, "power"); }
-        function link(mon: string): void { root.toggleSurface(mon, "link"); }
+        function notifications(mon: string): void { root.toggleSurface(mon, "link"); }
         function battery(mon: string): void { root.toggleSurface(mon, "battery"); }
         function recorder(mon: string): void { root.toggleSurface(mon, "recorder"); }
         function screenrec(mon: string): void { root.toggleSurface(mon, "recorder"); }

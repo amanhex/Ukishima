@@ -70,6 +70,7 @@ Rectangle {
     }
 
     Tooltip {
+        s: chip.s
         placement: "below"
         align: "right"
         title: chip.tooltipTitle

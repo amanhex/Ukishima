@@ -6,10 +6,10 @@ import "../components"
 
 /**
  * 報 INBOX surface: the notification center. Grouped per app with critical
- * entries pinned above the fold, an inline clear-all, and a silence empty
- * state; opening marks all notifications seen after a short beat so unread
- * embers register first. Exposes `desiredW` for the pill's morph and docks Ame
- * as a seam at the focused row.
+ * entries pinned above the fold, an inline clear-all, a do-not-disturb chip in
+ * the header, and a silence empty state; opening marks all notifications seen
+ * after a short beat so unread embers register first. Exposes `desiredW` for
+ * the pill's morph and docks Ame as a seam at the focused row.
  */
 PillSurface {
     id: root
@@ -262,6 +262,9 @@ PillSurface {
         spacing: 4 * root.s
 
         Item {
+            //* z above the list so the DND chip's tooltip clears the rows,
+            //* the same way the mixer's header z clears the faders.
+            z: 5
             width: parent.width
             height: 24 * root.s
 
@@ -372,6 +375,18 @@ PillSurface {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: Notifs.clearAll()
                     }
+                }
+
+                //* Moved here from the mixer header: silence belongs with the
+                //* inbox it silences. Lit vermilion while armed.
+                IconChip {
+                    anchors.verticalCenter: parent.verticalCenter
+                    s: root.s
+                    glyph: "dnd"
+                    glyphColor: Flags.dnd ? Theme.vermLit : Theme.iconDim
+                    tooltipTitle: "Do not disturb"
+                    tooltipDesc: "Silence notifications"
+                    onClicked: Flags.dnd = !Flags.dnd
                 }
             }
         }

@@ -11,6 +11,7 @@ KbLayout KbLayout.qml
 LinkToggle LinkToggle.qml
 Marquee Marquee.qml
 MusicBars MusicBars.qml
+OsMark OsMark.qml
 PillSurface PillSurface.qml
 ProfileSeg ProfileSeg.qml
 SearchField SearchField.qml

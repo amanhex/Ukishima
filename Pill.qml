@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Effects
-import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
@@ -129,6 +128,7 @@ Item {
     readonly property bool appearanceOpen: surface === "appearance"
     readonly property bool appcatOpen: surface === "appcat"
     readonly property bool displayOpen: surface === "display"
+    readonly property bool modulesOpen: surface === "modules"
     readonly property bool themeOpen: surface === "theme"
     readonly property bool accentOpen: surface === "accent"
     readonly property bool glassOpen: surface === "glass"
@@ -138,7 +138,7 @@ Item {
     readonly property bool lockSettingsOpen: surface === "locksettings"
     readonly property bool updateOpen: surface === "update"
     readonly property bool profileOpen: surface === "profile"
-    readonly property bool settingsLike: appearanceOpen || appcatOpen || displayOpen || themeOpen || accentOpen || glassOpen || fontColorOpen || interfaceOpen || fontpickerOpen || lockSettingsOpen || updateOpen || profileOpen
+    readonly property bool settingsLike: appearanceOpen || appcatOpen || displayOpen || modulesOpen || themeOpen || accentOpen || glassOpen || fontColorOpen || interfaceOpen || fontpickerOpen || lockSettingsOpen || updateOpen || profileOpen
     readonly property bool hasMedia: Players.list.length > 0
 
     readonly property var netDevices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
@@ -432,6 +432,7 @@ Item {
         appearance: { size: () => Qt.size(settingsW, surfaceItem("appearance").implicitHeight + 29 * s), ame: () => surfaceItem("appearance") },
         appcat:     { size: () => Qt.size(settingsW, surfaceItem("appcat").implicitHeight + 29 * s), ame: () => surfaceItem("appcat") },
         display:    { size: () => Qt.size(settingsW, surfaceItem("display").implicitHeight + 29 * s), ame: () => surfaceItem("display") },
+        modules:    { size: () => Qt.size(settingsW, surfaceItem("modules").implicitHeight + 29 * s), ame: () => surfaceItem("modules") },
         theme:      { size: () => Qt.size(settingsW, surfaceItem("theme").implicitHeight + 29 * s), ame: () => surfaceItem("theme") },
         accent:     { size: () => Qt.size(settingsW, surfaceItem("accent").implicitHeight + 29 * s), ame: () => surfaceItem("accent") },
         glass:      { size: () => Qt.size(settingsW, surfaceItem("glass").implicitHeight + 29 * s), ame: () => surfaceItem("glass") },
@@ -469,6 +470,7 @@ Item {
         appearance: () => ldAppearance,
         appcat:     () => ldAppcat,
         display:    () => ldDisplay,
+        modules:    () => ldModules,
         theme:      () => ldTheme,
         accent:     () => ldAccent,
         glass:      () => ldGlass,
@@ -2193,6 +2195,19 @@ Item {
             anchors.centerIn: parent
             spacing: 20 * pill.s
 
+            /**
+             * The OS brand mark leads the expanded bar (see OsMark). It is
+             * mounted here — where the pointer actually lands — and on the
+             * resting strip face, so it never vanishes between the two.
+             */
+            OsMark {
+                id: osMark
+                anchors.verticalCenter: parent.verticalCenter
+                s: pill.s
+                enabled: hover.live
+                onActivated: pill.requestSurface("profile")
+            }
+
             Workspaces {
                 id: ws
                 anchors.verticalCenter: parent.verticalCenter
@@ -2335,62 +2350,6 @@ Item {
                     enabled: hover.live
                 }
 
-                Item {
-                    id: dndIcon
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: Flags.dnd
-                    width: 16 * pill.s
-                    height: 16 * pill.s
-
-                    Shape {
-                        id: dndShape
-
-                        width: 16
-                        height: 16
-                        scale: pill.s
-                        transformOrigin: Item.TopLeft
-                        x: dndShape.boundingRect.width > 0
-                           ? dndIcon.width / 2 - (dndShape.boundingRect.x + dndShape.boundingRect.width / 2) * pill.s
-                           : (dndIcon.width - 16 * pill.s) / 2
-                        y: dndShape.boundingRect.height > 0
-                           ? dndIcon.height / 2 - (dndShape.boundingRect.y + dndShape.boundingRect.height / 2) * pill.s
-                           : (dndIcon.height - 16 * pill.s) / 2
-                        preferredRendererType: Shape.CurveRenderer
-
-                        ShapePath {
-                            strokeColor: Theme.vermLit
-                            strokeWidth: 1.5
-                            fillColor: "transparent"
-                            capStyle: ShapePath.RoundCap
-                            joinStyle: ShapePath.RoundJoin
-                            startX: 5.2; startY: 12.2
-                            PathLine { x: 12.2; y: 12.2 }
-                            PathLine { x: 12.2; y: 7.2 }
-                            PathCubic {
-                                control1X: 12.2; control1Y: 5.4
-                                control2X: 11.2; control2Y: 4.0
-                                x: 9.5; y: 3.5
-                            }
-                        }
-                        ShapePath {
-                            strokeColor: Theme.vermLit
-                            strokeWidth: 1.5
-                            fillColor: "transparent"
-                            capStyle: ShapePath.RoundCap
-                            startX: 6.8; startY: 13.6
-                            PathLine { x: 9.2; y: 13.6 }
-                        }
-                        ShapePath {
-                            strokeColor: Theme.vermLit
-                            strokeWidth: 1.6
-                            fillColor: "transparent"
-                            capStyle: ShapePath.RoundCap
-                            startX: 3.2; startY: 2.8
-                            PathLine { x: 13.0; y: 13.4 }
-                        }
-                    }
-                }
-
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: pill.wifiDev !== null || pill.btAdapter !== null || Battery.present
@@ -2505,8 +2464,13 @@ Item {
 
                     GlyphIcon {
                         anchors.fill: parent
-                        name: "inbox"
-                        color: inboxArea.containsMouse ? Theme.cream : Theme.iconDim
+                        //* DND turns the inbox bell into its slashed twin in
+                        //* place, so arming it no longer adds a second icon to
+                        //* the bar; clicking still opens the inbox, which is
+                        //* where the toggle now sits.
+                        name: Flags.dnd ? "dnd" : "inbox"
+                        color: inboxArea.containsMouse ? Theme.cream
+                            : (Flags.dnd ? Theme.vermLit : Theme.iconDim)
                         stroke: 1.7
                     }
 
@@ -2562,6 +2526,7 @@ Item {
                 Item {
                     id: sysmonIcon
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.pillShowSysmon
                     width: 17 * pill.s
                     height: 17 * pill.s
 
@@ -2587,6 +2552,7 @@ Item {
                 Item {
                     id: recorderIcon
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.pillShowRecorder
                     width: 17 * pill.s
                     height: 17 * pill.s
 
@@ -2640,6 +2606,7 @@ Item {
                 Item {
                     id: wallpaperIcon
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.pillShowWallpaper
                     width: 17 * pill.s
                     height: 17 * pill.s
 
@@ -2690,6 +2657,7 @@ Item {
                 Item {
                     id: scratchIcon
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.pillShowScratch
                     width: 17 * pill.s
                     height: 17 * pill.s
 
@@ -2715,6 +2683,7 @@ Item {
                 Item {
                     id: launcherIcon
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.pillShowLauncher
                     width: 17 * pill.s
                     height: 17 * pill.s
 
@@ -2734,31 +2703,6 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: pill.requestSurface("launcher")
                         onContainsMouseChanged: if (containsMouse) pill.soulTarget = "launcher"
-                    }
-                }
-
-                  Item {
-                    id: profileIcon
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 17 * pill.s
-                    height: 17 * pill.s
-
-                    GlyphIcon {
-                        anchors.fill: parent
-                        name: "user"
-                        color: profileArea.containsMouse ? Theme.cream : Theme.iconDim
-                        stroke: 1.7
-                    }
-
-                    MouseArea {
-                        id: profileArea
-                        anchors.fill: parent
-                        anchors.margins: -6 * pill.s
-                        hoverEnabled: true
-                        enabled: hover.live
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: pill.requestSurface("profile")
-                        onContainsMouseChanged: if (containsMouse) pill.soulTarget = "profile"
                     }
                 }
 
@@ -2792,6 +2736,7 @@ Item {
                 Item {
                     id: powerIcon
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.pillShowPower
                     width: 17 * pill.s
                     height: 17 * pill.s
 
@@ -3047,6 +2992,19 @@ sourceComponent: Media {
         sourceComponent: DisplaySurface {
             s: pill.s * pill.settingsScale
             open: pill.displayOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+            onRequestSurface: (name) => pill.requestSurface(name)
+        }
+    }
+
+    Loader {
+        id: ldModules
+        active: false
+        anchors.fill: parent
+        sourceComponent: ModulesSurface {
+            s: pill.s * pill.settingsScale
+            open: pill.modulesOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
             onRequestSurface: (name) => pill.requestSurface(name)
