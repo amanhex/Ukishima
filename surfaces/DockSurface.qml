@@ -325,6 +325,31 @@ DockPanel {
         }
 
         /**
+         * The air the dock keeps between itself and the windows that tile
+         * above it, as a percentage of the shipped 12px: 100% is the shipped
+         * gap, 0% tucks the windows flush under the dock — pickable as four
+         * fixed steps, like the pill's Window gap row. Its own flag,
+         * separate from the pill's, so the two bars' gaps can differ.
+         * Hidden under auto-hide: the dock then reserves no band at all, so
+         * the gap it would describe does not exist either.
+         */
+        SettingsRow {
+            id: dockGapRow
+            surface: root
+            name: "Window gap"
+            icon: "monitor"
+            visible: Flags.dockEnabled && !Flags.dockAutoHide
+
+            SettingsSeg {
+                s: root.s
+                pal: root.pal
+                options: [{ label: "25%", value: 0.25 }, { label: "50%", value: 0.5 }, { label: "100%", value: 1 }, { label: "150%", value: 1.5 }]
+                value: Flags.dockGap
+                onPicked: (v) => Flags.dockGap = v
+            }
+        }
+
+        /**
          * Which apps are on the dock. Sits with the dock's CONTENT rows, above
          * the theme block, because it used to land between the theme row and
          * the manual hue section that belongs to it — splitting a row from its

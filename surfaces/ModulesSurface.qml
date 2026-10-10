@@ -6,7 +6,7 @@ import "../Singletons"
 import "../components"
 
 /**
- * 器 PILL MODULES sub-surface: which optional items the expanded pill's hover
+ * 器 TOGGLE MODULES sub-surface: which optional items the expanded pill's hover
  * row draws. Everything core always draws — the workspaces, the
  * wifi/bluetooth/battery cluster, the clock, weather, notifications, mixer and
  * clipboard — so these switches hide the rest.
@@ -41,7 +41,7 @@ SettingsSurface {
         SettingsHeader {
             s: root.s
             glyph: "器"
-            title: "PILL MODULES"
+            title: "TOGGLE MODULES"
             showBack: true
         }
 

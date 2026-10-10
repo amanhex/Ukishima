@@ -58,6 +58,8 @@ Singleton {
     property alias dockMinimal: adapter.dockMinimal
     property alias topGap: adapter.topGap
     property alias appGap: adapter.appGap
+    //* Dock-to-window air as a fraction of the shipped 12px. 0 tucks the windows flush under the dock.
+    property alias dockGap: adapter.dockGap
     property alias recordCountdown: adapter.recordCountdown
     property alias recordDir: adapter.recordDir
     property alias recordFps: adapter.recordFps
@@ -187,6 +189,8 @@ Singleton {
             property real topGap: 1
             //* Pill-to-window band as a fraction of the shipped 12px. 0 tucks the windows flush under the pill.
             property real appGap: 1
+            //* Dock-to-window air as a fraction of the shipped 12px. 0 tucks the windows flush under the dock.
+            property real dockGap: 1
             property int recordCountdown: 5
             property string recordDir: ""
             property int recordFps: 60

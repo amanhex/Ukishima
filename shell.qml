@@ -419,20 +419,24 @@ ShellRoot {
             required property var modelData
             readonly property real s: modelData ? (modelData.height / 1080) * Flags.uiScale : 1
             /**
-             * Bottom band the dock sits in: just the bar's footprint plus its
-             * float gap, so tiled windows climb above the resting dock but the
-             * strips on either side stay usable. With dock auto-hide on nothing
-             * is reserved at all and the dock floats over the desktop until the
-             * edge is touched; while the dock is retracted empty (no pins, no
-             * running apps, no usage-history shelf — DockState.empty) the band
-             * is released too, so windows may tile all the way down. Kept in
-             * step with DockBar.dockH (components/DockBar.qml): minimal chips
-             * are shorter than titled ones, and the float lip mirrors the
-             * pill's topGap at half scale.
+             * Bottom band the dock sits in: the bar's footprint plus its
+             * float lip and the dock-to-window air above it, so tiled
+             * windows climb above the resting dock but the strips on either
+             * side stay usable. With dock auto-hide on nothing is reserved
+             * at all and the dock floats over the desktop until the edge is
+             * touched; while the dock is retracted empty (no pins, no
+             * running apps, no usage-history shelf — DockState.empty) the
+             * band is released too, so windows may tile all the way down.
+             * Kept in step with DockBar.dockH (components/DockBar.qml):
+             * minimal chips are shorter than titled ones, and the float lip
+             * mirrors the pill's topGap at half scale. The air above the lip
+             * is its own setting (Flags.dockGap), separate from the pill's
+             * appGap, so the two bars' window gaps can differ.
              */
             readonly property real dockH: (Flags.dockMinimal ? 58 : 68) * s
-            readonly property real dockGap: 4 * Flags.topGap * s
-            readonly property real reservedH: dockH + dockGap
+            readonly property real dockLip: 4 * Flags.topGap * s
+            readonly property real dockAir: 12 * Flags.dockGap * s
+            readonly property real reservedH: dockH + dockLip + dockAir
 
             /** Whether the dock bar is actually on screen here; mirrors dockWin.suppressed. */
             readonly property bool barShown: root.dockBarShown(modelData.name)
@@ -823,7 +827,7 @@ ShellRoot {
             required property var modelData
             readonly property real s: modelData ? (modelData.height / 1080) * Flags.uiScale : 1
             /** Float gap between the resting dock and the screen's bottom edge: a subtle lip, smaller than the pill's topGap float. */
-            readonly property real dockGap: 4 * Flags.topGap * s
+            readonly property real dockLip: 4 * Flags.topGap * s
             readonly property string surface: root.openMon === modelData.name ? root.openSurface : ""
             readonly property bool surfaceOpen: surface.length > 0
 
@@ -1101,7 +1105,7 @@ ShellRoot {
                 z: 250
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: dockWin.dockGap
+                anchors.bottomMargin: dockWin.dockLip
                 s: dockWin.s
                 suppressed: suppressed
                 screenName: dockWin.modelData.name
@@ -1116,7 +1120,7 @@ ShellRoot {
                  * above the edge while hidden.
                  */
                 transform: Translate {
-                    y: dock.hidden || dock.empty || suppressed ? dock.height + dockWin.dockGap : 0
+                    y: dock.hidden || dock.empty || suppressed ? dock.height + dockWin.dockLip : 0
                     Behavior on y {
                         NumberAnimation {
                             duration: Motion.morph

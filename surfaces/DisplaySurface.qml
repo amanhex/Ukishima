@@ -160,7 +160,7 @@ Item { width: 1; height: 10 * root.s }
 
         /**
          * Which icons the expanded pill's hover row draws keeps its own
-         * surface — 器 PILL MODULES, opened by this row — so the optional
+         * surface — 器 TOGGLE MODULES, opened by this row — so the optional
          * module switches do not bury the clock settings. See that file for
          * the list and for why the Appearance cog is not among them.
          */
@@ -168,8 +168,7 @@ Item { width: 1; height: 10 * root.s }
             id: modulesTile
             surface: root
             glyph: "器"
-            name: "Pill modules"
-            sub: "Optional icons the bar shows"
+            name: "Toggle modules"
 
             GlyphIcon {
                 width: 16 * root.s
@@ -177,6 +176,29 @@ Item { width: 1; height: 10 * root.s }
                 name: "chevron-right"
                 color: root.focusRowItem === modulesTile ? Theme.cream : Theme.iconDim
                 stroke: 1.9
+            }
+        }
+
+        /**
+         * The air the pill keeps between itself and the windows that tile
+         * around it, as a percentage of the shipped 12px: 100% is the shipped
+         * gap, 0% tucks the windows flush under the pill — pickable as four
+         * fixed steps, like the Interface surface's UI scale row. Hidden
+         * under auto-hide: the pill then reserves no band at all, so the gap
+         * it would describe does not exist either.
+         */
+        SettingsRow {
+            id: pillGapRow
+            surface: root
+            name: "Window gap"
+            icon: "monitor"
+            visible: !Flags.autoHide
+
+            SettingsSeg {
+                s: root.s
+                options: [{ label: "25%", value: 0.25 }, { label: "50%", value: 0.5 }, { label: "100%", value: 1 }, { label: "150%", value: 1.5 }]
+                value: Flags.appGap
+                onPicked: (v) => Flags.appGap = v
             }
         }
 

@@ -1330,7 +1330,7 @@ Item {
                         chip.modelData.icon ? chip.modelData.icon : chip.modelData.cls) : ""
                     opacity: !chip.modelData.running
                         && (chip.modelData.pinned || chip.modelData.suggested)
-                        ? 0.55 : (chip.hover || chip.modelData.active) ? 1 : 0.9
+                        ? 0.8 : (chip.hover || chip.modelData.active) ? 1 : 0.9
                     /* Magnify up to but never past the dock's top edge: the
                      * icon base sits 36*s (titled) / 44*s (minimal) from the
                      * chip top, so a 1.27 / 1.32 scale still clears the
