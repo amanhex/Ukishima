@@ -21,7 +21,8 @@ import "../lib/apps.js" as Apps
  * pill's surface stack does not mention it at all.
  *
  * The dock theme row offers the same four modes as the pill's Theme surface
- * (light / dark / dynamic / manual) because they are the same four modes, but
+ * (light / dark / dynamic / manual) because they are the same four modes, plus
+ * the dock's own OLED toggle, but
  * the two are fully segregated: manual renders locally from the dock's own hue
  * flags (PaletteHue), dynamic reads the shared wallpaper palette (Dyn) that only
  * wallpaper changes refresh, and light/dark are static. Switching the dock theme
@@ -265,6 +266,7 @@ DockPanel {
                 // order matches where the row actually is.
                 { item: dockAppsRow, kind: "toggle", get: function () { return root.appsOpen; }, set: function (v) { root.setAppsOpen(v); } },
                 { item: dockThemeRow, kind: "seg", vals: ["light", "dark", "dynamic", "manual"], get: function () { return root.themeShown; }, set: function (v) { root.applyMode(v); } },
+                { item: dockOledRow, kind: "toggle", get: function () { return Flags.dockOled; }, set: function (v) { Flags.dockOled = v; } },
                 { item: dockGlassRow, kind: "seg", vals: ["transparent", "solid"], get: function () { return root.glassShown; }, set: function (v) { Flags.dockStyle = v; } },
                 { item: dockMinimalRow, kind: "toggle", get: function () { return Flags.dockMinimal; }, set: function (v) { Flags.dockMinimal = v; } }
             );
@@ -738,6 +740,26 @@ DockPanel {
         }
 
         /**
+         * Pure-black layer, separate from the theme picker: surfaces zero to
+         * #000000 and copy goes light, whichever mode is active above. The
+         * dock's own toggle — the dock's OLED never touches the pill's.
+         */
+        SettingsRow {
+            id: dockOledRow
+            surface: root
+            name: "OLED"
+            icon: "moon"
+            visible: Flags.dockEnabled
+
+            LinkToggle {
+                s: root.s
+                pal: root.pal
+                on: Flags.dockOled
+                onToggled: Flags.dockOled = !Flags.dockOled
+            }
+        }
+
+        /**
          * Manual hue editor, folded shut unless the dock theme is on Manual. Holds a
          * rainbow strip with a draggable thumb, then a single line pairing a live
          * accent swatch and its hex caption with the dark/light choice, and a hex
@@ -747,7 +769,7 @@ DockPanel {
         Item {
             id: manualSection
             width: parent.width
-            height: (Flags.dockEnabled && Flags.dockTheme === "manual") ? manualCol.implicitHeight : 0
+            height: (Flags.dockEnabled && Flags.dockTheme === "manual" && !Flags.dockOled) ? manualCol.implicitHeight : 0
             clip: true
             Behavior on height { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
 

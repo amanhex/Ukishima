@@ -92,6 +92,7 @@ SettingsSurface {
 
     rows: [
         { item: paletteRow, kind: "seg", vals: ["light", "dark", "dynamic", "manual"], get: function () { return root.themeMode; }, set: function (v) { root.applyMode(v); } },
+        { item: oledRow, kind: "toggle", get: function () { return Flags.oled; }, set: function (v) { Flags.oled = v; } },
         { item: wpDirRow, kind: "text", activate: function () {
             wpDirRow.editing = !wpDirRow.editing;
             if (wpDirRow.editing) {
@@ -131,6 +132,25 @@ Item { width: 1; height: 10 * root.s }
         }
 
         /**
+         * Pure-black layer, separate from the theme picker: surfaces zero to
+         * #000000 and copy goes light, whichever mode is active above. A
+         * toggle rather than a fifth segment because it is not a theme — it is
+         * an override that can sit on top of any of them.
+         */
+        SettingsRow {
+            id: oledRow
+            surface: root
+            name: "OLED"
+            icon: "moon"
+
+            LinkToggle {
+                s: root.s
+                on: Flags.oled
+                onToggled: Flags.oled = !Flags.oled
+            }
+        }
+
+        /**
          * Manual hue editor, folded shut unless the palette is on Manual. Holds a
          * rainbow strip with a draggable thumb, then a single line pairing a live
          * accent swatch and its hex caption with the dark/light choice, and a hex
@@ -140,7 +160,7 @@ Item { width: 1; height: 10 * root.s }
         Item {
             id: manualSection
             width: parent.width
-            height: Flags.paletteMode === "manual" ? manualCol.implicitHeight : 0
+            height: Flags.paletteMode === "manual" && !Flags.oled ? manualCol.implicitHeight : 0
             clip: true
             Behavior on height { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
 

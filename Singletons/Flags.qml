@@ -60,6 +60,10 @@ Singleton {
     property alias appGap: adapter.appGap
     //* Dock-to-window air as a fraction of the shipped 12px. 0 tucks the windows flush under the dock.
     property alias dockGap: adapter.dockGap
+    //* Pure-black pill surfaces: an override layered over whichever theme is active.
+    property alias oled: adapter.oled
+    //* Pure-black dock surfaces: the dock's own OLED toggle, independent of the pill's.
+    property alias dockOled: adapter.dockOled
     property alias recordCountdown: adapter.recordCountdown
     property alias recordDir: adapter.recordDir
     property alias recordFps: adapter.recordFps
@@ -191,6 +195,10 @@ Singleton {
             property real appGap: 1
             //* Dock-to-window air as a fraction of the shipped 12px. 0 tucks the windows flush under the dock.
             property real dockGap: 1
+            //* Pure-black pill surfaces: an override layered over whichever theme is active.
+            property bool oled: false
+            //* Pure-black dock surfaces: the dock's own OLED toggle, independent of the pill's.
+            property bool dockOled: false
             property int recordCountdown: 5
             property string recordDir: ""
             property int recordFps: 60

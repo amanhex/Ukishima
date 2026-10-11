@@ -322,9 +322,14 @@ Item {
 /** Effective palette mode, resolved from the dock's own selector. */
     readonly property string dockMode: (Flags.dockTheme === "auto"
         || Flags.dockTheme === "transparent") ? "dark" : Flags.dockTheme
-    readonly property bool dockEffDyn: root.dockMode === "dynamic"
-    readonly property bool dockEffManual: root.dockMode === "manual"
-    readonly property bool dockEffLight: root.dockMode === "light"
+    readonly property bool dockEffOled: Flags.dockOled
+    //* OLED is a pure-black LAYER over the dock theme: surfaces zero to #000000 and
+    //* copy falls to the dark side whichever mode is active. The mode flags below
+    //* are demoted while it is on, so the dark default renders and no mode can
+    //* fight the black-on-light-text pairing.
+    readonly property bool dockEffDyn: !root.dockEffOled && root.dockMode === "dynamic"
+    readonly property bool dockEffManual: !root.dockEffOled && root.dockMode === "manual"
+    readonly property bool dockEffLight: !root.dockEffOled && root.dockMode === "light"
     /**
      * Local manual palette from the dock's OWN hue flags — the wallcolors.py
      * --hue math computed in QML. It never reads or writes the shared
@@ -340,8 +345,10 @@ Item {
      * veil, so its floor sits a touch higher to keep icon and title contrast.
      */
     readonly property real glassAlpha: Math.max(0.45, Math.min(0.95, 0.78 * (Flags.pillOpacity || 1)))
-    /** Legacy or "auto" flag values (pre-split saves) render as the transparent pane. */
-    readonly property bool dockGlass: Flags.dockStyle !== "solid"
+    /** Legacy or "auto" flag values (pre-split saves) render as the transparent pane.
+     *  OLED forces the solid path: a translucent black pane would read as dark glass,
+     *  not a pure-black island. */
+    readonly property bool dockGlass: Flags.dockStyle !== "solid" && !root.dockEffOled
 
     /** The palette tokens below mirror Theme.qml's ternaries but resolve from
      *  the dock's own `dockMode` — so a forced dark dock keeps dark text and
@@ -355,12 +362,14 @@ Item {
     readonly property color dockActive: root.dockCustom ? Flags.accentOverride : (root.dockEffManual ? root.dockHue.primary : (root.dockEffDyn ? Dyn.primary : "#e0563b"))
     /** Text-colour override mirroring the pill's: a pinned hex recolours the dock's title copy too. */
     readonly property bool dockCustomText: Flags.textOverride.length > 0
-    readonly property color dockCardTop: root.dockEffManual ? root.dockHue.surface_container_high
+    readonly property color dockCardTop: root.dockEffOled ? "#000000"
+        : (root.dockEffManual ? root.dockHue.surface_container_high
         : (root.dockEffDyn ? Dyn.surfaceContainerHigh
-        : (root.dockEffLight ? "#f6f2ec" : "#171717"))
-    readonly property color dockCardBot: root.dockEffManual ? root.dockHue.surface_container_low
+        : (root.dockEffLight ? "#f6f2ec" : "#171717")))
+    readonly property color dockCardBot: root.dockEffOled ? "#000000"
+        : (root.dockEffManual ? root.dockHue.surface_container_low
         : (root.dockEffDyn ? Dyn.surfaceContainerLow
-        : (root.dockEffLight ? "#ece6df" : "#0c0c0c"))
+        : (root.dockEffLight ? "#ece6df" : "#0c0c0c")))
     readonly property color dockCream: root.dockCustomText ? Flags.textOverride
         : (root.dockEffManual ? root.dockHue.cream
         : (root.dockEffDyn ? Dyn.cream

@@ -18,14 +18,19 @@ import Quickshell
 Singleton {
     /** Legacy "static" (the old warm-brown theme) maps onto the black pill. */
     readonly property string mode: Flags.paletteMode === "static" ? "dark" : Flags.paletteMode
-    readonly property bool dynamic: mode === "dynamic"
-    readonly property bool manual: mode === "manual"
+    readonly property bool oled: Flags.oled
+    //* OLED is a pure-black LAYER over the theme: surfaces zero to #000000 and copy
+    //* falls to the dark side whichever mode is active. The mode flags below are
+    //* demoted while it is on, so every ternary's dark default is what renders and
+    //* no mode (light text included) can fight the black-on-light-text pairing.
+    readonly property bool dynamic: !oled && mode === "dynamic"
+    readonly property bool manual: !oled && mode === "manual"
     // dyn stays true for manual too so every consumer that just needs "follow
     // the active scheme" (glass tint, today cell, flame ramp) keeps working; the
     // per-token ternaries below pick between the local manual palette and the
     // wallpaper one.
-    readonly property bool dyn: mode === "dynamic" || mode === "manual"
-    readonly property bool light: mode === "light"
+    readonly property bool dyn: !oled && (mode === "dynamic" || mode === "manual")
+    readonly property bool light: !oled && mode === "light"
 
     /**
      * Local manual palette: the wallcolors.py --hue math computed from the
@@ -112,11 +117,11 @@ Singleton {
     readonly property color cream:    customText ? customTextHex : (manual ? manualPal.cream : (dynamic ? Dyn.cream : (light ? "#2a241f" : "#ececec")))
     readonly property color bright:   customText ? customTextHex : (manual ? manualPal.bright : (dynamic ? Dyn.bright : (light ? "#1d1814" : "#ffffff")))
     readonly property color dim:      manual ? manualPal.dim : (dynamic ? Dyn.dim : (light ? "#6b635c" : "#8c8c8c"))
-    readonly property color cardTop:  manual ? manualPal.surface_container_high : (dynamic ? Dyn.surfaceContainerHigh : (light ? "#f6f2ec" : "#171717"))
-    readonly property color cardBot:  manual ? manualPal.surface_container_low : (dynamic ? Dyn.surfaceContainerLow : (light ? "#ece6df" : "#0c0c0c"))
-    readonly property color border:   manual ? manualPal.outline_variant : (dynamic ? Dyn.outlineVariant : (light ? "#d9d1c8" : "#2b2b2b"))
+    readonly property color cardTop:  oled ? "#000000" : (manual ? manualPal.surface_container_high : (dynamic ? Dyn.surfaceContainerHigh : (light ? "#f6f2ec" : "#171717")))
+    readonly property color cardBot:  oled ? "#000000" : (manual ? manualPal.surface_container_low : (dynamic ? Dyn.surfaceContainerLow : (light ? "#ece6df" : "#0c0c0c")))
+    readonly property color border:   oled ? "#2a2a2a" : (manual ? manualPal.outline_variant : (dynamic ? Dyn.outlineVariant : (light ? "#d9d1c8" : "#2b2b2b")))
     readonly property color shadow:     Qt.rgba(0, 0, 0, 0.55)
-    readonly property color tileBg:   manual ? manualPal.surface : (dynamic ? Dyn.surface : (light ? "#e9e3dc" : "#141414"))
+    readonly property color tileBg:   oled ? "#000000" : (manual ? manualPal.surface : (dynamic ? Dyn.surface : (light ? "#e9e3dc" : "#141414")))
     readonly property color subtle:   manual ? manualPal.subtle : (dynamic ? Dyn.subtle : (light ? "#5f574f" : "#a8a8a8"))
     readonly property color faint:    manual ? manualPal.faint : (dynamic ? Dyn.faint : (light ? "#8a8078" : "#6a6a6a"))
     readonly property color iconDim:  customText ? Qt.alpha(cream, 0.6) : (manual ? manualPal.icon_dim : (dynamic ? Dyn.iconDim : (light ? "#5a524b" : "#bdbdbd")))
@@ -143,7 +148,7 @@ Singleton {
     readonly property string flameBurn:  customAccent ? hexOf(accentDeep) : (manual ? manualPal.primary_container : (dynamic ? Dyn.primaryContainer : "#8a2c14"))
     readonly property string flameTip:   customAccent ? hexOf(Qt.lighter(accent, 1.2)) : (manual ? manualPal.on_primary_container : (dynamic ? Dyn.onPrimaryContainer : "#ffb38a"))
     readonly property color todayWarm: customAccent ? accent : (dyn ? onGlow : "#ffb38a")
-    readonly property color ghost:     manual ? manualPal.surface_container_highest : (dynamic ? Dyn.surfaceContainerHighest : (light ? "#e3ddd5" : "#242424"))
+    readonly property color ghost:     oled ? "#000000" : (manual ? manualPal.surface_container_highest : (dynamic ? Dyn.surfaceContainerHighest : (light ? "#e3ddd5" : "#242424")))
     readonly property color frameBg:      Qt.alpha(cream, 0.055)
     readonly property color frameBorder:  Qt.alpha(cream, 0.10)
     readonly property color creamMenu:     Qt.alpha(cream, 0.82)
