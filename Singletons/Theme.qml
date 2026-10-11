@@ -18,19 +18,19 @@ import Quickshell
 Singleton {
     /** Legacy "static" (the old warm-brown theme) maps onto the black pill. */
     readonly property string mode: Flags.paletteMode === "static" ? "dark" : Flags.paletteMode
-    readonly property bool oled: Flags.oled
-    //* OLED is a pure-black LAYER over the theme: surfaces zero to #000000 and copy
-    //* falls to the dark side whichever mode is active. The mode flags below are
-    //* demoted while it is on, so every ternary's dark default is what renders and
-    //* no mode (light text included) can fight the black-on-light-text pairing.
-    readonly property bool dynamic: !oled && mode === "dynamic"
-    readonly property bool manual: !oled && mode === "manual"
+    //* OLED is a pure-black variant of DARK: surfaces zero to #000000 while copy
+    //* stays the dark side. Gated to dark mode — leaving dark off OLED clears the
+    //* flag (applyMode) and this gate keeps even a stale saved flag inert — so the
+    //* toggle only ever shows on the theme it belongs to.
+    readonly property bool oled: Flags.oled && mode === "dark"
+    readonly property bool dynamic: mode === "dynamic"
+    readonly property bool manual: mode === "manual"
     // dyn stays true for manual too so every consumer that just needs "follow
     // the active scheme" (glass tint, today cell, flame ramp) keeps working; the
     // per-token ternaries below pick between the local manual palette and the
     // wallpaper one.
-    readonly property bool dyn: !oled && (mode === "dynamic" || mode === "manual")
-    readonly property bool light: !oled && mode === "light"
+    readonly property bool dyn: mode === "dynamic" || mode === "manual"
+    readonly property bool light: mode === "light"
 
     /**
      * Local manual palette: the wallcolors.py --hue math computed from the

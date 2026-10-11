@@ -322,14 +322,13 @@ Item {
 /** Effective palette mode, resolved from the dock's own selector. */
     readonly property string dockMode: (Flags.dockTheme === "auto"
         || Flags.dockTheme === "transparent") ? "dark" : Flags.dockTheme
-    readonly property bool dockEffOled: Flags.dockOled
-    //* OLED is a pure-black LAYER over the dock theme: surfaces zero to #000000 and
-    //* copy falls to the dark side whichever mode is active. The mode flags below
-    //* are demoted while it is on, so the dark default renders and no mode can
-    //* fight the black-on-light-text pairing.
-    readonly property bool dockEffDyn: !root.dockEffOled && root.dockMode === "dynamic"
-    readonly property bool dockEffManual: !root.dockEffOled && root.dockMode === "manual"
-    readonly property bool dockEffLight: !root.dockEffOled && root.dockMode === "light"
+    //* OLED is a pure-black variant of DARK: surfaces zero to #000000 while copy
+    //* stays the dark side. Gated to dark mode — leaving dark off OLED clears the
+    //* flag (applyMode) and this gate keeps even a stale saved flag inert.
+    readonly property bool dockEffOled: Flags.dockOled && root.dockMode === "dark"
+    readonly property bool dockEffDyn: root.dockMode === "dynamic"
+    readonly property bool dockEffManual: root.dockMode === "manual"
+    readonly property bool dockEffLight: root.dockMode === "light"
     /**
      * Local manual palette from the dock's OWN hue flags — the wallcolors.py
      * --hue math computed in QML. It never reads or writes the shared

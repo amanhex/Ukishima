@@ -241,6 +241,10 @@ DockPanel {
     // wallpaper first, so the dock's dynamic palette is never a stale cache.
     function applyMode(v) {
         Flags.dockTheme = v;
+        // OLED only lives on Dark; leaving dark switches it off so the hidden
+        // toggle can never leave an invisible mode latched on behind the theme.
+        if (v !== "dark")
+            Flags.dockOled = false;
         if (v === "dynamic")
             paletteRegen.running = true;
     }
@@ -257,7 +261,7 @@ DockPanel {
             { item: dockRow, kind: "toggle", get: function () { return Flags.dockEnabled; }, set: function (v) { Flags.dockEnabled = v; } }
         ];
         // The dock sub-settings only exist while the dock itself is switched on.
-        if (Flags.dockEnabled)
+        if (Flags.dockEnabled) {
             base.push(
                 { item: dockAutoHideRow, kind: "toggle", get: function () { return Flags.dockAutoHide; }, set: function (v) { Flags.dockAutoHide = v; } },
                 // Door into the app picker: the list of every installed entry
@@ -265,11 +269,17 @@ DockPanel {
                 // by dragging the chips in the dock. Sits third so the keyboard
                 // order matches where the row actually is.
                 { item: dockAppsRow, kind: "toggle", get: function () { return root.appsOpen; }, set: function (v) { root.setAppsOpen(v); } },
-                { item: dockThemeRow, kind: "seg", vals: ["light", "dark", "dynamic", "manual"], get: function () { return root.themeShown; }, set: function (v) { root.applyMode(v); } },
-                { item: dockOledRow, kind: "toggle", get: function () { return Flags.dockOled; }, set: function (v) { Flags.dockOled = v; } },
+                { item: dockThemeRow, kind: "seg", vals: ["light", "dark", "dynamic", "manual"], get: function () { return root.themeShown; }, set: function (v) { root.applyMode(v); } }
+            );
+            // OLED only lives on Dark; it joins the list only while it is on
+            // screen, so the keyboard cursor can never land on the hidden row.
+            if (root.themeShown === "dark")
+                base.push({ item: dockOledRow, kind: "toggle", get: function () { return Flags.dockOled; }, set: function (v) { Flags.dockOled = v; } });
+            base.push(
                 { item: dockGlassRow, kind: "seg", vals: ["transparent", "solid"], get: function () { return root.glassShown; }, set: function (v) { Flags.dockStyle = v; } },
                 { item: dockMinimalRow, kind: "toggle", get: function () { return Flags.dockMinimal; }, set: function (v) { Flags.dockMinimal = v; } }
             );
+        }
         return base;
     }
 
@@ -740,16 +750,17 @@ DockPanel {
         }
 
         /**
-         * Pure-black layer, separate from the theme picker: surfaces zero to
-         * #000000 and copy goes light, whichever mode is active above. The
-         * dock's own toggle — the dock's OLED never touches the pill's.
+         * Pure-black variant of Dark, separate from the theme picker: surfaces
+         * zero to #000000 with light copy. Only exists on Dark — visible here
+         * and off whenever the theme moves away. The dock's own toggle — it
+         * never touches the pill's.
          */
         SettingsRow {
             id: dockOledRow
             surface: root
             name: "OLED"
             icon: "moon"
-            visible: Flags.dockEnabled
+            visible: Flags.dockEnabled && root.themeShown === "dark"
 
             LinkToggle {
                 s: root.s

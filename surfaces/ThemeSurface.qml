@@ -47,6 +47,10 @@ SettingsSurface {
 
     function applyMode(v) {
         Flags.paletteMode = v;
+        // OLED only lives on Dark; leaving dark switches it off so the hidden
+        // toggle can never leave an invisible mode latched on behind the theme.
+        if (v !== "dark")
+            Flags.oled = false;
         if (v === "manual")
             applyManual();
         else if (v === "dynamic")
@@ -90,17 +94,25 @@ SettingsSurface {
         }
     }
 
-    rows: [
-        { item: paletteRow, kind: "seg", vals: ["light", "dark", "dynamic", "manual"], get: function () { return root.themeMode; }, set: function (v) { root.applyMode(v); } },
-        { item: oledRow, kind: "toggle", get: function () { return Flags.oled; }, set: function (v) { Flags.oled = v; } },
-        { item: wpDirRow, kind: "text", activate: function () {
-            wpDirRow.editing = !wpDirRow.editing;
-            if (wpDirRow.editing) {
-                wpDirField.text = Flags.wallpaperDir;
-                Qt.callLater(wpDirField.forceActiveFocus);
-            }
-        } }
-    ]
+    rows: {
+        var base = [
+            { item: paletteRow, kind: "seg", vals: ["light", "dark", "dynamic", "manual"], get: function () { return root.themeMode; }, set: function (v) { root.applyMode(v); } }
+        ];
+        // OLED only lives on Dark; it joins the list only while it is on screen,
+        // so the keyboard cursor can never land on the hidden row.
+        if (root.themeMode === "dark")
+            base.push({ item: oledRow, kind: "toggle", get: function () { return Flags.oled; }, set: function (v) { Flags.oled = v; } });
+        base.push(
+            { item: wpDirRow, kind: "text", activate: function () {
+                wpDirRow.editing = !wpDirRow.editing;
+                if (wpDirRow.editing) {
+                    wpDirField.text = Flags.wallpaperDir;
+                    Qt.callLater(wpDirField.forceActiveFocus);
+                }
+            } }
+        );
+        return base;
+    }
 
     Column {
         id: content
@@ -132,16 +144,16 @@ Item { width: 1; height: 10 * root.s }
         }
 
         /**
-         * Pure-black layer, separate from the theme picker: surfaces zero to
-         * #000000 and copy goes light, whichever mode is active above. A
-         * toggle rather than a fifth segment because it is not a theme — it is
-         * an override that can sit on top of any of them.
+         * Pure-black variant of Dark, separate from the theme picker: surfaces
+         * zero to #000000 with light copy. Only exists on Dark — visible here
+         * and off whenever the theme moves away, so it can never fight a theme.
          */
         SettingsRow {
             id: oledRow
             surface: root
             name: "OLED"
             icon: "moon"
+            visible: root.themeMode === "dark"
 
             LinkToggle {
                 s: root.s
