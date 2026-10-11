@@ -8,7 +8,7 @@ Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland built arou
 
 <p align="center">
 <a href="https://ukishima.uklab.workers.dev/">
-  <img src="https://ukishima.uklab.workers.dev/og.png" width="80%" alt="Ukishima — visit the website">
+  <img src="assets/ukishima-readme-banner.png" width="100%" alt="Ukishima">
 </a>
 </p>
 
