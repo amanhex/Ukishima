@@ -45,6 +45,8 @@ Singleton {
     property alias glass: adapter.glass
     //* Text-visibility boost when transparency mode is on: 0 (off) to 1 (strong) — lifts the readability veil behind copy so pale text keeps contrast on bright wallpapers.
     property alias glassText: adapter.glassText
+    //* Pill animation feel: "standard"/"snap"/"float"/"bounce" — rescales the pill's own motion tokens.
+    property alias motionStyle: adapter.motionStyle
     property alias autoHide: adapter.autoHide
     //* Bottom dock: macOS-style pinned + running app bar on every monitor.
     property alias dockEnabled: adapter.dockEnabled
@@ -54,6 +56,8 @@ Singleton {
     property alias dockTheme: adapter.dockTheme
     //* Dock pane depth: "transparent" lets the desktop glow through, "solid" paints the pane opaque.
     property alias dockStyle: adapter.dockStyle
+    //* Dock animation feel: "standard"/"snap"/"float"/"bounce" — independent of the pill's.
+    property alias dockMotionStyle: adapter.dockMotionStyle
     //* Minimal dock: icon-only chips with the small active dot, no inline title label.
     property alias dockMinimal: adapter.dockMinimal
     property alias topGap: adapter.topGap
@@ -178,6 +182,8 @@ Singleton {
             property bool glass: true
             //* Text-visibility boost when glass is on (0..1): lifts the readability veil behind copy so text keeps contrast on bright wallpapers. Persisted in the settings file like every other flag.
             property real glassText: 0
+            //* Pill animation feel: "standard"/"snap"/"float"/"bounce".
+            property string motionStyle: "standard"
             property bool autoHide: true
             //* Bottom dock: macOS-style pinned + running app bar on every monitor.
             property bool dockEnabled: true
@@ -187,6 +193,8 @@ Singleton {
             property string dockTheme: "dark"
             //* Dock pane depth: "transparent" lets the desktop glow through, "solid" paints the pane opaque.
             property string dockStyle: "transparent"
+            //* Dock animation feel: "standard"/"snap"/"float"/"bounce".
+            property string dockMotionStyle: "standard"
             //* Minimal dock: icon-only chips with the small active dot, no inline title label.
             property bool dockMinimal: false
             //* Top margin as a fraction of the shipped 8px. 0 sits the pill flush to the screen edge.

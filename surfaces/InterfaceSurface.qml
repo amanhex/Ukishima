@@ -20,6 +20,7 @@ SettingsSurface {
 
     rows: [
         { item: scaleRow, kind: "seg", vals: [0.9, 1.0, 1.1, 1.25], get: function () { return Flags.uiScale; }, set: function (v) { Flags.uiScale = v; } },
+        { item: motionStyleRow, kind: "seg", vals: ["standard", "snap", "float", "bounce"], get: function () { return Flags.motionStyle; }, set: function (v) { Flags.motionStyle = v; } },
         { item: motionRow, kind: "toggle", get: function () { return Flags.reduceMotion; }, set: function (v) { Flags.reduceMotion = v; } },
         { item: autoHideRow, kind: "toggle", get: function () { return Flags.autoHide; }, set: function (v) { Flags.autoHide = v; } },
         { item: saverRow, kind: "toggle", get: function () { return Flags.memorySaver; }, set: function (v) { Flags.memorySaver = v; } }
@@ -46,11 +47,35 @@ Item { width: 1; height: 10 * root.s }
             name: "UI scale"
             icon: "scaling"
 
-            SettingsSeg {
+            Dropdown {
+                id: scaleDrop
                 s: root.s
                 options: [{ label: "90%", value: 0.9 }, { label: "100%", value: 1.0 }, { label: "110%", value: 1.1 }, { label: "125%", value: 1.25 }]
                 value: Flags.uiScale
+                onChipClicked: scaleDrop.open = !scaleDrop.open
                 onPicked: (v) => Flags.uiScale = v
+            }
+        }
+
+        /**
+         * The pill's own animation feel, separate from the dock's: how fast
+         * and how shaped its morph, hover hop and hide/show run. Standard is
+         * the shipped motion; Snap runs it short and punchy, Float long and
+         * lazy, Bounce keeps the speed and overshoots into place.
+         */
+        SettingsRow {
+            id: motionStyleRow
+            surface: root
+            name: "Motion"
+            icon: "sparkles"
+
+            Dropdown {
+                id: motionStyleDrop
+                s: root.s
+                options: [{ label: "Standard", value: "standard" }, { label: "Snap", value: "snap" }, { label: "Float", value: "float" }, { label: "Bounce", value: "bounce" }]
+                value: Flags.motionStyle
+                onChipClicked: motionStyleDrop.open = !motionStyleDrop.open
+                onPicked: (v) => Flags.motionStyle = v
             }
         }
 

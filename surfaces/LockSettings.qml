@@ -59,9 +59,9 @@ SettingsSurface {
     /**
      * What the control shows, which is not always what the flag says. A flag
      * left on "hyprlock" from a machine that had it, or hand-edited into
-     * flags.json, is not a value this row can display — SettingsSeg lights a
-     * pill by comparing against `value`, so an unmatchable value lights
-     * nothing and the row reads as broken. Show the method that will actually
+     * flags.json, is not a value this row can display — the choice control
+     * matches an option by comparing against `value`, so an unmatchable value
+     * lights nothing and the row reads as broken. Show the method that will actually
      * run. The flag is deliberately left alone: lock.sh already downgrades,
      * and rewriting a setting just because someone opened a surface is a worse
      * surprise than a stale preference.
@@ -295,11 +295,12 @@ SettingsSurface {
         SettingsRow {
             id: methodRow
             surface: root
-            name: "Lock method"
+            name: "Method"
             icon: "lock"
             sub: root.methodSub
 
-            SettingsSeg {
+            Dropdown {
+                id: methodDrop
                 s: root.s
                 //* Built from methodValues so the pills and the row registry
                 //* below are the same list, and neither can offer a method
@@ -312,6 +313,7 @@ SettingsSurface {
                     return out;
                 }
                 value: root.methodValue
+                onChipClicked: methodDrop.open = !methodDrop.open
                 onPicked: (v) => Flags.lockMethod = v
             }
         }
@@ -319,7 +321,7 @@ SettingsSurface {
         SettingsRow {
             id: bgRow
             surface: root
-            name: "Background"
+            name: "Backdrop"
             icon: "wallpaper"
             //* The backdrop is drawn by LockSurface, which only exists under the
             //* Quickshell lock. hyprlock paints whatever its own config says, so
@@ -327,7 +329,8 @@ SettingsSurface {
             //* that path that could read it.
             visible: root.quickshellLock
 
-            SettingsSeg {
+            Dropdown {
+                id: bgDrop
                 s: root.s
                 options: [
                     { label: "Capture", value: "capture" },
@@ -335,6 +338,7 @@ SettingsSurface {
                     { label: "Solid", value: "solid" }
                 ]
                 value: Flags.lockBackground
+                onChipClicked: bgDrop.open = !bgDrop.open
                 onPicked: (v) => Flags.lockBackground = v
             }
         }
@@ -365,8 +369,12 @@ SettingsSurface {
             //* finds the blur level you had rather than a default.
             visible: root.quickshellLock && Flags.lockBackground === "capture"
 
-            SettingsSeg {
+            Dropdown {
+                id: blurDrop
                 s: root.s
+                //* Upward: the pill's Lock page has only the avatar rows below
+                //* this one, and a four-option card would reach past its foot.
+                up: true
                 options: [
                     { label: "Off", value: 0 },
                     { label: "Low", value: 32 },
@@ -374,6 +382,7 @@ SettingsSurface {
                     { label: "High", value: 96 }
                 ]
                 value: Flags.lockBlur
+                onChipClicked: blurDrop.open = !blurDrop.open
                 onPicked: (v) => Flags.lockBlur = v
             }
         }

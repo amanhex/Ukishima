@@ -48,10 +48,12 @@ DockPanel {
 
     /**
      * The panel's own geometry. These are the dock's numbers, not the pill's:
-     * the dock's panel is narrower than the pill body and pads its own content,
-     * because it no longer fills a pill inset by PillSurface's margins.
+     * the dock's panel was narrower than the pill body and padded its own
+     * content, because it no longer fills a pill inset by PillSurface's margins.
+     * It keeps a generous width so row labels — like "Motion" beside its
+     * choice chip — never elide.
      */
-    readonly property real panelW: 320
+    readonly property real panelW: 400
     implicitWidth: panelW * root.s
     readonly property real padTop: 14
     readonly property real padBottom: 12
@@ -277,6 +279,7 @@ DockPanel {
                 base.push({ item: dockOledRow, kind: "toggle", get: function () { return Flags.dockOled; }, set: function (v) { Flags.dockOled = v; } });
             base.push(
                 { item: dockGlassRow, kind: "seg", vals: ["transparent", "solid"], get: function () { return root.glassShown; }, set: function (v) { Flags.dockStyle = v; } },
+                { item: dockMotionRow, kind: "seg", vals: ["standard", "snap", "float", "bounce"], get: function () { return Flags.dockMotionStyle; }, set: function (v) { Flags.dockMotionStyle = v; } },
                 { item: dockMinimalRow, kind: "toggle", get: function () { return Flags.dockMinimal; }, set: function (v) { Flags.dockMinimal = v; } }
             );
         }
@@ -352,11 +355,13 @@ DockPanel {
             icon: "monitor"
             visible: Flags.dockEnabled && !Flags.dockAutoHide
 
-            SettingsSeg {
+            Dropdown {
+                id: dockGapDrop
                 s: root.s
                 pal: root.pal
                 options: [{ label: "25%", value: 0.25 }, { label: "50%", value: 0.5 }, { label: "100%", value: 1 }, { label: "150%", value: 1.5 }]
                 value: Flags.dockGap
+                onChipClicked: dockGapDrop.open = !dockGapDrop.open
                 onPicked: (v) => Flags.dockGap = v
             }
         }
@@ -740,11 +745,13 @@ DockPanel {
             icon: "palette"
             visible: Flags.dockEnabled
 
-            SettingsSeg {
+            Dropdown {
+                id: dockThemeDrop
                 s: root.s
                 pal: root.pal
                 options: [{ label: "Light", value: "light" }, { label: "Dark", value: "dark" }, { label: "Dynamic", value: "dynamic" }, { label: "Manual", value: "manual" }]
                 value: root.themeShown
+                onChipClicked: dockThemeDrop.open = !dockThemeDrop.open
                 onPicked: (v) => root.applyMode(v)
             }
         }
@@ -884,12 +891,40 @@ DockPanel {
             icon: "droplet"
             visible: Flags.dockEnabled
 
-            SettingsSeg {
+            Dropdown {
+                id: dockGlassDrop
                 s: root.s
                 pal: root.pal
                 options: [{ label: "Transparent", value: "transparent" }, { label: "Solid", value: "solid" }]
                 value: root.glassShown
+                onChipClicked: dockGlassDrop.open = !dockGlassDrop.open
                 onPicked: (v) => Flags.dockStyle = v
+            }
+        }
+
+        /**
+         * The dock's own animation feel, independent of the pill's: how fast
+         * and how shaped its hover swell, hide/show and theme fades run. Same
+         * four styles as the pill's Interface row.
+         */
+        SettingsRow {
+            id: dockMotionRow
+            surface: root
+            name: "Motion"
+            icon: "bolt"
+            visible: Flags.dockEnabled
+
+            Dropdown {
+                id: dockMotionDrop
+                s: root.s
+                pal: root.pal
+                //* Upward: a card below would run past the panel's clipped
+                //* bottom edge, and the dock's panel is only as tall as its rows.
+                up: true
+                options: [{ label: "Standard", value: "standard" }, { label: "Snap", value: "snap" }, { label: "Float", value: "float" }, { label: "Bounce", value: "bounce" }]
+                value: Flags.dockMotionStyle
+                onChipClicked: dockMotionDrop.open = !dockMotionDrop.open
+                onPicked: (v) => Flags.dockMotionStyle = v
             }
         }
 

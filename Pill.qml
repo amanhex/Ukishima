@@ -1009,9 +1009,9 @@ Item {
         NumberAnimation { target: pill; property: "kanjiFlash"; to: 0; duration: 320; easing.type: Easing.OutCubic }
     }
 
-    Behavior on width { NumberAnimation { id: morphAnimW; duration: pill.hoverHop ? Motion.glide : Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
-    Behavior on height { NumberAnimation { id: morphAnimH; duration: pill.hoverHop ? Motion.glide : Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
-    Behavior on morphRadius { NumberAnimation { id: morphAnimR; duration: pill.hoverHop ? Motion.glide : Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
+    Behavior on width { NumberAnimation { id: morphAnimW; duration: pill.hoverHop ? Motion.pillGlide : Motion.pillMorph; easing.type: Motion.pillEase; easing.bezierCurve: Motion.morphCurve } }
+    Behavior on height { NumberAnimation { id: morphAnimH; duration: pill.hoverHop ? Motion.pillGlide : Motion.pillMorph; easing.type: Motion.pillEase; easing.bezierCurve: Motion.morphCurve } }
+    Behavior on morphRadius { NumberAnimation { id: morphAnimR; duration: pill.hoverHop ? Motion.pillGlide : Motion.pillMorph; easing.type: Motion.pillEase; easing.bezierCurve: Motion.morphCurve } }
 
     /**
      * True while any morph axis animates. The body's effect layer (live drop
@@ -1037,8 +1037,8 @@ Item {
         accent: 0.05
         sheenScale: (budArea.containsMouse ? 1.3 : 1)
         hovered: budArea.containsMouse
-        Behavior on budR { NumberAnimation { duration: Motion.fast; easing.type: Motion.easeStandard } }
-        Behavior on opacity { NumberAnimation { duration: Motion.standard } }
+        Behavior on budR { NumberAnimation { duration: Motion.pillFast; easing.type: Motion.easeStandard } }
+        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard } }
 
         Canvas {
             id: budBead
@@ -1095,9 +1095,9 @@ Item {
          * off against the edge while the bottom corners stay rounded.
          */
         property real gameFlat: pill.mode === "game" ? 1 : 0
-        Behavior on gameFlat { NumberAnimation { duration: Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
+        Behavior on gameFlat { NumberAnimation { duration: Motion.pillMorph; easing.type: Motion.pillEase; easing.bezierCurve: Motion.morphCurve } }
         property real topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
-        Behavior on topFlat { NumberAnimation { duration: Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
+        Behavior on topFlat { NumberAnimation { duration: Motion.pillMorph; easing.type: Motion.pillEase; easing.bezierCurve: Motion.morphCurve } }
 
         radius: pill.morphRadius
         topLeftRadius: pill.morphRadius * (1 - topFlat)
@@ -1514,7 +1514,7 @@ Item {
         opacity: pill.mode === "dragOver" ? Math.pow(pill.morphCloseness, 1.2) : 0
         visible: opacity > 0.01
 
-        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
 
         readonly property color accent: (pill.dragStage === "bad" || pill.dragStage === "fail") ? "#e0533f" : Theme.vermLit
         readonly property real brLen: 15 * pill.s
@@ -1630,7 +1630,7 @@ Item {
         opacity: pill.mode === "game" ? Math.pow(pill.morphCloseness, 1.2) : 0
         visible: opacity > 0.01
 
-        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
 
         Row {
             anchors.left: parent.left
@@ -1639,7 +1639,7 @@ Item {
             spacing: 9 * pill.s
             opacity: Players.has ? 1 : 0
             visible: opacity > 0.01
-            Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+            Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
 
             Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
@@ -1719,7 +1719,7 @@ Item {
             color: exitHover.hovered ? Theme.frameBg : Qt.alpha(Theme.tileBg, 0.45)
             border.width: 1
             border.color: exitHover.hovered ? Qt.alpha(Theme.onGlow, 0.5) : Theme.border
-            Behavior on color { ColorAnimation { duration: Motion.fast } }
+            Behavior on color { ColorAnimation { duration: Motion.pillFast } }
 
             GlyphIcon {
                 anchors.centerIn: parent
@@ -1754,7 +1754,7 @@ Item {
             spacing: 9 * pill.s
             opacity: osd.flashing && (osd.kind === "volume" || osd.kind === "brightness" || osd.kind === "mic") ? 1 : 0
             visible: opacity > 0.01
-            Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+            Behavior on opacity { NumberAnimation { duration: Motion.pillFast } }
 
             GlyphIcon {
                 anchors.verticalCenter: parent.verticalCenter
@@ -1782,7 +1782,7 @@ Item {
                         : (osd.kind === "mic" ? osd.micVolume : osd.volume))
                     radius: parent.radius
                     color: (osd.kind === "volume" && osd.muted) || (osd.kind === "mic" && osd.micMuted) ? Theme.vermDim : Theme.vermLit
-                    Behavior on width { NumberAnimation { duration: Motion.fast } }
+                    Behavior on width { NumberAnimation { duration: Motion.pillFast } }
                 }
             }
 
@@ -1805,7 +1805,7 @@ Item {
         anchors.fill: parent
         opacity: (pill.expanded || pill.dragActive || pill.mode === "game" || pill.mode === "toast" || pill.mode === "quickChoose" || pill.mode === "quickCount") ? 0 : Math.pow(pill.morphCloseness, 1.5)
         visible: opacity > 0.01
-        Behavior on opacity { NumberAnimation { duration: pill.mode === "rest" ? Motion.fast : Math.round(260 * Motion.mult) } }
+        Behavior on opacity { NumberAnimation { duration: pill.mode === "rest" ? Motion.pillFast : Math.round(260 * Motion.mult) } }
 
         /**
          * Strip face: one compact pill of media + status hanging from the top
@@ -2030,7 +2030,7 @@ Item {
                     style: Text.Outline
                     styleColor: Qt.alpha(Theme.vermLit,
                         Math.min(1, (pill.mode === "rest" || !pill.hoverSoulGate ? 0.5 : 0) + pill.kanjiFlash))
-                    Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
                 }
 
                 Text {
@@ -2041,7 +2041,7 @@ Item {
                     font.family: Theme.fontJp
                     font.weight: Theme.fontJpWeight
                     font.pixelSize: 15 * pill.s
-                    Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
                 }
 
                 GlyphIcon {
@@ -2056,7 +2056,7 @@ Item {
                     name: "clock"
                     color: Theme.cream
                     stroke: 1.7
-                    Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
                 }
 
                 MusicBars {
@@ -2069,8 +2069,8 @@ Item {
                     visible: restKanji.barsOn
                     opacity: restKanji.barsOn ? 1 : 0
                     scale: restKanji.barsOn ? 1 : 0.7
-                    Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
-                    Behavior on scale { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+                    Behavior on scale { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
                 }
             }
             Text {
@@ -2186,7 +2186,7 @@ Item {
         anchors.fill: parent
         opacity: pill.mode === "hover" ? Math.pow(pill.morphCloseness, 1.2) : 0
         visible: true
-        Behavior on opacity { NumberAnimation { duration: pill.mode === "hover" ? Motion.fast : 40 } }
+        Behavior on opacity { NumberAnimation { duration: pill.mode === "hover" ? Motion.pillFast : 40 } }
 
         readonly property bool live: pill.mode === "hover"
 
@@ -3155,7 +3155,7 @@ sourceComponent: Media {
         opacity: pill.mode === "toast" ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity {
-            NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
+            NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard }
         }
 
         sourceComponent: Item {
@@ -3200,7 +3200,7 @@ sourceComponent: Media {
         opacity: pill.mode === "quickChoose" ? Math.pow(pill.morphCloseness, 1.3) : 0
         visible: opacity > 0.01
         Behavior on opacity {
-            NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
+            NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard }
         }
 
         Row {
@@ -3224,7 +3224,7 @@ sourceComponent: Media {
                     color: qSrcArea.containsMouse ? Qt.alpha(Theme.vermLit, 0.16) : Theme.tileBg
                     border.width: 1
                     border.color: qSrcArea.containsMouse ? Qt.alpha(Theme.vermLit, 0.5) : Theme.border
-                    Behavior on color { ColorAnimation { duration: Motion.fast } }
+                    Behavior on color { ColorAnimation { duration: Motion.pillFast } }
 
                     Row {
                         anchors.centerIn: parent
@@ -3279,7 +3279,7 @@ sourceComponent: Media {
                 color: qMonArea.containsMouse ? Qt.alpha(Theme.vermLit, 0.16) : Theme.tileBg
                 border.width: 1
                 border.color: qMonArea.containsMouse ? Qt.alpha(Theme.vermLit, 0.5) : Theme.border
-                Behavior on color { ColorAnimation { duration: Motion.fast } }
+                Behavior on color { ColorAnimation { duration: Motion.pillFast } }
 
                 Column {
                     anchors.centerIn: parent
@@ -3355,7 +3355,7 @@ sourceComponent: Media {
         opacity: pill.mode === "quickCount" ? Math.pow(pill.morphCloseness, 1.3) : 0
         visible: opacity > 0.01
         Behavior on opacity {
-            NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard }
+            NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard }
         }
 
         Column {

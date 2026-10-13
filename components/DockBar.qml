@@ -1222,11 +1222,12 @@ Item {
         height: root.dockH
         anchors.horizontalCenter: parent.horizontalCenter
         gradient: Gradient {
-            GradientStop { position: 0.0; color: root.dockPaneTop }
-            GradientStop { position: 1.0; color: root.dockPaneBot }
+            GradientStop { position: 0.0; color: root.dockPaneTop; Behavior on color { ColorAnimation { duration: Motion.dockFast } } }
+            GradientStop { position: 1.0; color: root.dockPaneBot; Behavior on color { ColorAnimation { duration: Motion.dockFast } } }
         }
         border.width: 1
         border.color: root.dockBorder
+        Behavior on border.color { ColorAnimation { duration: Motion.dockFast } }
         clip: true
         layer.enabled: true
         layer.effect: MultiEffect {
@@ -1244,7 +1245,7 @@ Item {
             height: parent.height * 0.42
             radius: slab.radius - 2
             gradient: Gradient {
-                GradientStop { position: 0.0; color: root.dockSheen }
+                GradientStop { position: 0.0; color: root.dockSheen; Behavior on color { ColorAnimation { duration: Motion.dockFast } } }
                 GradientStop { position: 1.0; color: "transparent" }
             }
         }
@@ -1348,8 +1349,8 @@ Item {
                      * chips and `hover` gone false. */
                     scale: chip.lifted ? (root.titled ? 1.16 : 1.2)
                         : chip.hover ? (root.titled ? 1.27 : 1.32) : 1
-                    Behavior on scale { NumberAnimation { duration: Motion.fast } }
-                    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+                    Behavior on scale { NumberAnimation { duration: Motion.dockFast } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.dockFast } }
                 }
 
                 Text {
@@ -1371,7 +1372,8 @@ Item {
                     font.weight: Font.DemiBold
                     color: root.dockCopy
                     opacity: chip.hover ? 1 : 0.85
-                    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+                    Behavior on color { ColorAnimation { duration: Motion.dockFast } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.dockFast } }
                     /* Empty unless the label is actually on screen, for the same
                      * reason the preview rows gate theirs: a desktop entry's Name
                      * can carry CJK too, and shaping it for a label the minimal
@@ -1392,6 +1394,7 @@ Item {
                     height: 4 * s
                     radius: width / 2
                     color: chip.modelData.active ? root.dockActive : root.dockDotIdle
+                    Behavior on color { ColorAnimation { duration: Motion.dockFast } }
                 }
 
                 MouseArea {
@@ -1523,11 +1526,12 @@ Item {
                         anchors.bottomMargin: preview.gap
                         radius: 12 * s
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: root.dockPaneTop }
-                            GradientStop { position: 1.0; color: root.dockPaneBot }
+                            GradientStop { position: 0.0; color: root.dockPaneTop; Behavior on color { ColorAnimation { duration: Motion.dockFast } } }
+                            GradientStop { position: 1.0; color: root.dockPaneBot; Behavior on color { ColorAnimation { duration: Motion.dockFast } } }
                         }
                         border.width: 1
                         border.color: root.dockBorder
+                        Behavior on border.color { ColorAnimation { duration: Motion.dockFast } }
                         clip: true
                         layer.enabled: true
                         layer.effect: MultiEffect {
@@ -1545,7 +1549,7 @@ Item {
                             height: parent.height * 0.4
                             radius: parent.radius - 2
                             gradient: Gradient {
-                                GradientStop { position: 0.0; color: root.dockSheen }
+                                GradientStop { position: 0.0; color: root.dockSheen; Behavior on color { ColorAnimation { duration: Motion.dockFast } } }
                                 GradientStop { position: 1.0; color: "transparent" }
                             }
                         }
@@ -1607,8 +1611,9 @@ Item {
                                     anchors.rightMargin: 6 * s
                                     radius: 9 * s
                                     color: root.dockHighlight
+                                    Behavior on color { ColorAnimation { duration: Motion.dockFast } }
                                     opacity: (preview.hoverIndex === index) ? 1 : 0
-                                    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+                                    Behavior on opacity { NumberAnimation { duration: Motion.dockFast } }
                                 }
 
                                 Text {
@@ -1620,6 +1625,7 @@ Item {
                                     elide: Text.ElideRight
                                     font.pixelSize: 11 * s
                                     color: root.dockCopy
+                                    Behavior on color { ColorAnimation { duration: Motion.dockFast } }
                                     text: preview.shown
                                         ? (modelData.title ? modelData.title : "(untitled)") : ""
                                 }
@@ -1634,6 +1640,7 @@ Item {
                                     Text {
                                         font.pixelSize: 9 * s
                                         color: root.dockFaint
+                                        Behavior on color { ColorAnimation { duration: Motion.dockFast } }
                                         verticalAlignment: Text.AlignVCenter
                                         text: preview.shown && modelData.workspace
                                             && modelData.workspace.name
@@ -1647,6 +1654,7 @@ Item {
                                         height: 5 * s
                                         radius: width / 2
                                         color: root.dockActive
+                                        Behavior on color { ColorAnimation { duration: Motion.dockFast } }
                                     }
                                 }
                             }
@@ -1706,7 +1714,7 @@ Item {
             stroke: 1.8
             color: root.settingsOpen ? root.dockAccent
                 : (gearSlot.hover ? root.dockCream : root.dockCopy)
-            Behavior on color { ColorAnimation { duration: Motion.fast } }
+            Behavior on color { ColorAnimation { duration: Motion.dockFast } }
         }
 
         /**
@@ -1728,7 +1736,7 @@ Item {
             font.weight: Font.DemiBold
             color: root.settingsOpen ? root.dockAccent : root.dockCopy
             opacity: gearSlot.hover ? 1 : 0.85
-            Behavior on opacity { ColorAnimation { duration: Motion.fast } }
+            Behavior on opacity { ColorAnimation { duration: Motion.dockFast } }
             text: "Settings"
         }
 

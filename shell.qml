@@ -603,7 +603,11 @@ ShellRoot {
 
                 HoverHandler {
                     enabled: !overlay.surfaceOpen && !pill.pinned
-                    onHoveredChanged: if (enabled) pill.hovered = hovered
+                    onHoveredChanged: {
+                        if (enabled) {
+                            pill.hovered = hovered;
+                        }
+                    }
                 }
                 Keys.onEscapePressed: {
                     if (pill.wallpaperMenuOpen) {
@@ -742,8 +746,8 @@ ShellRoot {
 
                     Behavior on anchors.topMargin {
                         NumberAnimation {
-                            duration: Motion.morph
-                            easing.type: Motion.easeMorph
+                            duration: Motion.pillMorph
+                            easing.type: Motion.pillEase
                             easing.bezierCurve: Motion.morphCurve
                         }
                     }
@@ -756,8 +760,8 @@ ShellRoot {
                     opacity: (overlay.monFullscreen && !pill.transientLive) ? 0 : (osdPopup.active ? 0 : 1)
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: Motion.morph
-                            easing.type: Motion.easeMorph
+                            duration: Motion.pillMorph
+                            easing.type: Motion.pillEase
                             easing.bezierCurve: Motion.morphCurve
                         }
                     }
@@ -765,8 +769,8 @@ ShellRoot {
                         y: ((overlay.monFullscreen && !pill.transientLive) || pill.hidden) ? -(pill.height + overlay.topGap) : 0
                         Behavior on y {
                             NumberAnimation {
-                                duration: Motion.morph
-                                easing.type: Motion.easeMorph
+                                duration: Motion.pillMorph
+                                easing.type: Motion.pillEase
                                 easing.bezierCurve: Motion.morphCurve
                             }
                         }
@@ -965,11 +969,32 @@ ShellRoot {
              *    plus the space above it — it already contains the bar, whose
              *    width it spans and whose bottom edge it stops at.
              */
+            /**
+             * The window, after a region commit, during which an in-footprint
+             * hover-out is treated as the compositor re-syncing the input
+             * region rather than as a departure — see the window feed below.
+             * Armed by the mask flip and by the two geometry moves that
+             * re-shape a committed region (shelf width, preview deep band),
+             * and only by those: nothing else re-commits the region.
+             */
+            property real regionChangeWindow: 0
+            onMaskChanged: regionChangeWindow = Date.now() + 150
+
+            /* The band's deep state and the shelf's width both re-size the
+             * revealed region when they change; each such commit rings the
+             * same re-sync, so arm the window alongside them. */
+            Connections {
+                target: dock
+                function onPreviewOpenChanged() { regionChangeWindow = Date.now() + 150; }
+                function onWidthChanged() { regionChangeWindow = Date.now() + 150; }
+            }
+
             mask: dock.settingsOpen
                 ? dockDismissRegion
                 : (suppressed || dock.empty ? dockHiddenRegion
                     : (Flags.dockAutoHide ? ((dock.revealSession || dock.hovered) ? dockRevealUnion : dockRevealRegion)
                         : (dock.hovered || dock.previewOpen ? dockPopBand : dockRegion)))
+
             Region { id: dockHiddenRegion }
 
             /**
@@ -986,13 +1011,20 @@ ShellRoot {
             }
 
             /**
-             * A thin bottom-centre strip kept in the input mask while the dock
-             * is retracted, so the pointer can always find it; hovering slides
-             * the bar back up. Mirrors the pill's top reveal strip.
+             * A thin bottom strip, kept in the input mask while the dock is
+             * retracted, so the pointer can always find it; hovering slides the
+             * bar back up. Sized to the dock itself plus a little catch fat
+             * (`+12s`), never a fixed width: the dock's width moves with its
+             * chips, and a strip wider than the bar's pop band left "overhang"
+             * zones where the pointer could reveal the bar from an x the
+             * up-state mask did not cover — moving up toward a chip dropped
+             * the pointer out of the mask and the bar auto-hid out from under
+             * it. `dock.width + 12s` spans exactly the pop band's x range, so
+             * there is no such dead zone. Mirrors the pill's top reveal strip.
              */
             Region {
                 id: dockRevealRegion
-                readonly property real revealW: Math.max(420 * dock.s, dock.width)
+                readonly property real revealW: dock.width + 12 * dock.s
                 readonly property real revealH: 10 * dock.s
                 x: Math.max(0, dockWin.width / 2 - revealW / 2)
                 y: dockWin.height - revealH
@@ -1059,7 +1091,9 @@ ShellRoot {
              * The plain dockRegion alone would flicker: the strip is wider than
              * the empty bar, so a cursor resting on the strip's outer edge would
              * slip out of the mask mid-slide and re-trigger the reveal. Unioning
-             * the fixed strip keeps the cursor covered for the whole pull-in.
+             * the fixed strip keeps the cursor covered for the whole pull-in —
+             * which covers the lip gap below the bar too, where the pointer can
+             * rest while the bar is up without touching a chip.
              */
             Region {
                 id: dockRevealUnion
@@ -1123,8 +1157,8 @@ ShellRoot {
                     y: dock.hidden || dock.empty || suppressed ? dock.height + dockWin.dockLip : 0
                     Behavior on y {
                         NumberAnimation {
-                            duration: Motion.morph
-                            easing.type: Motion.easeMorph
+                            duration: Motion.dockMorph
+                            easing.type: Motion.dockEase
                             easing.bezierCurve: Motion.morphCurve
                         }
                     }
@@ -1220,7 +1254,52 @@ ShellRoot {
              */
             HoverHandler {
                 enabled: !suppressed || dock.settingsOpen
-                onHoveredChanged: if (enabled) dock.hovered = hovered
+
+                /**
+                 * The guard that makes auto-hide hold: ignore a leave that is
+                 * the compositor re-syncing the input region rather than the
+                 * cursor actually departing.
+                 *
+                 * The input region is committed once per change: the mask
+                 * flip strip→union at reveal, a shelf width move (the strip is
+                 * `dock.width + 12s`), or the preview's deep band growing. Each
+                 * such commit rings a re-sync: the compositor re-checks the
+                 * pointer against the new region and, if it still sits inside,
+                 * reports a leave - the cursor never moved. Let that through
+                 * and the reveal collapses into a loop (leave → 350ms grace →
+                 * retract → strip mask → enter → reveal → leave …).
+                 *
+                 * The leave's position alone cannot separate this from a real
+                 * departure - a genuine upward exit reports just inside the
+                 * footprint too. The region change can: it is the only time a
+                 * re-sync is plausible, so `regionChangeWindow` is armed by the
+                 * mask flip and the geometry moves above, and a leave inside
+                 * the footprint is swallowed only while that window is open.
+                 * A real departure happens whenever, long after any commit,
+                 * and propagates normally. The window is kept at ~150ms — the
+                 * observed re-sync leaves land 5-90ms after their commit — so a
+                 * departure that soon after tell (reveal, then immediately away)
+                 * is swallowed too and holds until the next real leave; rare and
+                 * self-healing. A longer window would eat the departures a
+                 * move-away test makes right after revealing, which reads as the
+                 * dock refusing to retract.
+                 */
+                onHoveredChanged: {
+                    if (!enabled)
+                        return;
+                    if (!hovered) {
+                        var p = point.position;
+                        var r = dockRevealRegion;
+                        var pb = dockPopBand;
+                        var top = Math.min(r.y, pb.y);
+                        var bottom = Math.max(r.y + r.revealH, pb.y + pb.height);
+                        if (p.x >= r.x && p.x <= r.x + r.revealW
+                            && p.y >= top && p.y <= bottom
+                            && Date.now() < regionChangeWindow)
+                            return;
+                    }
+                    dock.hovered = hovered;
+                }
             }
 
             Connections {

@@ -55,13 +55,15 @@ Item { width: 1; height: 10 * root.s }
         SettingsRow {
             id: mainRow
             surface: root
-            name: "Main display"
+            name: "Display"
             icon: "clock"
 
-            SettingsSeg {
+            Dropdown {
+                id: mainDrop
                 s: root.s
                 options: [{ label: "Minimal", value: "minimal" }, { label: "Classic", value: "classic" }, { label: "System", value: "system" }, { label: "Strip", value: "strip" }]
                 value: Flags.mainDisplay
+                onChipClicked: mainDrop.open = !mainDrop.open
                 onPicked: (v) => Flags.mainDisplay = v
             }
         }
@@ -72,10 +74,12 @@ Item { width: 1; height: 10 * root.s }
             name: "Media expand"
             icon: "layers"
 
-            SettingsSeg {
+            Dropdown {
+                id: expandDrop
                 s: root.s
                 options: [{ label: "Media", value: "media" }, { label: "Full pill", value: "pill" }]
                 value: Flags.expandTo
+                onChipClicked: expandDrop.open = !expandDrop.open
                 onPicked: (v) => Flags.expandTo = v
             }
         }
@@ -86,10 +90,12 @@ Item { width: 1; height: 10 * root.s }
             name: "Time format"
             icon: "clock"
 
-            SettingsSeg {
+            Dropdown {
+                id: timeDrop
                 s: root.s
                 options: [{ label: "24H", value: false }, { label: "12H", value: true }]
                 value: Flags.time12h
+                onChipClicked: timeDrop.open = !timeDrop.open
                 onPicked: (v) => Flags.time12h = v
             }
         }
@@ -194,10 +200,12 @@ Item { width: 1; height: 10 * root.s }
             icon: "monitor"
             visible: !Flags.autoHide
 
-            SettingsSeg {
+            Dropdown {
+                id: pillGapDrop
                 s: root.s
                 options: [{ label: "25%", value: 0.25 }, { label: "50%", value: 0.5 }, { label: "100%", value: 1 }, { label: "150%", value: 1.5 }]
                 value: Flags.appGap
+                onChipClicked: pillGapDrop.open = !pillGapDrop.open
                 onPicked: (v) => Flags.appGap = v
             }
         }

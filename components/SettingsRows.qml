@@ -40,8 +40,10 @@ QtObject {
     /** Raised when a `nav` row is activated; the host decides what to open. */
     signal requestSurface(string name)
 
-    onActiveChanged: if (!active)
+    onActiveChanged: if (!active) {
+        root.closeMenus(null);
         root.clear();
+    }
 
     // A row can leave the list while the nav is sitting on it: the lock's
     // "Avatar image" row only exists while the avatar is on, so flipping that
@@ -111,12 +113,32 @@ QtObject {
     }
 
     /**
+     * Close every row's open dropdown menu — the wallpaper strip's job for a
+     * modal click-away scrim, done per row here: a click on any other row is
+     * the click-away. `except` (the row being clicked) keeps its own menu.
+     */
+    function closeMenus(except) {
+        for (var i = 0; i < root.rows.length; i++) {
+            var row = root.rows[i].item;
+            if (row === undefined || row === except)
+                continue;
+            var ctl = row.control;
+            if (ctl === undefined || ctl.length === undefined)
+                continue;
+            for (var j = 0; j < ctl.length; j++)
+                if (ctl[j].open)
+                    ctl[j].open = false;
+        }
+    }
+
+    /**
      * A click anywhere on a row drives its control: toggles flip, nav rows open
      * their surface, and segmented rows step to the next value (wrapping). The
      * control's own hit areas stay on top, so clicking a specific segment still
      * picks it directly.
      */
     function activateRow(item) {
+        root.closeMenus(item);
         var idx = root.rowIndexOf(item);
         if (idx < 0)
             return;

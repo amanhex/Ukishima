@@ -54,20 +54,23 @@ Item { width: 1; height: 10 * root.s }
         SettingsRow {
             id: glassTextRow
             surface: root
-            name: "Text visibility"
+            name: "Contrast"
             icon: "type"
             sub: "Extra contrast for copy on the glass"
             enabled: Flags.glass
             last: true
 
-            SettingsSeg {
+            Dropdown {
+                id: glassTextDrop
                 s: root.s
+                up: true
                 options: [
                     { label: "Off", value: 0 },
                     { label: "Soft", value: 0.5 },
                     { label: "Strong", value: 1 }
                 ]
                 value: Flags.glassText || 0
+                onChipClicked: glassTextDrop.open = !glassTextDrop.open
                 onPicked: (v) => Flags.glassText = v
             }
         }

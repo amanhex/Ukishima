@@ -135,10 +135,12 @@ Item { width: 1; height: 10 * root.s }
             name: "Theme"
             icon: "palette"
 
-            SettingsSeg {
+            Dropdown {
+                id: paletteDrop
                 s: root.s
                 options: [{ label: "Light", value: "light" }, { label: "Dark", value: "dark" }, { label: "Dynamic", value: "dynamic" }, { label: "Manual", value: "manual" }]
                 value: root.themeMode
+                onChipClicked: paletteDrop.open = !paletteDrop.open
                 onPicked: (v) => root.applyMode(v)
             }
         }

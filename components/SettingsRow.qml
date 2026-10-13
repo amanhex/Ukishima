@@ -42,6 +42,20 @@ Item {
     width: parent ? parent.width : 0
     height: Math.max(textCol.implicitHeight, controlSlot.childrenRect.height) + 12 * srow.s
 
+    /**
+     * While a control with an `open` state (a Dropdown) is open, the row's
+     * whole subtree rides above the rows below so the menu card floats like the
+     * wallpaper strip's — a menu nested at row depth would otherwise paint
+     * under its siblings and arrive looking cut up.
+     */
+    readonly property bool controlOpen: {
+        for (var i = 0; i < controlSlot.children.length; i++)
+            if (controlSlot.children[i].open)
+                return true;
+        return false;
+    }
+    z: srow.controlOpen ? 10 : 0
+
     HoverHandler {
         id: srowHover
         onHoveredChanged: if (srow.surface) srow.surface.reportRowHover(srow, hovered)
