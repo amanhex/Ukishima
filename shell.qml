@@ -969,26 +969,6 @@ ShellRoot {
              *    plus the space above it — it already contains the bar, whose
              *    width it spans and whose bottom edge it stops at.
              */
-            /**
-             * The window, after a region commit, during which an in-footprint
-             * hover-out is treated as the compositor re-syncing the input
-             * region rather than as a departure — see the window feed below.
-             * Armed by the mask flip and by the two geometry moves that
-             * re-shape a committed region (shelf width, preview deep band),
-             * and only by those: nothing else re-commits the region.
-             */
-            property real regionChangeWindow: 0
-            onMaskChanged: regionChangeWindow = Date.now() + 150
-
-            /* The band's deep state and the shelf's width both re-size the
-             * revealed region when they change; each such commit rings the
-             * same re-sync, so arm the window alongside them. */
-            Connections {
-                target: dock
-                function onPreviewOpenChanged() { regionChangeWindow = Date.now() + 150; }
-                function onWidthChanged() { regionChangeWindow = Date.now() + 150; }
-            }
-
             mask: dock.settingsOpen
                 ? dockDismissRegion
                 : (suppressed || dock.empty ? dockHiddenRegion
@@ -1029,7 +1009,19 @@ ShellRoot {
                 x: Math.max(0, dockWin.width / 2 - revealW / 2)
                 y: dockWin.height - revealH
                 width: revealW
-                height: revealH
+                /**
+                 * `dockWin.height - y`, not `revealH`. A Region's geometry is
+                 * integer, so `dockWin.height - revealH` truncates 1188.9 to
+                 * 1188 and an 11px box stops one row short of the screen's
+                 * bottom edge. That last row is precisely where the pointer
+                 * rests when the mouse is pushed all the way down — the pointer
+                 * that had just been used to reveal the bar — so the cursor
+                 * sitting under the bar fell outside the input region, the bar
+                 * read it as a departure, and hid out from under the pointer.
+                 * Spanning to the window's own bottom edge closes that row
+                 * whatever the rounding does.
+                 */
+                height: dockWin.height - y
             }
 
             /**
@@ -1256,49 +1248,23 @@ ShellRoot {
                 enabled: !suppressed || dock.settingsOpen
 
                 /**
-                 * The guard that makes auto-hide hold: ignore a leave that is
-                 * the compositor re-syncing the input region rather than the
-                 * cursor actually departing.
+                 * The pointer's own word, and nothing else — the pill's feed.
                  *
-                 * The input region is committed once per change: the mask
-                 * flip strip→union at reveal, a shelf width move (the strip is
-                 * `dock.width + 12s`), or the preview's deep band growing. Each
-                 * such commit rings a re-sync: the compositor re-checks the
-                 * pointer against the new region and, if it still sits inside,
-                 * reports a leave - the cursor never moved. Let that through
-                 * and the reveal collapses into a loop (leave → 350ms grace →
-                 * retract → strip mask → enter → reveal → leave …).
-                 *
-                 * The leave's position alone cannot separate this from a real
-                 * departure - a genuine upward exit reports just inside the
-                 * footprint too. The region change can: it is the only time a
-                 * re-sync is plausible, so `regionChangeWindow` is armed by the
-                 * mask flip and the geometry moves above, and a leave inside
-                 * the footprint is swallowed only while that window is open.
-                 * A real departure happens whenever, long after any commit,
-                 * and propagates normally. The window is kept at ~150ms — the
-                 * observed re-sync leaves land 5-90ms after their commit — so a
-                 * departure that soon after tell (reveal, then immediately away)
-                 * is swallowed too and holds until the next real leave; rare and
-                 * self-healing. A longer window would eat the departures a
-                 * move-away test makes right after revealing, which reads as the
-                 * dock refusing to retract.
+                 * This used to swallow a leave landing within ~150ms of an
+                 * input-region commit, on the theory that such a leave was the
+                 * compositor re-syncing the region rather than a departure. But
+                 * a leave reports the pointer's last position *inside* the
+                 * region, so a genuine departure that soon after reveal (flick
+                 * onto the strip and straight back out) matched too, and once
+                 * the pointer is outside the mask no further event can ever
+                 * clear the latch: the bar simply held itself up until the
+                 * cursor was brought back. The re-sync it was built for does not
+                 * reproduce — pointer held on the strip, the mask commit rings
+                 * no leave — and the pill has always worked with the plain feed.
                  */
                 onHoveredChanged: {
-                    if (!enabled)
-                        return;
-                    if (!hovered) {
-                        var p = point.position;
-                        var r = dockRevealRegion;
-                        var pb = dockPopBand;
-                        var top = Math.min(r.y, pb.y);
-                        var bottom = Math.max(r.y + r.revealH, pb.y + pb.height);
-                        if (p.x >= r.x && p.x <= r.x + r.revealW
-                            && p.y >= top && p.y <= bottom
-                            && Date.now() < regionChangeWindow)
-                            return;
-                    }
-                    dock.hovered = hovered;
+                    if (enabled)
+                        dock.hovered = hovered;
                 }
             }
 
