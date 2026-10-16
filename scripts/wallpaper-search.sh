@@ -305,39 +305,6 @@ thumbget() {
     printf '%s\n' "$cache"
 }
 
-# Fetch one remote live-wallpaper preview clip into a disk cache, shaped like
-# `thumbget`: cached hits are served instantly, and every fresh store prunes the
-# least-recently used clips so a long browsing session cannot leave hundreds of
-# megabytes of webm behind. The clips are only needed while the strip is open,
-# so a size cap is enough — no TTL bookkeeping.
-prevget() {
-    local url="${1:-}"
-    [ -n "$url" ] || exit 1
-    local base digest cache tmp
-    base="${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/previews"
-    mkdir -p "$base"
-    digest=$(printf '%s\n' "$url" | md5sum | cut -d' ' -f1)
-    cache="$base/ukishima-wp-preview-$digest.webm"
-    [ -s "$cache" ] && { printf '%s\n' "$cache"; exit 0; }
-    tmp="$base/.$digest.tmp"
-    trap 'rm -f "$tmp"' EXIT
-    curl -fsL --max-time 25 -A "$UA" -o "$tmp" "$url" || exit 1
-    [ -s "$tmp" ] || exit 1
-    mv "$tmp" "$cache"
-    local max_mb total old
-    max_mb="${WH_PREVIEW_MAX_MB:-50}"
-    { [ "$max_mb" -gt 0 ] 2>/dev/null; } || max_mb=50
-    total=$(du -sk "$base" 2>/dev/null | awk '{print $1}')
-    while [ "${total:-0}" -gt $(( max_mb * 1024 )) ]; do
-        old=$(find "$base" -maxdepth 1 -type f ! -name '.*' \
-              -printf '%T@ %p\n' | sort -n | head -1 | cut -d' ' -f2-)
-        [ -n "$old" ] || break
-        rm -f "$old"
-        total=$(du -sk "$base" 2>/dev/null | awk '{print $1}')
-    done
-    printf '%s\n' "$cache"
-}
-
 search() {
     local query="${1:-}" kind="${2:-all}"
     [ -n "$query" ] || { printf '[]\n'; return 0; }
@@ -454,7 +421,6 @@ case "${1:-}" in
     search)   search "${2:-}" "${3:-all}" ;;
     whsearch) whsearch "${2:-}" "${3:-1}" "${4:-}" ;;
     thumbget) thumbget "${2:-}" ;;
-    prevget)  prevget "${2:-}" ;;
     download) download "${2:-}" ;;
     *)        printf '[]\n'; exit 0 ;;
 esac

@@ -65,6 +65,17 @@ stop_mpv() {
 # Fit intent mapped to mpv flags (videos have no awww --resize): cover zooms
 # with panscan, contain letterboxes, stretch distorts, center stays native, all
 # mirroring what aww's --resize does for stills.
+#
+# Trimming mpv's buffer here does nothing, and it was measured rather than
+# assumed: `--cache` only governs *network* streams, and local playback stops
+# reading ahead at `--demuxer-readahead-secs` (1s, ~2 MiB of the 4K clip), so
+# there is no demuxer cache to shrink — `cache=no` moved RSS 317.7 → 317.6 MB.
+# The real cost of a video wallpaper is the decode pool, and `hwdec=auto` is
+# already the lever: it walks the hwdecs *this machine* actually supports until
+# one initialises (vaapi, nvdec, videotoolbox, d3d11va, ...; software only as
+# the last resort), so it stays correct on any setup — never pin a vendor name
+# here. Measured on this box: the same 4K60 file took 141 MB private with
+# hardware decode against 467 MB software.
 opts_for_fit() {
     case "$FIT" in
         no)      printf '%s' "no-audio loop-file=inf hwdec=auto video-unscaled=yes panscan=0" ;;

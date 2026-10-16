@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Effects
-import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
@@ -291,7 +290,7 @@ PillSurface {
     property string monHover: ""
 
     /**
-     * Preview arming: playback and the dimension probe only start once the
+     * Preview arming: gif playback and the dimension probe only start once the
      * focus has rested for a beat, so wheeling through the strip never churns
      * decoders or process spawns per step.
      */
@@ -690,12 +689,12 @@ PillSurface {
         thumbProc.running = false;
         thumbProc.thumbUrl = "";
         // Release the decode/format caches a browsing session piled up so
-        // they don't linger between close and the unload sweep. All of these
-        // are cheaply rebuilt when the surface reopens (Walls.warm() refreshes
-        // the thumb snapshot, previews re-fetch on demand), so dropping them
-        // on every close only costs a short re-warm if the user comes back.
+        // they don't linger between close and the unload sweep. Both are
+        // cheaply rebuilt when the surface reopens (Walls.warm() refreshes
+        // the thumb snapshot, the dimension probe re-runs on demand), so
+        // dropping them on every close only costs a short re-warm if the user
+        // comes back.
         dimsCache = {};
-        previewFile = "";
     }
 
     Connections {
@@ -720,52 +719,6 @@ PillSurface {
     }
 
     readonly property string searchScript: Config.hyprPath("scripts", "wallpaper-search.sh")
-
-    /**
-     * Remote video previews. Qt's MediaPlayer chokes on streaming https, so
-     * the focused result's preview clip (small webm) is fetched into the cache
-     * dir and played from disk. The fetch is debounced behind the focus and
-     * keyed by url hash, so paging back to a seen result replays instantly and
-     * a stale download can never attach to the wrong tile. The clip cache is
-     * size-capped by the fetcher, so browsing cannot leak webm forever.
-     */
-    property string previewFile: ""
-
-    readonly property string focusedPreviewUrl: {
-        if (focusIndex < 0 || focusIndex >= itemCount)
-            return "";
-        var e = items[focusIndex];
-        return (e && e.preview !== undefined) ? e.preview : "";
-    }
-
-    onFocusedPreviewUrlChanged: {
-        previewFile = "";
-        prevFetch.running = false;
-        prevDebounce.restart();
-    }
-
-    Timer {
-        id: prevDebounce
-        interval: 250
-        onTriggered: {
-            if (!root.active || root.focusedPreviewUrl === "")
-                return;
-            prevFetch.url = root.focusedPreviewUrl;
-            prevFetch.command = ["bash", root.searchScript, "prevget", root.focusedPreviewUrl];
-            prevFetch.running = true;
-        }
-    }
-
-    Process {
-        id: prevFetch
-        property string url: ""
-        stdout: StdioCollector {
-            onStreamFinished: {
-                if (this.text.length && prevFetch.url === root.focusedPreviewUrl)
-                    root.previewFile = this.text;
-            }
-        }
-    }
 
     /**
      * Local resolution badge. Dimensions are probed lazily for the focused
@@ -1318,17 +1271,17 @@ PillSurface {
                 : ("file://" + thumb + "?v=" + (modelData.mtime !== undefined ? Math.round(modelData.mtime) : 0)))
 
             /**
-             * Live preview gating: only the focused tile plays, and only once
-             * the strip has settled on it, so paging never spins up decoders.
-             * Gifs play in place (remote ones stream the full file), videos
-             * loop muted through the ffmpeg backend; everything else keeps the
-             * static thumb, which also stays underneath as the loading frame.
+             * Live preview gating: only the focused tile animates, and only
+             * once the strip has settled on it, so paging never churns
+             * decoders. Gifs play in place (remote ones stream the full file);
+             * videos and everything else keep the static thumb, which doubles
+             * as the video's first frame. Videos used to loop through the
+             * ffmpeg backend here, which mapped the platform's hardware-decode
+             * driver and libavcodec into the shell for the life of the process
+             * (iHD/libva on this machine) and cost ~50-80 MiB after a single
+             * preview — the still shows the same frame for free.
              */
             readonly property bool isGif: dead ? false : /\.gif(\?|$)/i.test(remote ? (modelData.image || "") : modelData.path)
-            readonly property string videoSource: dead
-                ? ""
-                : (remote ? (focused && root.previewFile !== "" ? "file://" + root.previewFile : "")
-                  : (root.isVideo(modelData.path) ? "file://" + modelData.path : ""))
             readonly property bool showPreview: !dead && focused && root.previewArmed && ao < 0.5
             readonly property string resLabel: dead
                 ? ""
@@ -1452,28 +1405,6 @@ PillSurface {
                     color: Theme.verm
                     visible: tile.isCurrent
                     opacity: tile.ao <= 4 ? 1 : Math.max(0, 4 - tile.ao)
-                }
-
-                Loader {
-                    anchors.fill: parent
-                    active: tile.showPreview && tile.videoSource !== ""
-
-                    sourceComponent: Item {
-                        VideoOutput {
-                            id: videoPreview
-                            anchors.fill: parent
-                            fillMode: VideoOutput.PreserveAspectCrop
-                            visible: vidPlayer.playbackState === MediaPlayer.PlayingState
-                        }
-
-                        MediaPlayer {
-                            id: vidPlayer
-                            videoOutput: videoPreview
-                            loops: MediaPlayer.Infinite
-                            source: tile.videoSource
-                            onMediaStatusChanged: if (mediaStatus === MediaPlayer.LoadedMedia) play()
-                        }
-                    }
                 }
 
                 Rectangle {
