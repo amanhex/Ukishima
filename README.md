@@ -16,7 +16,7 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 
 ## Features
 
-- **Dynamic island** — one morphing pill per monitor; every module grows its own surface out of it, in place. Right-click walks the pill: collapse, media, then up to three surfaces you pick under **Interface**.
+- **Dynamic island** — one morphing pill per monitor; every module grows its own surface out of it, in place.
 - **泊 Dock** — pinned and running apps with hover magnification and multi-window previews (no cursor warp), auto-hide, and its own theme (Light / Dark / Dynamic / Manual) and glass.
 - **Surfaces** — launcher, weather, calendar, media, mixer, wallpaper strip + wallhaven search, screen recorder, clipboard, wifi, bluetooth, battery, power menu, system monitor, notifications, OSD, toasts, scratchpad, settings.
 - **Wallpapers** — shuffled `awww` bag, live `mpvpaper` videos, per-wallpaper fit, and a palette that retints the UI.
