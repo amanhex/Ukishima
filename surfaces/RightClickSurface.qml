@@ -51,6 +51,8 @@ PillSurface {
         required property string label
         required property bool active
 
+        signal picked(string value)
+
         width: chipText.implicitWidth + 18 * root.s
         height: chipText.implicitHeight + 10 * root.s
         radius: height / 2
@@ -79,7 +81,7 @@ PillSurface {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: chip.parent.clicked(chip.value)
+            onClicked: chip.picked(chip.value)
         }
     }
 
@@ -116,7 +118,6 @@ PillSurface {
             anchors.rightMargin: 14 * root.s
             anchors.bottomMargin: 10 * root.s
             spacing: 6 * root.s
-            flowSpacing: 6 * root.s
         }
     }
 
@@ -170,10 +171,9 @@ PillSurface {
         Item { width: 1; height: 13 * root.s }
 
         SectionCard {
+            id: card4
             title: "4th stop"
             property string slot: Flags.cycleSlot4
-            signal clicked(string v)
-            onClicked: (v) => Flags.cycleSlot4 = v
 
             Repeater {
                 model: root.cycleChoices
@@ -181,7 +181,8 @@ PillSurface {
                     required property var modelData
                     value: modelData.value
                     label: modelData.label
-                    active: parent.slot === modelData.value
+                    active: card4.slot === modelData.value
+                    onPicked: (v) => Flags.cycleSlot4 = v
                 }
             }
         }
@@ -189,10 +190,9 @@ PillSurface {
         Item { width: 1; height: 10 * root.s }
 
         SectionCard {
+            id: card5
             title: "5th stop"
             property string slot: Flags.cycleSlot5
-            signal clicked(string v)
-            onClicked: (v) => Flags.cycleSlot5 = v
 
             Repeater {
                 model: root.cycleChoices
@@ -200,7 +200,8 @@ PillSurface {
                     required property var modelData
                     value: modelData.value
                     label: modelData.label
-                    active: parent.slot === modelData.value
+                    active: card5.slot === modelData.value
+                    onPicked: (v) => Flags.cycleSlot5 = v
                 }
             }
         }
