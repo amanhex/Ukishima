@@ -45,6 +45,20 @@ PillSurface {
     }
 
     /**
+     * Take up whatever is typed in the custom field and blank it, for every
+     * caller that is about to run or re-arm the clock — the action bar, a
+     * reset, a preset pick. A MouseArea does not steal focus, so the field
+     * keeps its text when the bar is tapped; without this a number under the
+     * cursor would be ignored by the very button it was typed for.
+     */
+    function commitCustom() {
+        const m = parseInt(minField.text);
+        if (m >= 1 && m <= 600)
+            Countdown.choose(m * 60);
+        minField.text = "";
+    }
+
+    /**
      * Seam at the head of the drain meter, mirroring the media seek stroke.
      * mapToItem is not reactive, so the voids force a re-eval across the morph
      * and on every tick.
@@ -330,16 +344,18 @@ PillSurface {
                             { label: "25", value: 25 }
                         ]
                         value: Math.round(Countdown.presetSec / 60)
-                        onPicked: (v) => Countdown.choose(v * 60)
+                        onPicked: (v) => { root.commitCustom(); Countdown.choose(v * 60); }
                     }
                 }
 
                 /**
-                 * A length off the presets is typed here in minutes and armed
-                 * on Return, then blanked so the pill reads as a prompt again
-                 * (HexField's commit-and-blank), the armed minutes shown faint
-                 * while there is one. Enter and Space are swallowed so they
-                 * apply instead of leaking into the pill's key handling.
+                 * A length off the presets is typed here in minutes and taken
+                 * up by Return, the action bar, a reset or a preset pick — all
+                 * of them run `commitCustom`, which also blanks the field so
+                 * the pill reads as a prompt again (HexField's
+                 * commit-and-blank), showing the armed minutes faintly while
+                 * there is one. Enter and Space are swallowed so they apply
+                 * instead of leaking into the pill's key handling.
                  */
                 ORow {
                     name: "Custom"
@@ -372,10 +388,7 @@ PillSurface {
                             selectionColor: Qt.alpha(Theme.verm, 0.5)
 
                             function doCommit() {
-                                const m = parseInt(text);
-                                if (m >= 1 && m <= 600)
-                                    Countdown.choose(m * 60);
-                                text = "";
+                                root.commitCustom();
                                 focus = false;
                             }
                             onAccepted: doCommit()
@@ -448,7 +461,10 @@ PillSurface {
                     id: actArea
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Countdown.toggle()
+                    onClicked: {
+                        root.commitCustom();
+                        Countdown.toggle();
+                    }
                 }
             }
 
@@ -461,7 +477,10 @@ PillSurface {
                 glyph: "refresh"
                 tooltipTitle: "Reset"
                 tooltipDesc: "Back to the armed length"
-                onClicked: Countdown.reset()
+                onClicked: {
+                    root.commitCustom();
+                    Countdown.reset();
+                }
             }
         }
     }
