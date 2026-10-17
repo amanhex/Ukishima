@@ -129,6 +129,7 @@ PillSurface {
             height: 3 * root.s
             radius: 1.5 * root.s
             color: Theme.threadBg
+            clip: true
 
             Rectangle {
                 anchors.left: parent.left
