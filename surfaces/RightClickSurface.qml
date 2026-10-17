@@ -1,29 +1,29 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import "../Singletons"
 import "../components"
 
 /**
  * 右 RIGHT-CLICK sub-surface: the two stops the bar's right-click walk leaves to
  * the user. Stops 1-3 are fixed — the collapsed pill, the media surface and the
- * timer — so these two rows pick shell stops 4 and 5, and Off drops one from the
- * walk. Reached from INTERFACE and folds back to it on the back chevron or an
- * empty click.
+ * timer — so these two sections pick shell stops 4 and 5, with Off dropping a
+ * stop. Reached from INTERFACE and folds back to it on an empty click or the
+ * back target. A chip flow keeps every option visible without opening a wide
+ * floating dropdown.
  */
-SettingsSurface {
+PillSurface {
     id: root
 
-    backSurface: "interface"
+    mTop: 14
+    mLeft: 18
+    mRight: 18
+    mBottom: 15
+
     implicitHeight: content.implicitHeight
 
-    /**
-     * The surfaces these stops can name, as one list so the dropdown menus and
-     * the keyboard's seg cycling can never disagree. The colour-theme pages and
-     * the lock page are absent: they are doors into settings rather than things
-     * to pop up, and media and timer are already fixed as stops 2 and 3.
-     */
+    signal requestSurface(string name)
+
     readonly property var cycleChoices: [
         { label: "Off", value: "" },
         { label: "Calendar", value: "calendar" },
@@ -44,17 +44,90 @@ SettingsSurface {
         { label: "Profile", value: "profile" }
     ]
 
-    readonly property var cycleVals: {
-        const out = [];
-        for (let i = 0; i < root.cycleChoices.length; i++)
-            out.push(root.cycleChoices[i].value);
-        return out;
+    component ChoiceChip: Rectangle {
+        id: chip
+
+        required property string value
+        required property string label
+        required property bool active
+
+        width: chipText.implicitWidth + 18 * root.s
+        height: chipText.implicitHeight + 10 * root.s
+        radius: height / 2
+        color: chip.active ? Qt.alpha(Theme.vermLit, 0.20)
+             : (chipArea.containsMouse ? Qt.alpha(Theme.vermLit, 0.12) : Theme.tileBg)
+        border.width: 1
+        border.color: chip.active ? Qt.alpha(Theme.vermLit, 0.60)
+                    : (chipArea.containsMouse ? Theme.hairSoft : Theme.border)
+
+        Behavior on color { ColorAnimation { duration: Motion.fast } }
+
+        Text {
+            id: chipText
+            anchors.centerIn: parent
+            text: chip.label
+            color: chip.active ? Theme.vermLit : Theme.cream
+            font.family: Theme.font
+            font.pixelSize: 10.5 * root.s
+            font.weight: chip.active ? Font.Bold : Font.DemiBold
+
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
+        }
+
+        MouseArea {
+            id: chipArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: chip.parent.clicked(chip.value)
+        }
     }
 
-    rows: [
-        { item: slot4Row, kind: "seg", vals: root.cycleVals, get: function () { return Flags.cycleSlot4; }, set: function (v) { Flags.cycleSlot4 = v; } },
-        { item: slot5Row, kind: "seg", vals: root.cycleVals, get: function () { return Flags.cycleSlot5; }, set: function (v) { Flags.cycleSlot5 = v; } }
-    ]
+    component SectionCard: Rectangle {
+        id: card
+        property string title: ""
+        default property alias chips: flow.data
+
+        width: parent.width
+        height: flow.implicitHeight + 26 * root.s
+        radius: 13 * root.s
+        color: Theme.cardBot
+
+        Text {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.leftMargin: 16 * root.s
+            anchors.topMargin: 11 * root.s
+            text: card.title
+            color: Theme.subtle
+            font.family: Theme.font
+            font.pixelSize: 10.5 * root.s
+            font.weight: Font.DemiBold
+            font.capitalization: Font.AllUppercase
+            font.letterSpacing: 1.2 * root.s
+        }
+
+        Flow {
+            id: flow
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: 14 * root.s
+            anchors.rightMargin: 14 * root.s
+            anchors.bottomMargin: 10 * root.s
+            spacing: 6 * root.s
+            flowSpacing: 6 * root.s
+        }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton
+        onClicked: (e) => {
+            if (e.button === Qt.LeftButton)
+                root.requestSurface("interface");
+        }
+    }
 
     Column {
         id: content
@@ -63,50 +136,72 @@ SettingsSurface {
         anchors.right: parent.right
         spacing: 0
 
-        SettingsHeader {
-            s: root.s
-            glyph: "右"
-            title: "RIGHT-CLICK"
-            showBack: true
+        Item {
+            width: parent.width
+            height: 24 * root.s
+
+            Row {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 9 * root.s
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.showGlyphs
+                    text: "右"
+                    color: Theme.cream
+                    font.family: Theme.fontJp
+                    font.weight: Theme.fontJpWeight
+                    font.pixelSize: 16 * root.s
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "RIGHT-CLICK"
+                    color: Theme.subtle
+                    font.family: Theme.font
+                    font.pixelSize: 10 * root.s
+                    font.weight: Font.DemiBold
+                    font.capitalization: Font.AllUppercase
+                    font.letterSpacing: 1.8 * root.s
+                }
+            }
+        }
+
+        Item { width: 1; height: 13 * root.s }
+
+        SectionCard {
+            title: "4th stop"
+            property string slot: Flags.cycleSlot4
+            signal clicked(string v)
+            onClicked: (v) => Flags.cycleSlot4 = v
+
+            Repeater {
+                model: root.cycleChoices
+                ChoiceChip {
+                    required property var modelData
+                    value: modelData.value
+                    label: modelData.label
+                    active: parent.slot === modelData.value
+                }
+            }
         }
 
         Item { width: 1; height: 10 * root.s }
 
-        /**
-         * The two user-owned stops. The walk is the collapsed pill, the media
-         * surface and the timer, then these in turn, wrapping back to the
-         * clock — Off leaves the step out instead of stalling it.
-         */
-        SettingsRow {
-            id: slot4Row
-            surface: root
-            name: "4th stop"
-            icon: "cursor"
+        SectionCard {
+            title: "5th stop"
+            property string slot: Flags.cycleSlot5
+            signal clicked(string v)
+            onClicked: (v) => Flags.cycleSlot5 = v
 
-            Dropdown {
-                id: slot4Drop
-                s: root.s
-                options: root.cycleChoices
-                value: Flags.cycleSlot4
-                onChipClicked: slot4Drop.open = !slot4Drop.open
-                onPicked: (v) => Flags.cycleSlot4 = v
-            }
-        }
-
-        SettingsRow {
-            id: slot5Row
-            surface: root
-            name: "5th stop"
-            icon: "cursor"
-            last: true
-
-            Dropdown {
-                id: slot5Drop
-                s: root.s
-                options: root.cycleChoices
-                value: Flags.cycleSlot5
-                onChipClicked: slot5Drop.open = !slot5Drop.open
-                onPicked: (v) => Flags.cycleSlot5 = v
+            Repeater {
+                model: root.cycleChoices
+                ChoiceChip {
+                    required property var modelData
+                    value: modelData.value
+                    label: modelData.label
+                    active: parent.slot === modelData.value
+                }
             }
         }
     }
