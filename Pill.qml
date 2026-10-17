@@ -2633,6 +2633,32 @@ Item {
                 }
 
                 Item {
+                    id: timerIcon
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.pillShowTimer
+                    width: 17 * pill.s
+                    height: 17 * pill.s
+
+                    GlyphIcon {
+                        anchors.fill: parent
+                        name: "stopwatch"
+                        color: timerArea.containsMouse ? Theme.cream : Theme.iconDim
+                        stroke: 1.7
+                    }
+
+                    MouseArea {
+                        id: timerArea
+                        anchors.fill: parent
+                        anchors.margins: -6 * pill.s
+                        hoverEnabled: true
+                        enabled: hover.live
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pill.requestSurface("timer")
+                        onContainsMouseChanged: if (containsMouse) pill.soulTarget = "timer"
+                    }
+                }
+
+                Item {
                     id: wallpaperIcon
                     anchors.verticalCenter: parent.verticalCenter
                     visible: Flags.pillShowWallpaper

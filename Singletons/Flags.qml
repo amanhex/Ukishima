@@ -117,6 +117,7 @@ Singleton {
     property alias pillShowScratch: adapter.pillShowScratch
     property alias pillShowLauncher: adapter.pillShowLauncher
     property alias pillShowPower: adapter.pillShowPower
+    property alias pillShowTimer: adapter.pillShowTimer
 
         //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
         property alias lockShowAvatar: adapter.lockShowAvatar
@@ -248,6 +249,7 @@ Singleton {
             property bool pillShowScratch: true
             property bool pillShowLauncher: true
             property bool pillShowPower: true
+            property bool pillShowTimer: true
             //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
             property bool lockShowAvatar: true
             //* Session lock: show the wifi indicator on lockscreen/LockSurface.qml.
