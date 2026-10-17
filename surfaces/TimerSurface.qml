@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import "../Singletons"
 import "../components"
 
@@ -22,15 +23,6 @@ PillSurface {
 
     readonly property int total: Countdown.armedSec
     readonly property real frac: total > 0 ? Math.min(1, Countdown.remaining / total) : 0
-
-    readonly property var presets: [
-        { label: "1 min", value: 60 },
-        { label: "5 min", value: 5 * 60 },
-        { label: "10 min", value: 10 * 60 },
-        { label: "15 min", value: 15 * 60 },
-        { label: "25 min", value: 25 * 60 },
-        { label: "1 hour", value: 60 * 60 }
-    ]
 
     /** mm:ss; the hero never shows an hour, it just runs the minutes up. */
     function clockText(sec) {
@@ -57,6 +49,51 @@ PillSurface {
 
     ameForm: "seam"
     amePoint: headPoint
+
+    /**
+     * One length preset as a pill: the picked length lights vermilion so the
+     * row reads as the choice, and the custom field below is what a length
+     * outside the five takes.
+     */
+    component PresetChip: Rectangle {
+        id: chip
+
+        required property int sec
+
+        readonly property bool current: Countdown.presetSec === chip.sec
+
+        width: chipText.implicitWidth + 16 * root.s
+        height: 24 * root.s
+        radius: height / 2
+        color: chip.current ? Qt.alpha(Theme.vermLit, 0.2)
+             : (chipArea.containsMouse ? Qt.alpha(Theme.vermLit, 0.12) : "transparent")
+        border.width: 1
+        border.color: chip.current ? Qt.alpha(Theme.vermLit, 0.6)
+                    : (chipArea.containsMouse ? Theme.hairSoft : Theme.border)
+
+        Behavior on color { ColorAnimation { duration: Motion.fast } }
+
+        Text {
+            id: chipText
+            anchors.centerIn: parent
+            text: (chip.sec / 60) + "m"
+            color: chip.current ? Theme.vermLit : Theme.cream
+            font.family: Theme.font
+            font.pixelSize: 10 * root.s
+            font.weight: Font.DemiBold
+            font.features: { "tnum": 1 }
+
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
+        }
+
+        MouseArea {
+            id: chipArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: Countdown.choose(chip.sec)
+        }
+    }
 
     Column {
         id: content
@@ -125,16 +162,89 @@ PillSurface {
         Item { width: 1; height: 14 * root.s }
 
         Row {
+            spacing: 6 * root.s
+
+            PresetChip { sec: 1 * 60 }
+            PresetChip { sec: 5 * 60 }
+            PresetChip { sec: 10 * 60 }
+            PresetChip { sec: 15 * 60 }
+            PresetChip { sec: 25 * 60 }
+        }
+
+        Item { width: 1; height: 10 * root.s }
+
+        Row {
             spacing: 8 * root.s
 
-            Dropdown {
-                id: presetDrop
-                s: root.s
+            /**
+             * A length outside the five presets is typed here in minutes and
+             * armed on Return, then cleared so the pill reads as a prompt
+             * rather than a value the clock no longer wears (HexField's
+             * commit-and-blank). Enter and Space are swallowed so they apply
+             * instead of leaking into the pill's key handling.
+             */
+            Rectangle {
+                id: customPill
                 anchors.verticalCenter: parent.verticalCenter
-                options: root.presets
-                value: Countdown.presetSec
-                onChipClicked: presetDrop.open = !presetDrop.open
-                onPicked: (v) => Countdown.choose(v)
+                width: 98 * root.s
+                height: 26 * root.s
+                radius: height / 2
+                color: Theme.tileBg
+                border.width: 1
+                border.color: minField.activeFocus ? Qt.alpha(Theme.vermLit, 0.55) : Theme.border
+
+                Behavior on border.color { ColorAnimation { duration: Motion.fast } }
+
+                TextField {
+                    id: minField
+                    anchors.left: parent.left
+                    anchors.leftMargin: 13 * root.s
+                    anchors.right: minHint.left
+                    anchors.rightMargin: 6 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    background: null
+                    padding: 0
+                    color: Theme.cream
+                    font.family: Theme.font
+                    font.pixelSize: 12 * root.s
+                    font.features: { "tnum": 1 }
+                    placeholderText: "custom"
+                    placeholderTextColor: Theme.faint
+                    selectByMouse: true
+                    selectionColor: Qt.alpha(Theme.verm, 0.5)
+
+                    function doCommit() {
+                        const m = parseInt(text);
+                        if (m >= 1 && m <= 600)
+                            Countdown.choose(m * 60);
+                        text = "";
+                        focus = false;
+                    }
+                    onAccepted: doCommit()
+                    onEditingFinished: doCommit()
+                    Keys.onPressed: (e) => {
+                        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                            doCommit();
+                            e.accepted = true;
+                        } else if (e.key === Qt.Key_Space) {
+                            e.accepted = true;
+                        }
+                    }
+                }
+
+                Text {
+                    id: minHint
+                    anchors.right: parent.right
+                    anchors.rightMargin: 11 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "min"
+                    color: minField.activeFocus || minField.text.length > 0 ? Theme.cream : Theme.faint
+                    font.family: Theme.font
+                    font.pixelSize: 9.5 * root.s
+                    font.weight: Font.DemiBold
+
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
+                }
             }
 
             /**

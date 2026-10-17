@@ -81,7 +81,6 @@ SettingsSurface {
             id: slot4Row
             surface: root
             name: "4th stop"
-            sub: "after the pill · media · timer"
             icon: "cursor"
 
             Dropdown {
