@@ -301,6 +301,7 @@ PillSurface {
                 height: 3 * root.s
                 radius: height / 2
                 color: Theme.frameBg
+                clip: true
 
                 Rectangle {
                     width: parent.width * root.frac
