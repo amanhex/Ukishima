@@ -178,7 +178,7 @@ Item {
             id: card
             anchors.top: parent.top
             anchors.right: parent.right
-            width: meas.implicitWidth + 30 * root.s
+            width: Math.min(meas.implicitWidth + 30 * root.s, 320 * root.s)
             height: root.options.length * root.rowH + 4 * root.s
             radius: 9 * root.s
             gradient: Gradient {
