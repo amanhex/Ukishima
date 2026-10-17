@@ -99,6 +99,13 @@ Singleton {
     property alias memorySaver: adapter.memorySaver
     property alias unloadSec: adapter.unloadSec
 
+    //* Right-click walk: the bar opens the collapsed pill, the media surface
+    //* and the timer as its three fixed stops, then these two, wrapping back to
+    //* the pill. An empty slot drops its stop from the walk instead of stalling
+    //* it, so both blank leaves right-click as pill <-> media <-> timer.
+    property alias cycleSlot4: adapter.cycleSlot4
+    property alias cycleSlot5: adapter.cycleSlot5
+
     //* Expanded-pill modules: each hides one optional item from the hover row.
     //* Everything core — workspaces, the wifi/bluetooth/battery cluster, the
     //* clock, weather, notifications, mixer and clipboard — always draws. The
@@ -230,6 +237,9 @@ Singleton {
             property bool memorySaver: true
             //* Wallpaper-tier idle in seconds when memorySaver is on; the other tiers scale off it.
             property real unloadSec: 30
+            //* Right-click stops 4 and 5, by surface name; "" drops the stop.
+            property string cycleSlot4: ""
+            property string cycleSlot5: ""
             //* Expanded-pill modules (see Flags above). All true on a fresh install,
             //* so nothing leaves the bar until asked.
             property bool pillShowSysmon: true

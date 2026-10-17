@@ -10,6 +10,7 @@ import Quickshell.Hyprland
 import "Singletons"
 import "components"
 import "surfaces"
+import "lib/cycle.js" as Cycle
 
 /**
  * The pill body. One element carries every state. Width/height driven by `state`
@@ -118,6 +119,7 @@ Item {
     readonly property bool wallpaperOpen: surface === "wallpaper"
     readonly property bool powerOpen: surface === "power"
     readonly property bool mediaOpen: surface === "media"
+    readonly property bool timerOpen: surface === "timer"
     readonly property bool linkOpen: surface === "link"
     readonly property bool weatherOpen: surface === "weather"
     readonly property bool wifiOpen: surface === "wifi"
@@ -134,11 +136,12 @@ Item {
     readonly property bool glassOpen: surface === "glass"
     readonly property bool fontColorOpen: surface === "fontcolor"
     readonly property bool interfaceOpen: surface === "interface"
+    readonly property bool rightClickOpen: surface === "rightclick"
     readonly property bool fontpickerOpen: surface === "fontpicker"
     readonly property bool lockSettingsOpen: surface === "locksettings"
     readonly property bool updateOpen: surface === "update"
     readonly property bool profileOpen: surface === "profile"
-    readonly property bool settingsLike: appearanceOpen || appcatOpen || displayOpen || modulesOpen || themeOpen || accentOpen || glassOpen || fontColorOpen || interfaceOpen || fontpickerOpen || lockSettingsOpen || updateOpen || profileOpen
+    readonly property bool settingsLike: appearanceOpen || appcatOpen || displayOpen || modulesOpen || themeOpen || accentOpen || glassOpen || fontColorOpen || interfaceOpen || rightClickOpen || fontpickerOpen || lockSettingsOpen || updateOpen || profileOpen
     readonly property bool hasMedia: Players.list.length > 0
 
     readonly property var netDevices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
@@ -422,6 +425,7 @@ Item {
         wallpaper: { size: () => { surfaceItem("wallpaper"); return Qt.size(wallpaperW, wallpaperH); }, ame: () => null },
         power:     { size: () => { surfaceItem("power"); return Qt.size(powerW, powerH); }, ame: () => surfaceItem("power") },
         media:     { size: () => { surfaceItem("media"); return Qt.size(mediaW, mediaH); }, ame: () => surfaceItem("media") },
+        timer:     { size: () => { const it = surfaceItem("timer"); return Qt.size((it.implicitWidth > 0 ? it.implicitWidth : 282 * s) + 36 * s, it.implicitHeight + 32 * s); }, ame: () => surfaceItem("timer") },
         mixer:     { size: () => Qt.size(93 * Math.max(4, surfaceItem("mixer").faderCount) * s, mixerH), ame: () => surfaceItem("mixer") },
         link:      { size: () => { const it = surfaceItem("link"); return Qt.size(it.desiredW, it.implicitHeight + 26 * s); }, ame: () => surfaceItem("link") },
         wifi:      { size: () => Qt.size(wifiW, surfaceItem("wifi").implicitHeight + 26 * s), ame: () => surfaceItem("wifi") },
@@ -438,6 +442,7 @@ Item {
         glass:      { size: () => Qt.size(settingsW, surfaceItem("glass").implicitHeight + 29 * s), ame: () => surfaceItem("glass") },
         fontcolor:  { size: () => Qt.size(settingsW, surfaceItem("fontcolor").implicitHeight + 29 * s), ame: () => surfaceItem("fontcolor") },
         interface:  { size: () => Qt.size(settingsW, surfaceItem("interface").implicitHeight + 29 * s), ame: () => surfaceItem("interface") },
+        rightclick: { size: () => Qt.size(settingsW, surfaceItem("rightclick").implicitHeight + 29 * s), ame: () => surfaceItem("rightclick") },
         fontpicker: { size: () => Qt.size(fontpickerW, surfaceItem("fontpicker").implicitHeight + 29 * s), ame: () => surfaceItem("fontpicker") },
         update:     { size: () => Qt.size(settingsW, surfaceItem("update").implicitHeight + 29 * s), ame: () => surfaceItem("update") },
         profile:   { size: () => Qt.size(profileW, surfaceItem("profile").implicitHeight + 29 * s), ame: () => surfaceItem("profile") },
@@ -460,6 +465,7 @@ Item {
         wallpaper:  () => ldWall,
         power:      () => ldPower,
         media:      () => ldMedia,
+        timer:      () => ldTimer,
         mixer:      () => ldMixer,
         link:       () => ldLink,
         wifi:       () => ldWifi,
@@ -476,6 +482,7 @@ Item {
         glass:      () => ldGlass,
         fontcolor:  () => ldFontcolor,
         interface:  () => ldInterface,
+        rightclick: () => ldRightClick,
         fontpicker: () => ldFontpicker,
         update:     () => ldUpdate,
         profile:   () => ldProfile,
@@ -664,6 +671,8 @@ Item {
             return ldFontcolor.item;
         if (pill.interfaceOpen)
             return ldInterface.item;
+        if (pill.rightClickOpen)
+            return ldRightClick.item;
         if (pill.fontpickerOpen)
             return ldFontpicker.item;
         if (pill.profileOpen)
@@ -1297,20 +1306,40 @@ Item {
     }
 
     /**
-     * Right-click toggles the media player from anywhere on the pill: on the
-     * collapsed pill it pops the now-playing surface open, and on the open
-     * media surface it dismisses back to the clock. Other surfaces are left to
+     * The bar's right-click walk, as surface names: the two fixed stops after
+     * the resting pill — the media surface and the timer — then whatever the
+     * user put in stops 4 and 5, blanks dropped and repeats ignored
+     * (lib/cycle.js). Stop 1, the collapsed pill, is the wrap-around close
+     * rather than a name here. With both slots Off it is ["media", "timer"].
+     */
+    readonly property var cycleSurfaces: Cycle.surfaces([Flags.cycleSlot4, Flags.cycleSlot5])
+
+    /**
+     * The walk's next stop, or "" for the resting pill. The step is read from
+     * the surface that is actually open rather than a stored index, so a stop
+     * reached any other way (a chip, a keybind) continues from where the user's
+     * eyes are and nothing can drift out of sync.
+     */
+    function cycleNext() {
+        return Cycle.next(pill.cycleSurfaces, pill.surface);
+    }
+
+    /**
+     * Right-click walks the bar: the collapsed pill pops the media surface,
+     * then the timer, then each configured stop, wrapping back to the clock. It
+     * stays out of every surface that is not part of the walk — those keep
      * their own clicks and the modal backdrop.
      */
     TapHandler {
         acceptedButtons: Qt.RightButton
-        enabled: (!pill.surfaceOpen || pill.mediaOpen) && pill.mode !== "game"
+        enabled: (!pill.surfaceOpen || pill.cycleSurfaces.indexOf(pill.surface) >= 0) && pill.mode !== "game"
         gesturePolicy: TapHandler.WithinBounds
         onTapped: {
-            if (pill.mediaOpen)
+            const next = pill.cycleNext();
+            if (next.length === 0)
                 pill.requestClose();
             else
-                pill.requestSurface("media");
+                pill.requestSurface(next);
         }
     }
 
@@ -2887,6 +2916,18 @@ sourceComponent: Media {
     }
 
     Loader {
+        id: ldTimer
+        active: false
+        anchors.fill: parent
+        sourceComponent: TimerSurface {
+            s: pill.s
+            open: pill.timerOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+        }
+    }
+
+    Loader {
         id: ldLink
         active: false
         anchors.fill: parent
@@ -3070,6 +3111,19 @@ sourceComponent: Media {
         sourceComponent: InterfaceSurface {
             s: pill.s * pill.settingsScale
             open: pill.interfaceOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+            onRequestSurface: (name) => pill.requestSurface(name)
+        }
+    }
+
+    Loader {
+        id: ldRightClick
+        active: false
+        anchors.fill: parent
+        sourceComponent: RightClickSurface {
+            s: pill.s * pill.settingsScale
+            open: pill.rightClickOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
             onRequestSurface: (name) => pill.requestSurface(name)

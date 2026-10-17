@@ -24,3 +24,4 @@ singleton Config Config.qml
 singleton DockPins DockPins.qml
 singleton DockState DockState.qml
 singleton Scratch Scratch.qml
+singleton Countdown Countdown.qml

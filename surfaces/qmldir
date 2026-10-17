@@ -12,6 +12,8 @@ FontColorSurface FontColorSurface.qml
 FontPicker FontPicker.qml
 GlassSurface GlassSurface.qml
 InterfaceSurface InterfaceSurface.qml
+RightClickSurface RightClickSurface.qml
+TimerSurface TimerSurface.qml
 Launcher Launcher.qml
 Link Link.qml
 LockSettings LockSettings.qml

@@ -8,9 +8,9 @@ import "../components"
 /**
  * 面 INTERFACE sub-surface: general shell behaviour that is not tied to the
  * clock, the theme or the dock — the UI scale, reduced motion, whether the pill
- * auto-hides, and the memory saver. Reached from the Appearance index and folds
- * back to it on the back chevron or an empty click. Dock settings live on their
- * own 泊 DOCK sub-surface.
+ * auto-hides, the memory saver, and the door to the right-click stops. Reached
+ * from the Appearance index and folds back to it on the back chevron or an
+ * empty click. Dock settings live on their own 泊 DOCK sub-surface.
  */
 SettingsSurface {
     id: root
@@ -23,7 +23,8 @@ SettingsSurface {
         { item: motionStyleRow, kind: "seg", vals: ["standard", "snap", "float", "bounce"], get: function () { return Flags.motionStyle; }, set: function (v) { Flags.motionStyle = v; } },
         { item: motionRow, kind: "toggle", get: function () { return Flags.reduceMotion; }, set: function (v) { Flags.reduceMotion = v; } },
         { item: autoHideRow, kind: "toggle", get: function () { return Flags.autoHide; }, set: function (v) { Flags.autoHide = v; } },
-        { item: saverRow, kind: "toggle", get: function () { return Flags.memorySaver; }, set: function (v) { Flags.memorySaver = v; } }
+        { item: saverRow, kind: "toggle", get: function () { return Flags.memorySaver; }, set: function (v) { Flags.memorySaver = v; } },
+        { item: clickRow, kind: "nav", surface: "rightclick" }
     ]
 
     Column {
@@ -110,12 +111,33 @@ Item { width: 1; height: 10 * root.s }
             surface: root
             name: "Memory saver"
             icon: "stopwatch"
-            last: true
 
             LinkToggle {
                 s: root.s
                 on: Flags.memorySaver
                 onToggled: Flags.memorySaver = !Flags.memorySaver
+            }
+        }
+
+        /**
+         * The right-click walk gets its own page rather than rows here: two
+         * dropdowns plus their captions would double this list, and the walk is
+         * its own idea (what a gesture opens) next to the pill's look-and-feel.
+         */
+        SettingsRow {
+            id: clickRow
+            surface: root
+            name: "Right-click"
+            sub: "Pill · media · timer · two more"
+            icon: "cursor"
+            last: true
+
+            GlyphIcon {
+                width: 16 * root.s
+                height: 16 * root.s
+                name: "chevron-right"
+                color: root.focusRowItem === clickRow ? Theme.cream : Theme.iconDim
+                stroke: 1.9
             }
         }
     }
