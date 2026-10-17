@@ -39,7 +39,7 @@ SettingsSurface {
         { label: "Bluetooth", value: "bt" },
         { label: "Battery", value: "battery" },
         { label: "Recorder", value: "recorder" },
-        { label: "System monitor", value: "sysmon" },
+        { label: "Sysmon", value: "sysmon" },
         { label: "Appearance", value: "appearance" },
         { label: "Profile", value: "profile" }
     ]
