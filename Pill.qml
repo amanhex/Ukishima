@@ -10,6 +10,7 @@ import Quickshell.Hyprland
 import "Singletons"
 import "components"
 import "surfaces"
+import "lib/cycle.js" as Cycle
 
 /**
  * The pill body. One element carries every state. Width/height driven by `state`
@@ -1297,20 +1298,41 @@ Item {
     }
 
     /**
-     * Right-click toggles the media player from anywhere on the pill: on the
-     * collapsed pill it pops the now-playing surface open, and on the open
-     * media surface it dismisses back to the clock. Other surfaces are left to
+     * The bar's right-click cycle, as surface names: the media surface first,
+     * then each configured slot in order with blanks dropped and repeats
+     * ignored (lib/cycle.js). Stop 1, the resting pill, is the wrap-around
+     * close rather than a name here, so this list holds stops 2-5. With every
+     * slot empty it is just ["media"], which is the rest <-> media toggle
+     * right-click has always been.
+     */
+    readonly property var cycleSurfaces: Cycle.surfaces([Flags.cycleSlot1, Flags.cycleSlot2, Flags.cycleSlot3])
+
+    /**
+     * The cycle's next stop, or "" for the resting pill. The step is read from
+     * the surface that is actually open rather than a stored index, so a stop
+     * reached any other way (a chip, a keybind) continues from where the user's
+     * eyes are and nothing can drift out of sync.
+     */
+    function cycleNext() {
+        return Cycle.next(pill.cycleSurfaces, pill.surface);
+    }
+
+    /**
+     * Right-click walks the bar's cycle: the collapsed pill pops the media
+     * surface, then each configured slot in turn, wrapping back to the clock.
+     * It stays out of every surface that is not part of the cycle — those keep
      * their own clicks and the modal backdrop.
      */
     TapHandler {
         acceptedButtons: Qt.RightButton
-        enabled: (!pill.surfaceOpen || pill.mediaOpen) && pill.mode !== "game"
+        enabled: (!pill.surfaceOpen || pill.cycleSurfaces.indexOf(pill.surface) >= 0) && pill.mode !== "game"
         gesturePolicy: TapHandler.WithinBounds
         onTapped: {
-            if (pill.mediaOpen)
+            const next = pill.cycleNext();
+            if (next.length === 0)
                 pill.requestClose();
             else
-                pill.requestSurface("media");
+                pill.requestSurface(next);
         }
     }
 
