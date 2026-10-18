@@ -31,6 +31,13 @@ Item {
     property string surface: ""
 
     /**
+     * Names this window to the centred picker. Every `Dropdown` under the pill
+     * reports this so the picker is drawn by the pill's own overlay window and
+     * not the dock's, and only on this monitor.
+     */
+    readonly property string pickerKey: "pill:" + screenName
+
+    /**
      * Tail retention: a closed surface keeps its object tree alive until its
      * own countdown elapses so a quick return is still instant. Every closed
      * surface is tracked by name in `closedAt` and swept independently, so

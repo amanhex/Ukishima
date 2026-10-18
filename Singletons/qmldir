@@ -25,3 +25,4 @@ singleton DockPins DockPins.qml
 singleton DockState DockState.qml
 singleton Scratch Scratch.qml
 singleton Countdown Countdown.qml
+singleton Selector Selector.qml

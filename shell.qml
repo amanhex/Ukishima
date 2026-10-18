@@ -476,7 +476,15 @@ ShellRoot {
             readonly property real topGap: 8 * Flags.topGap * s
             readonly property string surface: root.openMon === modelData.name ? root.openSurface : ""
             readonly property bool surfaceOpen: surface.length > 0
-            readonly property bool modal: surfaceOpen || pill.held || pill.quickChoosing || pill.expandLatch
+            readonly property bool modal: surfaceOpen || pill.held || pill.quickChoosing || pill.expandLatch || pickerHere
+
+            /**
+             * True on the one window whose dropdown spawned the centred picker.
+             * A `Dropdown` reports the window it lives in (`pill:<monitor>` or
+             * `dock:<monitor>`), so only that window draws the picker and only
+             * that monitor leaves click-through — every other window is untouched.
+             */
+            readonly property bool pickerHere: Selector.open && Selector.owner === ("pill:" + modelData.name)
 
             /**
              * True while this monitor's active workspace reports a fullscreen
@@ -496,7 +504,7 @@ ShellRoot {
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: ((surfaceOpen || pill.quickChoosing)) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: ((surfaceOpen || pill.quickChoosing || pickerHere)) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             WlrLayershell.namespace: "ukishima"
 
             anchors { top: true; left: true; right: true; bottom: true }
@@ -599,7 +607,7 @@ ShellRoot {
             FocusScope {
                 id: focusScope
                 anchors.fill: parent
-                focus: overlay.surfaceOpen || pill.quickChoosing
+                focus: overlay.surfaceOpen || pill.quickChoosing || overlay.pickerHere
 
                 HoverHandler {
                     enabled: !overlay.surfaceOpen && !pill.pinned
@@ -610,7 +618,9 @@ ShellRoot {
                     }
                 }
                 Keys.onEscapePressed: {
-                    if (pill.wallpaperMenuOpen) {
+                    if (Selector.open) {
+                        Selector.close();
+                    } else if (pill.wallpaperMenuOpen) {
                         pill.wallpaperMenuClose();
                     } else if (pill.quickChoosing) {
                         ScreenRec.quickChoosing = false;
@@ -620,15 +630,18 @@ ShellRoot {
                     }
                 }
                 Keys.onUpPressed: (e) => {
-                    if (pill.wallpaperMenuOpen) { pill.wallpaperMenuMove(-1); e.accepted = true; }
+                    if (Selector.open) { Selector.move(-1); e.accepted = true; }
+                    else if (pill.wallpaperMenuOpen) { pill.wallpaperMenuMove(-1); e.accepted = true; }
                     else e.accepted = pill.mixerStep(1) || pill.recorderStep(5) || pill.settingsMove(-1);
                 }
                 Keys.onDownPressed: (e) => {
-                    if (pill.wallpaperMenuOpen) { pill.wallpaperMenuMove(1); e.accepted = true; }
+                    if (Selector.open) { Selector.move(1); e.accepted = true; }
+                    else if (pill.wallpaperMenuOpen) { pill.wallpaperMenuMove(1); e.accepted = true; }
                     else e.accepted = pill.mixerStep(-1) || pill.recorderStep(-5) || pill.settingsMove(1);
                 }
                 Keys.onLeftPressed: (e) => {
-                    if (pill.wallpaperMenuOpen) { e.accepted = true; }
+                    if (Selector.open) { Selector.move(-1); e.accepted = true; }
+                    else if (pill.wallpaperMenuOpen) { e.accepted = true; }
                     else if (pill.mixerOpen) { pill.mixerFocusMove(-1); e.accepted = true; }
                     else if (pill.wallpaperOpen) { pill.wallpaperMove(-1); e.accepted = true; }
                     else if (pill.powerOpen) { pill.powerMove(-1); e.accepted = true; }
@@ -636,7 +649,8 @@ ShellRoot {
                     else if (pill.settingsLike) { pill.settingsAdjust(-1); e.accepted = true; }
                 }
                 Keys.onRightPressed: (e) => {
-                    if (pill.wallpaperMenuOpen) { e.accepted = true; }
+                    if (Selector.open) { Selector.move(1); e.accepted = true; }
+                    else if (pill.wallpaperMenuOpen) { e.accepted = true; }
                     else if (pill.mixerOpen) { pill.mixerFocusMove(1); e.accepted = true; }
                     else if (pill.wallpaperOpen) { pill.wallpaperMove(1); e.accepted = true; }
                     else if (pill.powerOpen) { pill.powerMove(1); e.accepted = true; }
@@ -652,6 +666,13 @@ ShellRoot {
                  * is swallowed for everything else so a held key never re-fires.
                  */
                 Keys.onPressed: (e) => {
+                    if (Selector.open) {
+                        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) {
+                            if (!e.isAutoRepeat) Selector.activate();
+                            e.accepted = true;
+                        }
+                        return;
+                    }
                     if (pill.wallpaperMenuOpen) {
                         if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) {
                             if (!e.isAutoRepeat) pill.wallpaperMenuPick();
@@ -792,9 +813,21 @@ ShellRoot {
                     suppressed: overlay.surfaceOpen || pill.held || pill.quickChoosing
                         || pill.quickCounting || pill.mode === "game" || (pill.toastActive && Notifs.toastCritical)
                 }
+
+                /**
+                 * The centred stop picker, above the pill so its scrim catches
+                 * every click while it is up and the pill surface below never
+                 * sees the press. Gated to the monitor that opened it.
+                 */
+                StopSelector {
+                    anchors.fill: parent
+                    s: overlay.s
+                    active: overlay.pickerHere
+                }
             }
 
             onSurfaceOpenChanged: if (surfaceOpen) focusScope.forceActiveFocus()
+            onPickerHereChanged: if (pickerHere) focusScope.forceActiveFocus()
 
             Connections {
                 target: pill
@@ -834,6 +867,15 @@ ShellRoot {
             readonly property real dockLip: 4 * Flags.topGap * s
             readonly property string surface: root.openMon === modelData.name ? root.openSurface : ""
             readonly property bool surfaceOpen: surface.length > 0
+
+            /**
+             * True while the centred picker was opened from this dock window's
+             * own panel. The picker is hosted per window, so the dock draws it
+             * above the panel and the bar and only on the monitor whose dropdown
+             * spawned it; the pill's overlays and every other monitor stay
+             * click-through.
+             */
+            readonly property bool pickerHere: Selector.open && Selector.owner === ("dock:" + modelData.name)
 
             /**
              * The dock is off screen here, and retracts off the bottom edge: it
@@ -913,7 +955,7 @@ ShellRoot {
              * pill's own stack (root.openSurface) and stays empty while the
              * dock's gear is open, which is exactly when typing has to land
              * here. Exclusive while the panel is open, None again on close. */
-            WlrLayershell.keyboardFocus: dock.settingsOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: (dock.settingsOpen || dockWin.pickerHere) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             WlrLayershell.namespace: "ukishima-dock"
 
             anchors { top: true; left: true; right: true; bottom: true }
@@ -969,13 +1011,27 @@ ShellRoot {
              *    plus the space above it — it already contains the bar, whose
              *    width it spans and whose bottom edge it stops at.
              */
-            mask: dock.settingsOpen
-                ? dockDismissRegion
-                : (suppressed || dock.empty ? dockHiddenRegion
-                    : (Flags.dockAutoHide ? ((dock.revealSession || dock.hovered) ? dockRevealUnion : dockRevealRegion)
-                        : (dock.hovered || dock.previewOpen ? dockPopBand : dockRegion)))
+            mask: dockWin.pickerHere
+                ? dockFullRegion
+                : (dock.settingsOpen
+                    ? dockDismissRegion
+                    : (suppressed || dock.empty ? dockHiddenRegion
+                        : (Flags.dockAutoHide ? ((dock.revealSession || dock.hovered) ? dockRevealUnion : dockRevealRegion)
+                            : (dock.hovered || dock.previewOpen ? dockPopBand : dockRegion))))
 
             Region { id: dockHiddenRegion }
+
+            /**
+             * The whole screen, kept in the input mask while the picker is up so
+             * a click anywhere dismisses it — and so the pointer never leaves
+             * this window, which would otherwise auto-hide the panel out from
+             * under the picker.
+             */
+            Region {
+                id: dockFullRegion
+                width: dockWin.width
+                height: dockWin.height
+            }
 
             /**
              * The region behind the panel: the block, and nothing grown around it.
@@ -1199,6 +1255,7 @@ ShellRoot {
                     DockSurface {
                         s: dock.s
                         pal: dock.dockPal
+                        pickerKey: "dock:" + dockWin.modelData.name
                         open: true
                         onRequestClose: dock.closeSettings()
                     }
@@ -1283,6 +1340,54 @@ ShellRoot {
                     }
                 }
             }
+
+            /**
+             * The centred picker for the dock's own selectors. Hosted here, above
+             * the panel (z 200) and the bar (z 250), so it draws over both and
+             * takes the keyboard while it is up. The panel has no focus scope of
+             * its own — each widget handles its own keys — so this is what
+             * answers Escape, the arrows and Enter for the picker.
+             */
+            FocusScope {
+                id: dockPicker
+
+                z: 300
+                anchors.fill: parent
+                focus: dockWin.pickerHere
+
+                Keys.onEscapePressed: Selector.close()
+                Keys.onUpPressed: (e) => {
+                    Selector.move(-1);
+                    e.accepted = true;
+                }
+                Keys.onDownPressed: (e) => {
+                    Selector.move(1);
+                    e.accepted = true;
+                }
+                Keys.onLeftPressed: (e) => {
+                    Selector.move(-1);
+                    e.accepted = true;
+                }
+                Keys.onRightPressed: (e) => {
+                    Selector.move(1);
+                    e.accepted = true;
+                }
+                Keys.onPressed: (e) => {
+                    if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) {
+                        if (!e.isAutoRepeat)
+                            Selector.activate();
+                        e.accepted = true;
+                    }
+                }
+
+                StopSelector {
+                    anchors.fill: parent
+                    s: dockWin.s
+                    active: dockWin.pickerHere
+                }
+            }
+
+            onPickerHereChanged: if (dockWin.pickerHere) dockPicker.forceActiveFocus()
         }
     }
 }

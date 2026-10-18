@@ -63,7 +63,6 @@ Item { width: 1; height: 10 * root.s }
             Dropdown {
                 id: glassTextDrop
                 s: root.s
-                up: true
                 options: [
                     { label: "Off", value: 0 },
                     { label: "Soft", value: 0.5 },

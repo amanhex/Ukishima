@@ -46,7 +46,9 @@ Item {
      * While a control with an `open` state (a Dropdown) is open, the row's
      * whole subtree rides above the rows below so the menu card floats like the
      * wallpaper strip's — a menu nested at row depth would otherwise paint
-     * under its siblings and arrive looking cut up.
+     * under its siblings and arrive looking cut up. The row also keeps its tile
+     * lit for as long as the control is open, so the picker that took over the
+     * middle of the screen can still be traced back to the row that opened it.
      */
     readonly property bool controlOpen: {
         for (var i = 0; i < controlSlot.children.length; i++)
@@ -66,7 +68,7 @@ Item {
         anchors.topMargin: 3 * srow.s
         anchors.bottomMargin: 3 * srow.s
         radius: 9 * srow.s
-        color: (srowHover.hovered || srow.focused) ? srow.tile : "transparent"
+        color: (srowHover.hovered || srow.focused || srow.controlOpen) ? srow.tile : "transparent"
         Behavior on color { ColorAnimation { duration: Motion.fast } }
     }
 

@@ -372,9 +372,6 @@ SettingsSurface {
             Dropdown {
                 id: blurDrop
                 s: root.s
-                //* Upward: the pill's Lock page has only the avatar rows below
-                //* this one, and a four-option card would reach past its foot.
-                up: true
                 options: [
                     { label: "Off", value: 0 },
                     { label: "Low", value: 32 },

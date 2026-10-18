@@ -918,9 +918,6 @@ DockPanel {
                 id: dockMotionDrop
                 s: root.s
                 pal: root.pal
-                //* Upward: a card below would run past the panel's clipped
-                //* bottom edge, and the dock's panel is only as tall as its rows.
-                up: true
                 options: [{ label: "Standard", value: "standard" }, { label: "Snap", value: "snap" }, { label: "Float", value: "float" }, { label: "Bounce", value: "bounce" }]
                 value: Flags.dockMotionStyle
                 onChipClicked: dockMotionDrop.open = !dockMotionDrop.open

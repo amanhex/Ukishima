@@ -42,6 +42,13 @@ Item {
     /** The dock's palette, handed down by the host that owns it. */
     property var pal: null
 
+    /**
+     * Names this window to the centred picker: every `Dropdown` under the dock
+     * reports it so the picker is drawn by the dock's own window and not the
+     * pill's. Set by the shell, which knows the monitor.
+     */
+    property string pickerKey: ""
+
     /** The row registry, assigned by the deriving page. */
     property var rows: []
 

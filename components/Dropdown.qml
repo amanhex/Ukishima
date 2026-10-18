@@ -1,23 +1,24 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Effects
 import "../Singletons"
 
 /**
- * Compact header dropdown for the wallpaper strip: a chip that opens a small
- * menu card below it. `options` is a list of `{ label, value }`; the option
- * whose `value` equals `value` is the applied one (flame tick). The chip shows
- * either a `glyph` icon or, when `glyph` is empty, a label chip with the
- * current mode plus a chevron. The host owns open/close coordination via
- * `chipClicked` and the `open` property; selection emits `picked(value)`.
+ * A setting's choice chip. It does not drop a menu of its own: opening it hands
+ * the choice to the centred `Selector` picker, so every selector in the pill and
+ * the dock — display, theme, dock, wallpaper, lock — is the same transient card
+ * in the middle of the screen, gone the moment a value is picked.
  *
- * Active option is the vermilion legend with the flame tick; a second tone
- * marks the row the cursor or pointer is on (`selIndex`) — keyboard moves and
- * pointer hover both tint it, so the selection reads as a colour change, never
- * a cover. `moveSel()`, `pickSel()` and the chip are the keyboard/pointer
- * entry points; the modal click-away scrim lives in the host surface so it can
- * cover the whole strip.
+ * The host still owns open/close (`open`, `chipClicked`) and receives the result
+ * through `picked(value)`; `moveSel`/`pickSel` remain the keyboard entry points
+ * the wallpaper strip and the row registry already call. The chip shows the
+ * current label, or a `glyph` icon instead when one is set.
+ *
+ * `options` is a list of `{ label, value, icon? }`; an optional `icon` is drawn
+ * in the picker beside the label. The picker is hosted once per window, so the
+ * chip reports which window it belongs to (`hostKey`), found by walking up to the
+ * nearest ancestor naming one — the pill carries `pill:<monitor>` and the dock's
+ * panel `dock:<monitor>`.
  */
 Item {
     id: root
@@ -25,21 +26,36 @@ Item {
     required property var options
     property var value: ""
     /** The host's SettingsPalette; a null one means the pill's own Theme
-     * tokens — every pill surface. The dock's settings panel passes the dock's
-     * palette, so the chip and the menu card take the dock's colours and not
-     * the pill's. */
+     * tokens. The dock's settings panel passes the dock's palette, so the chip
+     * takes the dock's colours and not the pill's. */
     property var pal: null
     property string glyph: ""
     property string title: ""
     property string desc: ""
     property bool open: false
-    /** Open the menu above the chip instead of below — for the last row of a
-     * surface, where a downward card would hang out of the pill. */
-    property bool up: false
     property real s: 1
 
     signal picked(var value)
     signal chipClicked()
+
+    /**
+     * What the centred picker calls this choice. `title` when the host set one
+     * (the wallpaper strip does, for its captions); otherwise the enclosing
+     * settings row's name, found the same way `hostKey` finds the window, so a
+     * row like "Time format" names the card without every call site repeating
+     * itself.
+     */
+    readonly property string pickerTitle: {
+        if (root.title.length > 0)
+            return root.title;
+        var p = root.parent;
+        while (p) {
+            if (p.name !== undefined && String(p.name).length > 0)
+                return String(p.name);
+            p = p.parent;
+        }
+        return "";
+    }
 
     readonly property int curIndex: {
         for (var i = 0; i < options.length; i++)
@@ -52,35 +68,62 @@ Item {
 
     readonly property color chipGlyph: root.pal ? root.pal.sub : Theme.iconDim
     readonly property color chipInk: root.pal ? root.pal.sub : Theme.subtle
-    readonly property color chipFaint: root.pal ? root.pal.faint : Theme.faint
+    readonly property color chipTile: root.pal ? root.pal.tile : Theme.frameBg
     readonly property color chipActive: root.pal ? root.pal.accent : Theme.vermLit
-    readonly property color cardTopCol: root.pal ? root.pal.paneTop : Theme.cardTop
-    readonly property color cardBotCol: root.pal ? root.pal.paneBot : Theme.cardBot
-    readonly property color rowInk: root.pal ? root.pal.ink : Theme.cream
-    readonly property color rowSub: root.pal ? root.pal.sub : Theme.subtle
 
-    readonly property real rowH: 21 * root.s
     readonly property real chipH: 22 * root.s
 
-    property int selIndex: Math.max(0, curIndex)
+    /**
+     * The window this chip reports to: the first ancestor that names one. The
+     * picker is drawn per window (the pill's overlay, the dock's), and this is
+     * how the right one knows the choice is its own.
+     */
+    function hostKey() {
+        var p = root.parent;
+        while (p) {
+            if (p.pickerKey !== undefined)
+                return p.pickerKey;
+            p = p.parent;
+        }
+        return "";
+    }
 
-    onOpenChanged: if (root.open) root.selIndex = Math.max(0, root.curIndex)
+    onOpenChanged: {
+        if (root.open)
+            Selector.show({ title: root.pickerTitle, options: root.options, value: root.value, tag: root, owner: root.hostKey() });
+        else if (Selector.open && Selector.tag === root)
+            Selector.close();
+    }
+
+    Connections {
+        target: Selector
+
+        function onPicked(value, tag) {
+            if (tag === root)
+                root.picked(value);
+        }
+
+        /** The picker closing by any other route (scrim, Escape) closes the chip. */
+        function onOpenChanged() {
+            if (!Selector.open && root.open && Selector.tag === root)
+                root.open = false;
+        }
+
+        /** A second selector opening takes the picker over: stand down. */
+        function onTagChanged() {
+            if (root.open && Selector.tag !== root)
+                root.open = false;
+        }
+    }
 
     function moveSel(dir) {
-        root.selIndex = Math.max(0, Math.min(options.length - 1, root.selIndex + dir));
+        if (Selector.tag === root)
+            Selector.move(dir);
     }
 
     function pickSel() {
-        var opt = options[selIndex];
-        if (opt === undefined)
-            return;
-        root.picked(opt.value);
-        root.open = false;
-    }
-
-    function pickValue(v) {
-        root.picked(v);
-        root.open = false;
+        if (Selector.tag === root)
+            Selector.activate();
     }
 
     width: chip.width
@@ -91,8 +134,13 @@ Item {
         width: iconGlyph.visible ? root.chipH : chipLabel.implicitWidth + 15 * root.s
         height: root.chipH
         radius: height / 2
-        color: "transparent"
+        /** While the picker this chip opened is up, the chip keeps a shade: the
+         * card is in the middle of the screen, and the shade is what ties it
+         * back to the control it came from. */
+        color: root.open ? Qt.alpha(root.chipActive, 0.16)
+             : (chipHover.hovered ? root.chipTile : "transparent")
         border.width: 0
+        Behavior on color { ColorAnimation { duration: Motion.fast } }
 
         GlyphIcon {
             id: iconGlyph
@@ -106,26 +154,15 @@ Item {
             Behavior on color { ColorAnimation { duration: Motion.fast } }
         }
 
-        Row {
-            visible: root.glyph.length === 0
+        Text {
+            id: chipLabel
             anchors.centerIn: parent
-            spacing: 3 * root.s
-
-            Text {
-                id: chipLabel
-                text: root.curLabel
-                color: root.open ? root.chipActive : root.chipInk
-                font.family: Theme.font
-                font.pixelSize: 10 * root.s
-                font.weight: Font.DemiBold
-            }
-            GlyphIcon {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 8 * root.s
-                height: 8 * root.s
-                name: root.open ? "chevron-up" : "chevron-down"
-                color: root.open ? root.chipActive : root.chipFaint
-            }
+            visible: root.glyph.length === 0
+            text: root.curLabel
+            color: root.open ? root.chipActive : root.chipInk
+            font.family: Theme.font
+            font.pixelSize: 10 * root.s
+            font.weight: Font.DemiBold
         }
 
         HoverHandler {
@@ -145,117 +182,5 @@ Item {
             desc: root.desc
             show: chipHover.hovered && !root.open && (root.title.length > 0 || root.desc.length > 0)
         }
-    }
-
-    Item {
-        id: menu
-        visible: root.open
-        z: 60
-        anchors.top: root.up ? undefined : chip.bottom
-        anchors.topMargin: root.up ? 0 : 6 * root.s
-        anchors.bottom: root.up ? chip.top : undefined
-        anchors.bottomMargin: root.up ? 6 * root.s : 0
-        anchors.right: chip.right
-
-        width: card.width
-        height: card.height
-
-        Rectangle {
-            anchors.fill: card
-            radius: card.radius
-            color: Theme.cardBot
-            visible: menu.visible
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                shadowColor: Theme.shadow
-                shadowBlur: 0.6
-                shadowVerticalOffset: 4 * root.s
-            }
-        }
-
-        Rectangle {
-            id: card
-            anchors.top: parent.top
-            anchors.right: parent.right
-            width: Math.min(meas.implicitWidth + 30 * root.s, 320 * root.s)
-            height: root.options.length * root.rowH + 4 * root.s
-            radius: 9 * root.s
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: root.cardTopCol }
-                GradientStop { position: 1.0; color: root.cardBotCol }
-            }
-
-            Column {
-                anchors.fill: parent
-                anchors.margins: 2 * root.s
-                spacing: 0
-
-                Repeater {
-                    model: root.options
-
-                    delegate: Rectangle {
-                        id: row
-                        required property int index
-                        required property var modelData
-
-                        readonly property bool current: String(modelData.value) === String(root.value)
-
-                        width: parent.width
-                        height: root.rowH
-                        color: "transparent"
-
-                        Rectangle {
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.leftMargin: 6 * root.s
-                            visible: row.current
-                            width: 2 * root.s
-                            height: parent.height * 0.46
-                            radius: width / 2
-                            color: root.chipActive
-                        }
-
-                        Text {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 16 * root.s
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: row.modelData.label
-                            color: row.current ? root.chipActive
-                                : (row.index === root.selIndex ? root.rowInk : root.rowSub)
-                            font.family: Theme.font
-                            font.pixelSize: 10.5 * root.s
-                            font.weight: row.current ? Font.Bold
-                                : (row.index === root.selIndex ? Font.DemiBold : Font.Medium)
-                        }
-
-                        HoverHandler {
-                            onHoveredChanged: if (hovered) root.selIndex = row.index
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.pickValue(row.modelData.value)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Text {
-        id: meas
-        visible: false
-        text: {
-            var l = "";
-            for (var i = 0; i < options.length; i++)
-                if (options[i].label.length > l.length)
-                    l = options[i].label;
-            return l;
-        }
-        font.family: Theme.font
-        font.pixelSize: 10.5 * root.s
-        font.weight: Font.Bold
     }
 }
