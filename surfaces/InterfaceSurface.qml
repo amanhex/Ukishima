@@ -24,7 +24,6 @@ SettingsSurface {
         { item: motionRow, kind: "toggle", get: function () { return Flags.reduceMotion; }, set: function (v) { Flags.reduceMotion = v; } },
         { item: autoHideRow, kind: "toggle", get: function () { return Flags.autoHide; }, set: function (v) { Flags.autoHide = v; } },
         { item: saverRow, kind: "toggle", get: function () { return Flags.memorySaver; }, set: function (v) { Flags.memorySaver = v; } },
-        { item: timerChipRow, kind: "toggle", get: function () { return Flags.pillShowTimer; }, set: function (v) { Flags.pillShowTimer = v; } },
         { item: clickRow, kind: "nav", surface: "rightclick" }
     ]
 
@@ -117,19 +116,6 @@ Item { width: 1; height: 10 * root.s }
                 s: root.s
                 on: Flags.memorySaver
                 onToggled: Flags.memorySaver = !Flags.memorySaver
-            }
-        }
-
-        SettingsRow {
-            id: timerChipRow
-            surface: root
-            name: "Timer chip"
-            icon: "stopwatch"
-
-            LinkToggle {
-                s: root.s
-                on: Flags.pillShowTimer
-                onToggled: Flags.pillShowTimer = !Flags.pillShowTimer
             }
         }
 

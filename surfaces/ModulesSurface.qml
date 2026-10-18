@@ -25,6 +25,7 @@ SettingsSurface {
     rows: [
         { item: sysmonRow, kind: "toggle", get: function () { return Flags.pillShowSysmon; }, set: function (v) { Flags.pillShowSysmon = v; } },
         { item: recRow, kind: "toggle", get: function () { return Flags.pillShowRecorder; }, set: function (v) { Flags.pillShowRecorder = v; } },
+        { item: timerRow, kind: "toggle", get: function () { return Flags.pillShowTimer; }, set: function (v) { Flags.pillShowTimer = v; } },
         { item: wallRow, kind: "toggle", get: function () { return Flags.pillShowWallpaper; }, set: function (v) { Flags.pillShowWallpaper = v; } },
         { item: scratchRow, kind: "toggle", get: function () { return Flags.pillShowScratch; }, set: function (v) { Flags.pillShowScratch = v; } },
         { item: launchRow, kind: "toggle", get: function () { return Flags.pillShowLauncher; }, set: function (v) { Flags.pillShowLauncher = v; } },
@@ -69,6 +70,19 @@ Item { width: 1; height: 10 * root.s }
                 s: root.s
                 on: Flags.pillShowRecorder
                 onToggled: Flags.pillShowRecorder = !Flags.pillShowRecorder
+            }
+        }
+
+        SettingsRow {
+            id: timerRow
+            surface: root
+            name: "Timer"
+            icon: "stopwatch"
+
+            LinkToggle {
+                s: root.s
+                on: Flags.pillShowTimer
+                onToggled: Flags.pillShowTimer = !Flags.pillShowTimer
             }
         }
 
