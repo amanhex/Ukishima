@@ -122,6 +122,13 @@ Item {
 
         readonly property real pad: 16 * root.s
         readonly property real maxW: Math.min(root.width - 80 * root.s, 440 * root.s)
+
+        /** The legacy panel: the exact pre-glass fill, top-lit. */
+        readonly property Gradient panel: Gradient {
+            orientation: Gradient.Vertical
+            GradientStop { position: 0.0; color: Theme.cardTop }
+            GradientStop { position: 1.0; color: Theme.cardBot }
+        }
         readonly property real optionsW: root.tiles ? root.tileRowW : root.chipsW
         readonly property real naturalW: Math.max(Math.max(header.visible ? header.implicitWidth : 0, optionsW),
                                                   hintRow.implicitWidth) + 2 * pad
@@ -195,14 +202,29 @@ Item {
         width: Math.max(248 * root.s, Math.min(maxW, naturalW))
         height: col.implicitHeight + 2 * pad
         radius: 16 * root.s
-        color: Theme.cardBot
 
-        /** Lit from the top, so the card reads as a pane of the shell's glass
-         * rather than a flat rectangle with a hairline round it. */
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0.0; color: Theme.cardTop }
-            GradientStop { position: 1.0; color: Theme.cardBot }
+        /**
+         * The card's own fill is the legacy panel, and only that. In glass
+         * mode the translucent slab below is the face: a painted card — or a
+         * Rectangle's default white — would show straight through it and the
+         * picker would read as a flat block instead of glass.
+         */
+        color: "transparent"
+        gradient: Flags.glass ? null : card.panel
+
+        /** Glass when transparency mode is on — the same material as the media
+         * card: see-through, with a veil so the copy keeps its contrast. */
+        LiquidGlass {
+            id: glassBg
+            anchors.fill: parent
+            radius: card.radius
+            style: "clear"
+            legacyOpacity: 1
+            accent: 0.09
+            veil: 0.08
+            borderColor: Theme.border
+            visible: Flags.glass
+            z: 0
         }
 
         border.width: 1
@@ -254,6 +276,7 @@ Item {
 
             anchors.fill: parent
             clip: true
+            visible: !Flags.glass
 
             /** The rim: the paper catches the light along its top edge, and the
              * light runs out before the corners, which are round. */
@@ -363,6 +386,7 @@ Item {
             anchors.right: parent.right
             anchors.margins: card.pad
             spacing: 11 * root.s
+            z: 2
 
             Text {
                 id: header

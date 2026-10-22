@@ -51,10 +51,9 @@ Rectangle {
     property bool pressed: false
     property bool active: false
 
-    /// Master switch: the glass material is on. OLED forces the legacy solid
-    /// path so the pure-black surfaces stay pure — a translucent black slab
-    /// would read as dark glass, not an OLED island.
-    readonly property bool glassy: Flags.glass && !Theme.oled
+    /// Master switch: the glass material is on. OLED no longer forces the legacy
+    /// path — transparency can work with OLED.
+    readonly property bool glassy: Flags.glass
 
     /// The veil actually painted when glassy: the surface baseline plus the
     /// user's text-visibility boost (up to +0.12), capped so it never becomes a
