@@ -29,6 +29,7 @@ SettingsSurface {
         { item: wallRow, kind: "toggle", get: function () { return Flags.pillShowWallpaper; }, set: function (v) { Flags.pillShowWallpaper = v; } },
         { item: scratchRow, kind: "toggle", get: function () { return Flags.pillShowScratch; }, set: function (v) { Flags.pillShowScratch = v; } },
         { item: launchRow, kind: "toggle", get: function () { return Flags.pillShowLauncher; }, set: function (v) { Flags.pillShowLauncher = v; } },
+        { item: emojiRow, kind: "toggle", get: function () { return Flags.pillShowEmoji; }, set: function (v) { Flags.pillShowEmoji = v; } },
         { item: powerRow, kind: "toggle", get: function () { return Flags.pillShowPower; }, set: function (v) { Flags.pillShowPower = v; } }
     ]
 
@@ -122,6 +123,19 @@ Item { width: 1; height: 10 * root.s }
                 s: root.s
                 on: Flags.pillShowLauncher
                 onToggled: Flags.pillShowLauncher = !Flags.pillShowLauncher
+            }
+        }
+
+        SettingsRow {
+            id: emojiRow
+            surface: root
+            name: "Emoji"
+            icon: "emoji"
+
+            LinkToggle {
+                s: root.s
+                on: Flags.pillShowEmoji
+                onToggled: Flags.pillShowEmoji = !Flags.pillShowEmoji
             }
         }
 

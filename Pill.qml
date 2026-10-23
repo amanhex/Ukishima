@@ -122,6 +122,7 @@ Item {
     readonly property bool calendarOpen: surface === "calendar"
     readonly property bool launcherOpen: surface === "launcher"
     readonly property bool clipboardOpen: surface === "clipboard"
+    readonly property bool emojiOpen: surface === "emoji"
     readonly property bool scratchOpen: surface === "scratch"
     readonly property bool wallpaperOpen: surface === "wallpaper"
     readonly property bool powerOpen: surface === "power"
@@ -428,6 +429,7 @@ Item {
         weather:   { size: () => { const it = surfaceItem("weather"); return Qt.size((it.implicitWidth > 0 ? it.implicitWidth : 282 * s) + 36 * s, it.implicitHeight + 32 * s); }, ame: () => surfaceItem("weather") },
         launcher:  { size: () => { surfaceItem("launcher"); return Qt.size(launcherW, launcherH); }, ame: () => surfaceItem("launcher") },
         clipboard: { size: () => { surfaceItem("clipboard"); return Qt.size(clipboardW, clipboardH); }, ame: () => surfaceItem("clipboard") },
+        emoji:     { size: () => { surfaceItem("emoji"); return Qt.size(clipboardW, clipboardH); }, ame: () => surfaceItem("emoji") },
         scratch:   { size: () => { surfaceItem("scratch"); return Qt.size(scratchW, scratchH); }, ame: () => surfaceItem("scratch") },
         wallpaper: { size: () => { surfaceItem("wallpaper"); return Qt.size(wallpaperW, wallpaperH); }, ame: () => null },
         power:     { size: () => { surfaceItem("power"); return Qt.size(powerW, powerH); }, ame: () => surfaceItem("power") },
@@ -468,6 +470,7 @@ Item {
         weather:    () => ldWeather,
         launcher:   () => ldLauncher,
         clipboard:  () => ldClip,
+        emoji:      () => ldEmoji,
         scratch:    () => ldScratch,
         wallpaper:  () => ldWall,
         power:      () => ldPower,
@@ -1186,6 +1189,8 @@ Item {
             return wallpaperIcon.mapToItem(pill, wallpaperIcon.width / 2, wallpaperIcon.height + drop * 0.55);
         if (soulTarget === "clipboard")
             return clipboardIcon.mapToItem(pill, clipboardIcon.width / 2, clipboardIcon.height + drop * 0.55);
+        if (soulTarget === "emoji")
+            return emojiIcon.mapToItem(pill, emojiIcon.width / 2, emojiIcon.height + drop * 0.55);
         if (soulTarget === "scratch")
             return scratchIcon.mapToItem(pill, scratchIcon.width / 2, scratchIcon.height + drop * 0.55);
         if (soulTarget === "launcher")
@@ -2717,6 +2722,32 @@ Item {
                 }
 
                 Item {
+                    id: emojiIcon
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.pillShowEmoji
+                    width: 17 * pill.s
+                    height: 17 * pill.s
+
+                    GlyphIcon {
+                        anchors.fill: parent
+                        name: "emoji"
+                        color: emojiArea.containsMouse ? Theme.cream : Theme.iconDim
+                        stroke: 1.7
+                    }
+
+                    MouseArea {
+                        id: emojiArea
+                        anchors.fill: parent
+                        anchors.margins: -6 * pill.s
+                        hoverEnabled: true
+                        enabled: hover.live
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pill.requestSurface("emoji")
+                        onContainsMouseChanged: if (containsMouse) pill.soulTarget = "emoji"
+                    }
+                }
+
+                Item {
                     id: scratchIcon
                     anchors.verticalCenter: parent.verticalCenter
                     visible: Flags.pillShowScratch
@@ -2887,6 +2918,18 @@ Item {
         sourceComponent: Clipboard {
             s: pill.s
             open: pill.clipboardOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+        }
+    }
+
+    Loader {
+        id: ldEmoji
+        active: false
+        anchors.fill: parent
+        sourceComponent: Emoji {
+            s: pill.s
+            open: pill.emojiOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
         }

@@ -34,7 +34,7 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/remote-install.sh | bash
 ```
 
-Clones to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints the keybinds and auto-launch line to add. Update it the same way — or from the **Update** surface inside the settings — whenever you want the latest.
+Clones to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints the auto-launch line plus the IPC surface list you can bind to your own keys. Update it the same way — or from the **Update** surface inside the settings — whenever you want the latest.
 
 ## Use
 
@@ -48,25 +48,24 @@ Clones to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints 
 
 - **Wallpaper daemon** — `exec-once = awww-daemon` beside the launch line, so the wallpaper is painted without waiting on the daemon to come up.
 
-- **Keybinds** — every surface answers over quickshell IPC (target `ukishima`; empty monitor arg = focused):
+- **Keybinds** — the shell ships none of its own; everything is reachable by clicking the pill. Every surface also answers over quickshell IPC (target `ukishima`; empty monitor arg = focused), so bind only what you want:
 
   ```conf
-  bind = SUPER, SHIFT+W, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper ""
-  bind = SUPER, SHIFT+V, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima clipboard ""
-  bind = SUPER, SHIFT+S, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima scratch ""
-  bind = SUPER, slash,   exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher ""
-  bind = SUPER, N,       exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima notifications ""
+  bind = SUPER, SHIFT+E, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima emoji ""
   ```
 
   ```lua
-  hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper \"\""))
-  hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima clipboard \"\""))
-  hl.bind(var_mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima scratch \"\""))
-  hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher \"\""))
-  hl.bind(var_mainMod .. " + N",         hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima notifications \"\""))
+  hl.bind(var_mainMod .. " + SHIFT + E", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima emoji \"\""))
   ```
 
-  Other handlers: mixer, calendar, media, power, battery, sysmon, recorder, gameMode, peek, hide, page …
+  Surfaces: `wallpaper`, `clipboard`, `emoji`, `scratch`, `launcher`,
+  `notifications`, `media`, `mixer`, `calendar`, `power`, `battery`, `sysmon`,
+  `recorder`. Other handlers: `gameMode`, `quickRecord`, `peek`, `hide`,
+  `unloadAll`, and `page` for any surface or settings page by name:
+
+  ```conf
+  bind = SUPER, SHIFT+A, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima page "" appearance
+  ```
 
 - **Lock** is a script rather than an IPC surface, so it gets its own bind:
 

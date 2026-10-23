@@ -5,6 +5,7 @@ BatterySurface BatterySurface.qml
 BtSurface BtSurface.qml
 Calendar Calendar.qml
 Clipboard Clipboard.qml
+Emoji Emoji.qml
 DisplaySurface DisplaySurface.qml
 Profile Profile.qml
 DockSurface DockSurface.qml

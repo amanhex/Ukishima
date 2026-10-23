@@ -39,41 +39,40 @@ esac
 
 IPC_PREFIX="qs -p $INSTALL_ROOT"
 
-printf '
-\033[1;32mUkishima installed!\033[0m
+printf '\n\033[1;32mUkishima installed!\033[0m\n\n'
 
+cat <<EOF
 Add these to your Hyprland config:
 
   Auto-launch (lower-memory launcher):
-    exec-once = %s/launch.sh
+    exec-once = $INSTALL_ROOT/launch.sh
 
   Wallpaper daemon — start it here rather than letting the shell start it, so
   it is already up when the shell restores your wallpaper (no ~1s delay):
     exec-once = awww-daemon
 
-  Keybinds (hyprlang):
-    bind = SUPER, SHIFT+W, exec, %s ipc call ukishima wallpaper ""
-    bind = SUPER, SHIFT+V, exec, %s ipc call ukishima clipboard ""
-    bind = SUPER, SHIFT+S, exec, %s ipc call ukishima scratch ""
-    bind = SUPER, slash,   exec, %s ipc call ukishima launcher ""
-    bind = SUPER, L,       exec, %s/scripts/lock.sh
+  Keybinds — the shell ships none. Everything is reachable by clicking the pill;
+  every surface also answers over IPC, so bind the ones you want (hyprlang):
+    bind = SUPER, SHIFT+E, exec, $IPC_PREFIX ipc call ukishima emoji ""
 
-  Keybinds (lua):
-    hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("%s ipc call ukishima wallpaper \\\"\\\""))
-    hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd("%s ipc call ukishima clipboard \\\"\\\""))
-    hl.bind(var_mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("%s ipc call ukishima scratch \\\"\\\""))
-    hl.bind(var_mainMod .. " + slash",     hl.dsp.exec_cmd("%s ipc call ukishima launcher \\\"\\\""))
-    hl.bind(var_mainMod .. " + L",         hl.dsp.exec_cmd("%s/scripts/lock.sh"))
+  or lua:
+    hl.bind(var_mainMod .. " + SHIFT + E", hl.dsp.exec_cmd("$IPC_PREFIX ipc call ukishima emoji \\"\\""))
+
+  Surfaces: wallpaper, clipboard, emoji, scratch, launcher, notifications,
+  media, mixer, calendar, power, battery, sysmon, recorder. Also: gameMode,
+  quickRecord, peek, hide, unloadAll, and page "" <name> for any surface or
+  settings page.
 
   Lock is a script, not an IPC surface. It uses hyprlock if you have it,
   otherwise its own Quickshell lockscreen — set the backend under Lock in
-  settings once it is running.
+  settings once it is running:
+    bind = SUPER, L, exec, $INSTALL_ROOT/scripts/lock.sh
 
   Launch manually:
-    quickshell --config %s
+    quickshell --config $INSTALL_ROOT
 
   State: ~/.local/state/ukishima
   Cache: ~/.cache/ukishima
-' "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$IPC_PREFIX" "$INSTALL_ROOT" "$INSTALL_ROOT"
+EOF
 
 [ "$missing" -eq 0 ] || printf '\n\033[1;31mSome core dependencies are missing — install them for full functionality.\033[0m\n' >&2

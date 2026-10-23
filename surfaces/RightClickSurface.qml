@@ -33,6 +33,7 @@ SettingsSurface {
         { label: "Weather", value: "weather", icon: "cloud" },
         { label: "Launcher", value: "launcher", icon: "app-window" },
         { label: "Clipboard", value: "clipboard", icon: "clipboard" },
+        { label: "Emoji", value: "emoji", icon: "emoji" },
         { label: "Scratchpad", value: "scratch", icon: "type" },
         { label: "Wallpaper", value: "wallpaper", icon: "wallpaper" },
         { label: "Power", value: "power", icon: "shutdown" },
