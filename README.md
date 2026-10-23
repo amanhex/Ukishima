@@ -48,24 +48,25 @@ Clones to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints 
 
 - **Wallpaper daemon** — `exec-once = awww-daemon` beside the launch line, so the wallpaper is painted without waiting on the daemon to come up.
 
-- **Keybinds** — the shell ships none of its own; everything is reachable by clicking the pill. Every surface also answers over quickshell IPC (target `ukishima`; empty monitor arg = focused), so bind only what you want:
+- **Keybinds** — the shell ships none; every surface answers over quickshell IPC (target `ukishima`, empty monitor arg = focused):
 
   ```conf
+  bind = SUPER, SHIFT+W, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper ""
   bind = SUPER, SHIFT+E, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima emoji ""
   ```
 
   ```lua
+  hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper \"\""))
   hl.bind(var_mainMod .. " + SHIFT + E", hl.dsp.exec_cmd("qs -p ~/.local/share/quickshell/ukishima ipc call ukishima emoji \"\""))
   ```
 
-  Surfaces: `wallpaper`, `clipboard`, `emoji`, `scratch`, `launcher`,
-  `notifications`, `media`, `mixer`, `calendar`, `power`, `battery`, `sysmon`,
-  `recorder`. Other handlers: `gameMode`, `quickRecord`, `peek`, `hide`,
-  `unloadAll`, and `page` for any surface or settings page by name:
+  List every surface you can bind:
 
-  ```conf
-  bind = SUPER, SHIFT+A, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima page "" appearance
+  ```bash
+  qs -p ~/.local/share/quickshell/ukishima ipc show
   ```
+
+  Any other keybind is the same shape — swap the IPC call for the one you want.
 
 - **Lock** is a script rather than an IPC surface, so it gets its own bind:
 

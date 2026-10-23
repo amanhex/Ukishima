@@ -51,17 +51,19 @@ Add these to your Hyprland config:
   it is already up when the shell restores your wallpaper (no ~1s delay):
     exec-once = awww-daemon
 
-  Keybinds — the shell ships none. Everything is reachable by clicking the pill;
-  every surface also answers over IPC, so bind the ones you want (hyprlang):
+  Keybinds — the shell ships none. Every surface answers over IPC, so bind the
+  ones you want (hyprlang):
+    bind = SUPER, SHIFT+W, exec, $IPC_PREFIX ipc call ukishima wallpaper ""
     bind = SUPER, SHIFT+E, exec, $IPC_PREFIX ipc call ukishima emoji ""
 
   or lua:
+    hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("$IPC_PREFIX ipc call ukishima wallpaper \\"\\""))
     hl.bind(var_mainMod .. " + SHIFT + E", hl.dsp.exec_cmd("$IPC_PREFIX ipc call ukishima emoji \\"\\""))
 
-  Surfaces: wallpaper, clipboard, emoji, scratch, launcher, notifications,
-  media, mixer, calendar, power, battery, sysmon, recorder. Also: gameMode,
-  quickRecord, peek, hide, unloadAll, and page "" <name> for any surface or
-  settings page.
+  List every surface you can bind:
+    $IPC_PREFIX ipc show
+
+  Any other keybind is the same shape — swap the IPC call for the one you want.
 
   Lock is a script, not an IPC surface. It uses hyprlock if you have it,
   otherwise its own Quickshell lockscreen — set the backend under Lock in
