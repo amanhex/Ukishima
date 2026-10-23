@@ -48,7 +48,7 @@ Clones to `~/.local/share/quickshell/ukishima`, checks dependencies, and prints 
 
 - **Wallpaper daemon** — `exec-once = awww-daemon` beside the launch line, so the wallpaper is painted without waiting on the daemon to come up.
 
-- **Keybinds** — the shell ships none; every surface answers over quickshell IPC (target `ukishima`, empty monitor arg = focused):
+- **Keybinds** — the shell ships no keybinds of its own. Two examples:
 
   ```conf
   bind = SUPER, SHIFT+W, exec, qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper ""
