@@ -266,6 +266,7 @@ DockPanel {
         if (Flags.dockEnabled) {
             base.push(
                 { item: dockAutoHideRow, kind: "toggle", get: function () { return Flags.dockAutoHide; }, set: function (v) { Flags.dockAutoHide = v; } },
+                { item: dockScaleRow, kind: "seg", vals: [0.9, 1.0, 1.1, 1.25], get: function () { return Flags.uiScale; }, set: function (v) { Flags.uiScale = v; } },
                 // Door into the app picker: the list of every installed entry
                 // with a pin switch per row. Membership only — the order is set
                 // by dragging the chips in the dock. Sits third so the keyboard
@@ -336,6 +337,24 @@ DockPanel {
                 pal: root.pal
                 on: Flags.dockAutoHide
                 onToggled: Flags.dockAutoHide = !Flags.dockAutoHide
+            }
+        }
+
+        SettingsRow {
+            id: dockScaleRow
+            surface: root
+            name: "UI scale"
+            icon: "scaling"
+            visible: Flags.dockEnabled
+
+            Dropdown {
+                id: dockScaleDrop
+                s: root.s
+                pal: root.pal
+                options: [{ label: "90%", value: 0.9 }, { label: "100%", value: 1.0 }, { label: "110%", value: 1.1 }, { label: "125%", value: 1.25 }]
+                value: Flags.uiScale
+                onChipClicked: dockScaleDrop.open = !dockScaleDrop.open
+                onPicked: (v) => Flags.uiScale = v
             }
         }
 

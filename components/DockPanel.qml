@@ -32,6 +32,10 @@ import "../Singletons"
  * `pal` is supplied by the host (DockBar), which owns the dock's palette. A
  * panel never derives colours itself, so there is exactly one place where the
  * dock's colours are decided.
+ *
+ * Sub-page navigation: a page can emit `requestSurface(name)` to ask the host
+ * to switch to another dock settings page (e.g. "dockBehavior", "dockAppearance").
+ * The host (shell.qml) owns the page stack and handles the signal.
  */
 Item {
     id: root
@@ -79,6 +83,7 @@ Item {
      */
 
     signal requestClose()
+    signal requestSurface(string name)
 
     /**
      * The behaviour, shared with the pill. `active` mirrors `open` so closing
