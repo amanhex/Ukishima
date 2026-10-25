@@ -2357,18 +2357,22 @@ Item {
                     }
                 }
 
-                MinimizedTray {
+                Loader {
                     id: minimized
+                    active: Wm.caps.minimizable
+                    source: active ? Qt.resolvedUrl("surfaces/MinimizedTray.qml") : ""
                     anchors.verticalCenter: parent.verticalCenter
-                    s: pill.s
-                    screenName: pill.screenName
-                    enabled: hover.live
-                    visible: Wm.caps.minimizable && count > 0
+                    visible: item && item.count > 0
+                    onLoaded: {
+                        item.s = Qt.binding(function() { return pill.s; });
+                        item.screenName = Qt.binding(function() { return pill.screenName; });
+                        item.enabled = Qt.binding(function() { return hover.live; });
+                    }
                 }
 
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: Wm.caps.minimizable && minimized.count > 0
+                    visible: Wm.caps.minimizable && minimized.item && minimized.item.count > 0
                     width: 1
                     height: 14 * pill.s
                     color: Theme.hair

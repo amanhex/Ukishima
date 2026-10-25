@@ -31,6 +31,8 @@ Quickshell lock are available on both. Keyboard layout is read from Hyprland's
 provider on Hyprland and niri's IPC event stream on niri. Special workspaces,
 the minimized tray, workspace rules, global media shortcuts, and night light
 are Hyprland-only; the corresponding controls are hidden on niri.
+For media keys on niri, configure bindings in niri's native `binds` section;
+Ukishima's `GlobalShortcut` registrations are Hyprland-only.
 
 Keybinds are compositor‑specific: Hyprland uses `SUPER` (or your modifier) while
 niri defaults to `Super`. The `spawn-sh` helper runs the command through a

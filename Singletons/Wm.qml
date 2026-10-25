@@ -21,14 +21,18 @@ Singleton {
     }
 
     readonly property string provider: {
-        if (requested === "hypr" || requested === "hyprland")
-            return "hypr";
-        if (requested === "generic" || requested === "niri")
-            return "generic";
         const niri = Quickshell.env("NIRI_SOCKET");
+        const sig = Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE");
+
+        // A stale override must not load Quickshell.Hyprland in a niri
+        // session. Select a compositor-specific provider only when its live
+        // session marker is present.
         if (niri && niri.length > 0)
             return "generic";
-        const sig = Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE");
+        if (requested === "hypr" || requested === "hyprland")
+            return sig && sig.length > 0 ? "hypr" : "generic";
+        if (requested === "generic" || requested === "niri")
+            return "generic";
         return sig && sig.length > 0 ? "hypr" : "generic";
     }
 
