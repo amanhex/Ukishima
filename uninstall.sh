@@ -1,51 +1,83 @@
 #!/usr/bin/env bash
-set -eu
+set -euo pipefail
 
-SHARE="${XDG_DATA_HOME:-$HOME/.local/share}"
-STATE="${XDG_STATE_HOME:-$HOME/.local/state}"
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}"
-CONF="${XDG_CONFIG_HOME:-$HOME/.config}"
+PURGE_DATA=0
+if [ "${1:-}" = "--purge-data" ]; then
+  PURGE_DATA=1
+elif [ "$#" -ne 0 ]; then
+  printf 'Usage: %s [--purge-data]\n' "$0" >&2
+  exit 2
+fi
 
-echo "Removing Ukishima..."
+: "${HOME:?HOME is not set}"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+INSTALL_ROOT="$HOME/.local/share/quickshell/ukishima"
 
-# Stop a running instance (qs / quickshell started with the ukishima config).
-pkill -f "[q]s .*[Uu]kishima" 2>/dev/null || true
-pkill -f "[q]uickshell .*[Uu]kishima" 2>/dev/null || true
+if [ -L "$HOME/.local" ] || [ -L "$HOME/.local/share" ] || \
+   [ -L "$HOME/.local/share/quickshell" ] || [ -L "$INSTALL_ROOT" ]; then
+  printf 'Installation path is a symlink; leaving it untouched.\n'
+  exit 1
+fi
 
-# Program files (wherever you cloned it).
-rm -rf "$SHARE/quickshell/ukishima"
-rm -rf "$CONF/quickshell/ukishima"
+if [ -e "$INSTALL_ROOT" ]; then
+  if [ ! -f "$INSTALL_ROOT/shell.qml" ] || [ ! -d "$INSTALL_ROOT/components" ] || \
+     [ ! -f "$INSTALL_ROOT/scripts/check-deps.sh" ]; then
+    printf 'The standard installation path does not contain a Ukishima installation; leaving it untouched.\n' >&2
+    exit 1
+  fi
 
-# State: flags, scratchpad notes, dock pins, gamemode snapshot, wallpaper
-# selection, and the wallhaven rate-gate journal.
-rm -rf "$STATE/ukishima"
+  if [ -e "$INSTALL_ROOT/.git" ] || [ -L "$INSTALL_ROOT/.git" ]; then
+    if changes=$(git -C "$INSTALL_ROOT" status --porcelain 2>/dev/null); then
+      if [ -n "$changes" ]; then
+        printf 'Warning: this installation contains local changes or untracked files.\n'
+      fi
+    else
+      printf 'Warning: local changes could not be checked.\n'
+    fi
+  fi
+else
+  printf 'Ukishima is not installed.\n'
+  if [ "$PURGE_DATA" -eq 0 ]; then exit 0; fi
+fi
 
-# Calendar events still live in a "pill" sibling rather than under ukishima/,
-# so the scrub above never caught them. Remove it on its own.
-rm -rf "$STATE/pill"
+if [ "$PURGE_DATA" -eq 1 ]; then
+  printf 'Remove Ukishima and its settings/cache data? Personal wallpaper files will be kept. [y/N]: '
+else
+  printf 'Remove Ukishima? Settings and caches will be kept. [y/N]: '
+fi
+answer=""
+IFS= read -r answer 2>/dev/null </dev/tty || answer=""
+case "$answer" in
+  y|Y|yes|YES) ;;
+  *) printf 'Cancelled.\n'; exit 0 ;;
+esac
 
-# Wallpaper state lives in siblings of that dir, one file per setting, and the
-# set keeps growing — a .lock file for the bag was missed when the list was
-# maintained by hand. Match the prefix instead of enumerating, so a new file is
-# covered the moment it is added rather than after someone notices it survived
-# an uninstall. Quoted glob: no match must stay a no-op, not a literal rm of
-# "$STATE/ukishima-wallpaper*".
-for f in "$STATE"/ukishima-wallpaper*; do
-  [ -e "$f" ] || continue
-  rm -rf "$f"
-done
+if [ -e "$INSTALL_ROOT" ]; then
+  if ! rm -rf -- "$INSTALL_ROOT"; then
+    printf 'Could not remove Ukishima from %s.\n' "$INSTALL_ROOT" >&2
+    exit 1
+  fi
+  if [ -e "$INSTALL_ROOT" ] || [ -L "$INSTALL_ROOT" ]; then
+    printf 'Could not remove Ukishima from %s.\n' "$INSTALL_ROOT" >&2
+    exit 1
+  fi
+fi
 
-# Cache: weather, rec thumbs, wallpaper + clipboard previews, wallhaven
-# search results and thumbs, dynamic colors — all under the single
-# ~/.cache/ukishima root. The scattered legacy dirs are removed too so an old
-# install is cleaned out fully.
-rm -rf "$CACHE/ukishima"
-rm -rf "$CACHE/ukishima-wp-thumbs"
-rm -rf "$CACHE/cliphist-thumbs"
-rm -rf "$CACHE/pill"
+if [ "$PURGE_DATA" -eq 1 ]; then
+  if ! rm -rf -- "$STATE_HOME/ukishima" "$CACHE_HOME/ukishima" || ! rm -f -- \
+    "$STATE_HOME/ukishima-wallpaper-dir" \
+    "$STATE_HOME/ukishima-wallpaper" \
+    "$STATE_HOME/ukishima-wallpaper-map" \
+    "$STATE_HOME/ukishima-wallpaper-bag" \
+    "$STATE_HOME/ukishima-wallpaper-still.png" \
+    "$STATE_HOME/ukishima-wallpaper-fit"; then
+    printf 'Ukishima was removed, but some settings/cache files could not be removed.\n' >&2
+    exit 1
+  fi
+fi
 
-# Note: this script never edits your compositor config. The launch line and
-# keybinds were added by you, so remove them yourself:
-echo "Ukishima removed."
-echo "Remove the launch line and keybinds from your Hyprland config, or the"
-echo "spawn-at-startup lines and binds block from ~/.config/niri/config.kdl."
+printf '\n✓ Ukishima removed successfully.\n'
+if [ "$PURGE_DATA" -eq 0 ]; then
+  printf 'Your personal settings have been preserved.\n'
+fi

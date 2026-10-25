@@ -23,8 +23,18 @@ SettingsSurface {
     property bool checked: false
     /** Commits on origin/master that this checkout is behind. */
     property int pending: 0
-    /** True when checked and origin/master has new commits to pull. */
+    /** True when checked and origin/master has new commits to fast-forward. */
     readonly property bool updateAvailable: checked && !busy && pending > 0
+    /** Shared guard for both updater commands: only a clean official release checkout. */
+    readonly property string releaseGuard:
+        "repo=$1\n" +
+        "branch=$(git -C \"$repo\" branch --show-current 2>/dev/null) || exit 21\n" +
+        "remote=$(git -C \"$repo\" remote get-url origin 2>/dev/null) || exit 21\n" +
+        "upstream=$(git -C \"$repo\" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) || exit 21\n" +
+        "[ \"$branch\" = master ] && [ \"$upstream\" = origin/master ] || exit 21\n" +
+        "case \"$remote\" in https://github.com/amanhex/Ukishima.git|https://github.com/amanhex/Ukishima|git@github.com:amanhex/Ukishima.git) ;; *) exit 21 ;; esac\n" +
+        "changes=$(git -C \"$repo\" status --porcelain 2>/dev/null) || exit 21\n" +
+        "[ -z \"$changes\" ] || exit 22\n"
     /** Inline result of the manual dependency check; empty until one has run. */
     property string depStatus: ""
     property bool depBusy: false
@@ -68,66 +78,41 @@ SettingsSurface {
     */
     readonly property bool depCheckFailed: depStatus.startsWith("Could not")
     readonly property bool depReportUseful: depChecked && depList.length > 0 && !depCheckFailed
-    /**
-     * Cooldown between background probes. The surface re-probes on every open
-     * (so a stale result can't stick around), but a bare `git fetch` round-trips
-     * to GitHub each time — throttle that so rapid re-opens don't hammer the
-     * network. First open always probes.
-    */
-    readonly property int probeCooldown: 60 * 1000
-    /** Epoch ms of the last probe attempt; 0 = never ran, so the first open probes. */
-    property real lastProbeMs: 0
-
-    /** Re-probe for updates whenever the surface (re)opens — surfaces stay
-     *  resident, so Component.onCompleted alone would only ever check once per
-     *  session.
-     *
-     *  The dependency check deliberately does NOT ride along. It is a tap, not
-     *  a background poll: a verdict the user did not ask for is an assertion
-     *  about their machine that they cannot have made themselves, and a surface
-     *  that reports "everything is fine" unprompted is indistinguishable from
-     *  one that never checked. So the row reads as an offer, and nothing about
-     *  dependencies appears on screen until the row is activated. The post-update
-     *  path still opens the full report on its own, so the one case that cannot
-     *  wait for a tap — an update that just changed the requirements — is still
-     *  covered. */
-    Connections {
-        target: root
-        function onOpenChanged() {
-            if (root.open) {
-                root.checkUpdates();
-            }
-        }
-    }
-
     rows: [
-        { item: updateRow, kind: "activate", activate: function () { root.doUpdate(); } },
+        { item: updateRow, kind: "activate", activate: function () { root.updateAvailable ? root.doUpdate() : root.checkUpdates(); } },
         { item: depsRow, kind: "activate", activate: function () { root.checkDeps(); } }
     ]
 
-    // First creation. The onOpenChanged handler above covers every later open,
-    // but this Loader is created and shown in the same pass on the very first one.
-    Component.onCompleted: {
-        root.checkUpdates();
-    }
-
-    /** Lightweight fetch + count so the surface can flag an available update. */
     function checkUpdates() {
         if (root.busy)
             return;
-        var elapsed = Date.now() - root.lastProbeMs;
-        if (root.lastProbeMs > 0 && elapsed < root.probeCooldown)
-            return;
-        root.lastProbeMs = Date.now();
-        fetchProc.running = true;
+        root.busy = true;
+        root.status = "Checking for updates...";
+        checkProc.running = true;
     }
 
     function doUpdate() {
-        if (root.busy)
+        if (root.busy || !root.updateAvailable)
             return;
         root.busy = true;
-        root.status = "Fetching latest master...";
-        pullProc.running = true;
+        root.status = "Updating Ukishima...";
+        updateProc.running = true;
+    }
+
+    function setUpdateCount(text) {
+        var value = String(text).trim();
+        if (!/^(0|[1-9][0-9]*)$/.test(value)) {
+            root.busy = false;
+            root.checked = false;
+            root.pending = 0;
+            root.status = "Couldn't read update status. Try again.";
+            return;
+        }
+        var n = parseInt(value, 10);
+        root.pending = n;
+        root.checked = true;
+        root.status = n > 0 ? "Update available." : "Ukishima is up to date.";
+        root.busy = false;
     }
 
     /**
@@ -135,8 +120,7 @@ SettingsSurface {
      * scripts/check-deps.sh the installer and the post-update path use, so the
      * answer here cannot drift from what those report.
      *
-     * Called automatically on every open, and again on tap. Deliberately does
-     * *not* clear depList/depStatus up front: the previous verdict is still
+     * Deliberately does *not* clear depList/depStatus up front: the previous verdict is still
      * true, and blanking it would make the surface flicker empty on each reopen
      * for the few milliseconds the check takes. applyDepVerdict() owns the
      * post-state, including every failure path.
@@ -228,7 +212,7 @@ Item { width: 1; height: 10 * root.s }
         SettingsRow {
             id: updateRow
             surface: root
-            name: root.busy ? "Updating..." : (root.status.length > 0 ? root.status : "Check for updates")
+            name: root.busy ? root.status : (root.updateAvailable ? "Update Ukishima" : (root.checked ? root.status : "Check for Updates"))
             // "refresh", not "refresh-cw". GlyphIcon holds no such name, and an
             // unknown name is not a fallback shape — the lookup ends at
             // { d: "" }, which draws nothing at all. The row was rendering its
@@ -243,14 +227,9 @@ Item { width: 1; height: 10 * root.s }
             // to and SettingsRow does the insetting, so there is only ever one
             // left edge to agree with.
             //
-            // Busy says nothing: the label already reads "Updating...".
             sub: {
-                if (root.busy || root.status.length > 0)
-                    return "";
                 if (root.updateAvailable)
-                    return root.pending + (root.pending === 1 ? " commit behind" : " commits behind");
-                if (root.checked)
-                    return "You're up to date";
+                    return root.pending + (root.pending === 1 ? " update available — select to install" : " updates available — select to install");
                 return "";
             }
 
@@ -556,92 +535,67 @@ Item { width: 1; height: 10 * root.s }
         }
     }
 
-    /**
-     * Update path: the deployment must mirror origin/master exactly. A plain
-     * `git pull` fatals with "Need to specify how to reconcile divergent
-     * branches" whenever the checkout's history has diverged from the remote
-     * (e.g. after a force-push) and, worse, blames the network. So instead we
-     * fetch master into its tracking ref and hard-reset the checkout onto it:
-     * that handles fast-forwards, diverged histories and even replaced
-     * histories, treating remote master as ground truth. Any local drift in
-     * the install is discarded — this is a managed deployment. Only the fetch
-     * can fail from a network problem; a reset failure is local, so its error
-     * doesn't mention the network.
-    */
     Process {
-        id: pullProc
-        command: ["git", "-C", Config.configDir, "fetch", "--quiet", "origin", "+master:refs/remotes/origin/master"]
+        id: checkProc
+        command: ["sh", "-c",
+            root.releaseGuard +
+            "git -C \"$repo\" fetch --quiet origin 2>/dev/null || exit 23\n" +
+            "count=$(git -C \"$repo\" rev-list --count HEAD..origin/master 2>/dev/null) || exit 21\n" +
+            "printf '%s\\n' \"$count\"\n",
+            "ukishima-check", Config.configDir]
+        stdout: StdioCollector {
+            id: checkOutput
+        }
         onExited: function (exitCode) {
-            if (exitCode !== 0) {
+            if (exitCode === 0 && root.busy) {
+                root.setUpdateCount(checkOutput.text);
+            } else if (root.busy) {
                 root.busy = false;
-                root.status = "Update failed — check network";
-                return;
+                root.checked = false;
+                root.pending = 0;
+                if (exitCode === 21)
+                    root.status = "Updater supports clean official release installs only.";
+                else if (exitCode === 22)
+                    root.status = "Local changes found. Save them before updating.";
+                else if (exitCode === 23)
+                    root.status = "Couldn't reach updates. Check your connection.";
+                else
+                    root.status = "Couldn't check this installation.";
             }
-            resetProc.running = true;
         }
     }
 
     Process {
-        id: resetProc
-        command: ["git", "-C", Config.configDir, "reset", "--hard", "refs/remotes/origin/master"]
+        id: updateProc
+        command: ["sh", "-c",
+            root.releaseGuard +
+            "git -C \"$repo\" fetch --quiet origin 2>/dev/null || exit 23\n" +
+            "changes=$(git -C \"$repo\" status --porcelain 2>/dev/null) || exit 21\n" +
+            "[ -z \"$changes\" ] || exit 22\n" +
+            "git -C \"$repo\" merge --ff-only --quiet origin/master 2>/dev/null || exit 24\n",
+            "ukishima-update", Config.configDir]
         onExited: function (exitCode) {
-            root.busy = false;
             if (exitCode !== 0) {
-                root.status = "Update failed";
+                root.busy = false;
+                if (exitCode === 21)
+                    root.status = "Updater supports clean official release installs only.";
+                else if (exitCode === 22)
+                    root.status = "Local changes found. Save them before updating.";
+                else if (exitCode === 23)
+                    root.status = "Couldn't reach updates. Check your connection.";
+                else
+                    root.status = "Update couldn't be fast-forwarded. Review the release checkout.";
                 return;
             }
             root.pending = 0;
             root.checked = true;
-            root.status = "Updated! Reloading...";
+            root.status = "Successfully updated!";
             postUpdateProc.running = true;
         }
     }
 
     /**
-     * Non-blocking availability probe: refetch origin/master into the offset
-     * ref then count how many of its commits this checkout is missing. A stale
-     * remote-tracking ref is fine to read on open, but we refresh it first so
-     * the badge reflects the true latest state. Network failure just leaves the
-     * surface quiet — no error surfaced for a background check.
-     */
-    Process {
-        id: fetchProc
-        command: ["git", "-C", Config.configDir, "fetch", "--quiet", "origin", "+master:refs/remotes/origin/update-probe"]
-        onExited: function (exitCode) {
-            if (exitCode !== 0) {
-                // Couldn't reach the network: leave the surface quiet rather
-                // than claiming "up to date" on a check that never happened.
-                root.checked = false;
-                root.lastProbeMs = 0;
-                return;
-            }
-            countProc.running = true;
-        }
-    }
-
-    Process {
-        id: countProc
-        command: ["git", "-C", Config.configDir, "rev-list", "--count", "HEAD..refs/remotes/origin/update-probe"]
-        onExited: function (exitCode, standardOutput) {
-            if (exitCode !== 0) {
-                // Count failed (e.g. no update-probe ref): don't claim anything.
-                root.checked = false;
-                root.lastProbeMs = 0;
-                return;
-            }
-            var n = parseInt(String(standardOutput).trim(), 10);
-            if (isNaN(n)) {
-                root.checked = false;
-                root.lastProbeMs = 0;
-                return;
-            }
-            root.checked = true;
-            root.pending = n;
-        }
-    }
-
-    /**
-     * Post-update step: runs after the reset succeeds and before the reload, and
+     * Post-update step: runs after the safe fast-forward succeeds and before the reload, and
      * is the only place the dependency check can live.
      *
      * It has to be here, in a process driven by the still-running outgoing

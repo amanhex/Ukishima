@@ -31,9 +31,9 @@ DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$DIR/scripts/wm.sh"
 
 if command -v quickshell >/dev/null 2>&1; then
-  exec quickshell --config "$DIR" "$@"
+  exec quickshell --path "$DIR" "$@"
 elif command -v qs >/dev/null 2>&1; then
-  exec qs -c "$DIR" "$@"
+  exec qs --path "$DIR" "$@"
 fi
 
 echo "launch.sh: quickshell not found in PATH" >&2

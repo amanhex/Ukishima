@@ -1,99 +1,104 @@
 #!/usr/bin/env bash
-set -eu
+set -euo pipefail
 
 REPO="https://github.com/amanhex/Ukishima.git"
-INSTALL_ROOT="${HOME}/.local/share/quickshell/ukishima"
+: "${HOME:?HOME is not set}"
+INSTALL_ROOT="$HOME/.local/share/quickshell/ukishima"
+STAGE_DIR=""
 
-if [ -d "$INSTALL_ROOT" ]; then
-  printf '\033[1;33mUkishima is already installed at %s\033[0m\n' "$INSTALL_ROOT"
-  printf 'Pulling latest changes...\n'
-  git -C "$INSTALL_ROOT" pull --ff-only origin master || printf '\033[1;33mCould not pull — try removing %s and reinstalling.\033[0m\n' "$INSTALL_ROOT"
+cleanup() {
+  if [ -n "$STAGE_DIR" ]; then rm -rf -- "$STAGE_DIR"; fi
+}
+trap cleanup EXIT
+
+printf 'Ukishima Installer\n\n'
+
+if [ -e "$INSTALL_ROOT" ] || [ -L "$INSTALL_ROOT" ]; then
+  if [ -L "$INSTALL_ROOT" ]; then
+    printf 'Installation path is a symlink; leaving it untouched.\n' >&2
+    exit 1
+  elif [ -d "$INSTALL_ROOT/.git" ] || [ -f "$INSTALL_ROOT/.git" ]; then
+    branch=$(git -C "$INSTALL_ROOT" branch --show-current 2>/dev/null || true)
+    remote=$(git -C "$INSTALL_ROOT" remote get-url origin 2>/dev/null || true)
+    upstream=$(git -C "$INSTALL_ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)
+    status_ok=1
+    if ! changes=$(git -C "$INSTALL_ROOT" status --porcelain 2>/dev/null); then status_ok=0; fi
+    case "$remote" in
+      https://github.com/amanhex/Ukishima.git|https://github.com/amanhex/Ukishima|git@github.com:amanhex/Ukishima.git) ;;
+      *) remote="" ;;
+    esac
+    if [ "$branch" != master ] || [ -z "$remote" ] || [ "$upstream" != origin/master ] || \
+       [ "$status_ok" -ne 1 ] || [ -n "$changes" ]; then
+      printf 'Existing installation has local changes or is not a release install; leaving it unchanged.\n'
+    else
+      printf 'Ukishima is already installed. Update it? [y/N]: '
+      answer=""
+      if IFS= read -r answer 2>/dev/null </dev/tty; then
+        case "$answer" in
+          y|Y|yes|YES)
+            if git -C "$INSTALL_ROOT" pull --ff-only --quiet 2>/dev/null; then
+              printf '✓ Ukishima updated\n'
+            else
+              printf 'Update failed. Check your connection or retry after reviewing the release checkout.\n' >&2
+              exit 1
+            fi
+            ;;
+          *) printf 'Existing installation kept.\n' ;;
+        esac
+      else
+        printf 'No terminal available; existing installation kept.\n'
+      fi
+    fi
+  else
+    printf 'Installation path already exists; leaving it untouched.\n'
+  fi
 else
-  printf 'Cloning Ukishima...\n'
-  git clone --depth 1 --branch master "$REPO" "$INSTALL_ROOT"
+  command -v git >/dev/null 2>&1 || { printf 'git is required to install Ukishima.\n' >&2; exit 1; }
+  install_parent=$(dirname -- "$INSTALL_ROOT")
+  mkdir -p "$install_parent"
+  STAGE_DIR=$(mktemp -d "$install_parent/.ukishima-install.XXXXXX") || {
+    printf 'Could not prepare the installation directory. Check its permissions and retry.\n' >&2
+    exit 1
+  }
+  if ! git clone --quiet --depth 1 --branch master "$REPO" "$STAGE_DIR/repo"; then
+    printf 'Download failed. Check your connection and retry.\n' >&2
+    exit 1
+  fi
+  if ! mv -T -- "$STAGE_DIR/repo" "$INSTALL_ROOT"; then
+    printf 'Could not place Ukishima in %s; existing files were left untouched.\n' "$INSTALL_ROOT" >&2
+    exit 1
+  fi
 fi
 
-warn() { printf '  \033[1;33m%s\033[0m\n' "$*"; }
+if [ ! -f "$INSTALL_ROOT/scripts/wm.sh" ] || [ ! -x "$INSTALL_ROOT/scripts/check-deps.sh" ]; then
+  printf 'Ukishima files are incomplete at %s; check the download and retry.\n' "$INSTALL_ROOT" >&2
+  exit 1
+fi
 
-printf '\nChecking dependencies...\n'
+. "$INSTALL_ROOT/scripts/wm.sh"
 
-# The dependency list lives in dependencies.json, which the shell's post-update
-# report and DEPENDENCIES.md also read, so an update that adds a requirement
-# cannot leave the installer still describing the old set. This runs after the
-# clone/pull above, so it always reports against the manifest just fetched.
-#
-# The `|| dep_rc=$?` form is deliberate: it keeps `set -e` from killing the
-# installer on a *missing dependency*, which is a reportable state, not a
-# failure of the installer.
-missing=0
 dep_rc=0
-"$INSTALL_ROOT/scripts/check-deps.sh" --install || dep_rc=$?
-case "$dep_rc" in
-  0) ;;
-  1) missing=1 ;;
+dep_output=$(UKISHIMA_WM="$UKISHIMA_WM" "$INSTALL_ROOT/scripts/check-deps.sh" --install 2>&1) || dep_rc=$?
+if [ "$dep_rc" -ne 0 ]; then
+  printf '%s\n' "$dep_output" >&2
+  if [ "$dep_rc" -eq 1 ]; then
+    printf 'Required dependencies are missing; install the packages listed above, then run the installer again.\n' >&2
+  else
+    printf 'Could not check dependencies; fix the error above and rerun the installer.\n' >&2
+  fi
+  exit 1
+fi
+
+printf '✓ Dependencies checked\n✓ %s detected\n\nInstallation complete!\n' "$UKISHIMA_WM"
+printf 'Add this startup command to your compositor configuration:\n'
+case "$UKISHIMA_WM" in
+  hyprland)
+    printf '  Hyprland: exec-once = %s/launch.sh\n' "$INSTALL_ROOT"
+    ;;
+  niri)
+    printf '  niri: spawn-at-startup "sh" "-c" "exec %s/launch.sh"\n' "$INSTALL_ROOT"
+    ;;
   *)
-    missing=1
-    warn "could not read dependencies.json — the full list was not checked"
+    printf '  Compositor not recognized. Run %s/launch.sh manually or set UKISHIMA_WM.\n' "$INSTALL_ROOT"
     ;;
 esac
-
-IPC_PREFIX="qs -p $INSTALL_ROOT"
-
-printf '\n\033[1;32mUkishima installed!\033[0m\n\n'
-
-cat <<EOF
-Add these to your Hyprland or niri config. The installer never edits either.
-
-  Hyprland (hyprlang):
-    exec-once = $INSTALL_ROOT/launch.sh
-    exec-once = awww-daemon
-
-    bind = SUPER SHIFT, W, exec, $IPC_PREFIX ipc call ukishima wallpaper ""
-    bind = SUPER SHIFT, V, exec, $IPC_PREFIX ipc call ukishima clipboard ""
-    bind = SUPER, slash, exec, $IPC_PREFIX ipc call ukishima launcher ""
-    bind = SUPER, N, exec, $IPC_PREFIX ipc call ukishima notifications ""
-    bind = SUPER, L, exec, $INSTALL_ROOT/scripts/lock.sh
-
-  Hyprland (Lua):
-    hl.exec_cmd("$INSTALL_ROOT/launch.sh")
-    hl.exec_cmd("awww-daemon")
-
-    local uk = "$IPC_PREFIX"
-    hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd(uk .. " ipc call ukishima wallpaper \\"\\""))
-    hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd(uk .. " ipc call ukishima clipboard \\"\\""))
-    hl.bind(var_mainMod .. " + slash", hl.dsp.exec_cmd(uk .. " ipc call ukishima launcher \\"\\""))
-    hl.bind(var_mainMod .. " + N", hl.dsp.exec_cmd(uk .. " ipc call ukishima notifications \\"\\""))
-    hl.bind(var_mainMod .. " + L", hl.dsp.exec_cmd("$INSTALL_ROOT/scripts/lock.sh"))
-
-  niri (KDL, ~/.config/niri/config.kdl):
-    spawn-at-startup "sh" "-c" "exec $INSTALL_ROOT/launch.sh"
-    spawn-at-startup "awww-daemon"
-
-    binds {
-        Mod+Shift+W { spawn-sh "$IPC_PREFIX ipc call ukishima wallpaper \\"\\""; }
-        Mod+Shift+V { spawn-sh "$IPC_PREFIX ipc call ukishima clipboard \\"\\""; }
-        Mod+Slash { spawn-sh "$IPC_PREFIX ipc call ukishima launcher \\"\\""; }
-        Mod+N { spawn-sh "$IPC_PREFIX ipc call ukishima notifications \\"\\""; }
-        Mod+L { spawn-sh "$INSTALL_ROOT/scripts/lock.sh"; }
-    }
-
-  List every surface you can bind:
-    $IPC_PREFIX ipc show
-
-  Any other keybind is the same shape — swap the IPC call for the one you want.
-  Most calls take a monitor name; pass "" for the focused monitor.
-
-  Lock is a script, not an IPC surface. Lock settings offer Hyprlock or
-  Quickshell on Hyprland, and swaylock or Quickshell on niri. The external
-  lockers are optional; an unavailable selection warns and falls back to the
-  built-in Quickshell lock:
-    $INSTALL_ROOT/scripts/lock.sh
-
-  Launch manually:
-    quickshell --config $INSTALL_ROOT
-
-  State: ~/.local/state/ukishima
-  Cache: ~/.cache/ukishima
-EOF
-
-[ "$missing" -eq 0 ] || printf '\n\033[1;31mSome core dependencies are missing — install them for full functionality.\033[0m\n' >&2

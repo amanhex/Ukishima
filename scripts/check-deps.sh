@@ -96,8 +96,8 @@ done
 # jq is both this script's parser and one of the dependencies it reports on, so
 # its absence is a genuine chicken-and-egg case. Duplicating the list here to
 # cover it would reintroduce exactly the drift the manifest exists to prevent, so
-# we say what is actually wrong and how to fix it. remote-install.sh checks its
-# own list independently, so a fresh install still gets the full report.
+# we say what is actually wrong and how to fix it. remote-install.sh surfaces
+# this failure instead of claiming that the manifest was fully checked.
 # ---------------------------------------------------------------------------
 
 # Which package manager is this system using?
@@ -622,7 +622,9 @@ if [ "$install_mode" -eq 1 ]; then
     printf '%s' "$missing_core_rows" | while IFS="$(printf '\t')" read -r id why pkgs kind arg hint; do
       [ -n "$id" ] || continue
       printf '  \033[1;33mmissing: %s (%s)\033[0m\n' "$why" "$pkgs"
-      [ -n "$hint" ] && printf '  \033[1;31mnote: %s\033[0m\n' "$hint"
+      if [ -n "$hint" ]; then
+        printf '  \033[1;31mnote: %s\033[0m\n' "$hint"
+      fi
     done
   fi
   if [ -n "$missing_nudge_rows" ]; then
@@ -630,6 +632,14 @@ if [ "$install_mode" -eq 1 ]; then
       [ -n "$id" ] || continue
       printf '  \033[1;33moptional: %s\033[0m\n' "$id"
     done
+  fi
+  if [ "$missing_core" -eq 1 ]; then
+    install_pkgs=$(printf '%s' "$missing_core_pkgs" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' | sed 's/ $//')
+    if [ -n "$install_pkgs" ]; then
+      printf '  install required packages with: %s\n' "$(install_cmd "$install_pkgs")"
+    else
+      printf '  install the required tools listed above using your distribution packages.\n'
+    fi
   fi
   [ "$missing_core" -eq 1 ] && exit 1
   exit 0
@@ -642,7 +652,9 @@ if [ "$do_report" -eq 0 ] && [ "$open_page" -eq 0 ]; then
     printf '%s' "$missing_core_rows" | while IFS="$(printf '\t')" read -r id why pkgs kind arg hint; do
       [ -n "$id" ] || continue
       printf '  %-24s %s  \033[1;33m(%s)\033[0m\n' "$id" "$why" "$pkgs"
-      [ -n "$hint" ] && printf '  %-24s \033[1;31mnote: %s\033[0m\n' "" "$hint"
+      if [ -n "$hint" ]; then
+        printf '  %-24s \033[1;31mnote: %s\033[0m\n' "" "$hint"
+      fi
     done
   else
     printf '\033[1;32mAll required dependencies are present.\033[0m\n'
