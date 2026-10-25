@@ -118,21 +118,15 @@ Updates are applied safely without discarding local modifications. Modified or d
 
 ## Uninstall
 
+To completely remove Ukishima, run:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/uninstall.sh | bash
 ```
 
-Removes Ukishima's application files while preserving your personal settings and caches.
+This removes Ukishima's application files, settings, state, caches, and generated wallpaper files.
 
-To remove Ukishima-specific settings and caches as well:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/uninstall.sh | bash -s -- --purge-data
-```
-
-Your personal wallpapers, installed applications, system packages and compositor configuration are left untouched.
-
-Remove any Ukishima startup lines or keybindings from your compositor configuration when you no longer need them.
+After uninstalling, remove any Ukishima startup commands or keybindings from your compositor configuration.
 
 ## Credits
 
