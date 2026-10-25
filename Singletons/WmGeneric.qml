@@ -26,9 +26,10 @@ Singleton {
         workspaceRules: false,
         specialWorkspaces: false,
         minimizable: false,
-        keyboardLayout: false,
+        keyboardLayout: true,
         nightLight: false,
         gameModeStrip: false,
+        windowSnap: false,
         globalShortcuts: false,
         lock: "quickshell"
     })
@@ -210,7 +211,7 @@ Singleton {
     }
 
     function logout() {
-        if (Quickshell.env("NIRI_SOCKET")) {
+        if (root.compositor === "niri") {
             Quickshell.execDetached(["niri", "msg", "action", "quit"]);
             return;
         }

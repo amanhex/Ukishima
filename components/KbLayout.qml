@@ -3,24 +3,27 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 
 /**
- * Compact keyboard-layout code for the collapsed pill. Seeds once from
- * `hyprctl devices -j` — the event socket only reports changes, never the
- * current value — then follows `activelayout` events after that. Prefers the
- * XKB short code from the device (`layout`, e.g. "us" → US); when several
- * layouts are configured that field is comma-joined, so it falls back to the
- * active keymap's human name ("English (US)") folded into a short code.
- * `event.parse(n)` splits the comma-separated payload once, so layouts whose
- * own names contain commas ("English (US, intl.)") stay intact.
+ * Compact keyboard-layout code for the collapsed pill.
+ * Seeds once from `hyprctl devices -j` (Hyprland‑specific). On other
+ * compositors the command will fail silently and the pill keeps the default
+ * "US" code. The pill shows the layout chip only when
+ * `Wm.caps.keyboardLayout` is true.
+ *
+ * To add support for another compositor:
+ *   1. Set `keyboardLayout: true` in that compositor's Wm singleton caps.
+ *   2. Extend the `seedProc` command or add a new source that reads the layout
+ *      from that compositor's equivalent of `hyprctl devices -j`.
+ *   3. If the compositor exposes layout via an environment variable or IPC
+ *      event, add a listener here.
  */
 Item {
     id: root
 
     property string code: "US"
-    /** Hyprland-only for now; false keeps the hyprctl seed and event hook idle. */
-    property bool active: true
+    /** Show the layout chip only when the compositor declares it. */
+    property bool active: Wm.caps.keyboardLayout
 
     function shortCode(full) {
         var f = String(full || "").toLowerCase();
@@ -77,22 +80,10 @@ Item {
                         else if (chosen.active_keymap)
                             root.code = root.shortCode(chosen.active_keymap);
                     }
-                } catch (e) { }
+                } catch (e) {
+                    // non‑JSON or command not available (e.g. niri) → keep "US"
+                }
             }
-        }
-    }
-
-    Connections {
-        // A ternary keeps the Hyprland singleton untouched where the
-        // capability is off; `enabled: false` alone still evaluates the target.
-        target: root.active ? Hyprland : null
-        enabled: root.active
-        function onRawEvent(event) {
-            if (event.name !== "activelayout")
-                return;
-            var parts = event.parse(2);
-            if (parts.length === 2)
-                root.code = root.shortCode(parts[1]);
         }
     }
 
