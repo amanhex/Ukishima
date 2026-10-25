@@ -206,7 +206,7 @@ ShellRoot {
      */
     function toggleSurface(mon, surface) {
         if (!mon || mon.length === 0)
-            mon = Wm.focusedScreenName;
+            mon = Wm.focusedScreenName();
         if (root.openMon === mon && root.openSurface === surface) {
             root.close();
             return;
@@ -1270,7 +1270,7 @@ ShellRoot {
 
             Timer {
                 id: dockCloseTimer
-                interval: Math.max(80, Motion.dockFast + 40)
+                interval: Math.max(80, Motion.dockMorph + 40)
                 onTriggered: {
                     dockWin.dockPanelAlive = false;
                     dockWin.dockSurface = "dockSettings";

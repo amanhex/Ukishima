@@ -136,10 +136,30 @@ Item {
     Keys.onEnterPressed: (e) => { nav.kbActivate(); e.accepted = true; }
     Keys.onEscapePressed: (e) => { root.surfaceBack(); e.accepted = true; }
 
+    /** Plays the fade/slide in. A page swap creates a new panel, so this also
+     *  covers the sub-page transition. The zero is left on screen for one event
+     *  loop turn: setting both values in the same turn as creation gives the
+     *  binding no chance to ever read the start state, which is how the first
+     *  version ended up appearing instantly. */
+    function playIntro() {
+        root.opacity = 0;
+        root.introOffset = 10;
+        Qt.callLater(function() {
+            if (!root.open)
+                return;
+            root.opacity = 1;
+            root.introOffset = 0;
+        });
+    }
+
     onOpenChanged: {
-        if (open)
+        if (open) {
             root.forceActiveFocus();
-        introOffset = open ? 0 : 8;
+            playIntro();
+        } else {
+            root.opacity = 0;
+            root.introOffset = 10;
+        }
     }
 
     /**
@@ -152,27 +172,28 @@ Item {
 
     enabled: open
 
-    /** Starts at zero and rises on completion, so the first frame can animate
-     *  instead of being created already opaque. A page swap creates a new
-     *  panel, which is why this also covers the sub-page transition. */
-    property real intro: 0
-    property real introOffset: 8
+    property real introOffset: 10
 
-    opacity: open ? intro : 0
+    opacity: 0
     visible: opacity > 0.01
     transform: Translate { y: root.introOffset * root.s }
 
     Behavior on opacity {
-        NumberAnimation { duration: Motion.dockFast; easing.type: Motion.dockEase; easing.bezierCurve: Motion.morphCurve }
+        NumberAnimation {
+            duration: Motion.dockMorph
+            easing.type: Motion.dockEase
+            easing.bezierCurve: Motion.morphCurve
+        }
     }
     Behavior on introOffset {
-        NumberAnimation { duration: Motion.dockFast; easing.type: Motion.dockEase; easing.bezierCurve: Motion.morphCurve }
+        NumberAnimation {
+            duration: Motion.dockMorph
+            easing.type: Motion.dockEase
+            easing.bezierCurve: Motion.morphCurve
+        }
     }
 
-    Component.onCompleted: {
-        intro = 1;
-        introOffset = 0;
-    }
+    Component.onCompleted: if (root.open) root.playIntro()
 
     /**
      * The dock's backdrop. Deliberately its own slab rather than the pill's
