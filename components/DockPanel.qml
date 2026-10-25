@@ -46,6 +46,25 @@ Item {
     /** The dock's palette, handed down by the host that owns it. */
     property var pal: null
 
+    /** Name of the surface to navigate back to when the header back chevron is clicked. */
+    property string backSurface: ""
+
+    /** Padding values for the panel content, scaled by `s`. */
+    readonly property real padTop: 14
+    readonly property real padBottom: 12
+    readonly property real padLeft: 16
+
+    /** The panel's own width, before scale. A page never decides it. */
+    readonly property real panelW: 400
+    implicitWidth: panelW * root.s
+
+    /** Shorthands for this surface's own colour lookups from `pal`. */
+    readonly property color ink: root.pal ? root.pal.ink : "white"
+    readonly property color faint: root.pal ? root.pal.faint : "gray"
+    readonly property color dim: root.pal ? root.pal.dim : "gray"
+    readonly property color accent: root.pal ? root.pal.accent : "gray"
+    readonly property color tile: root.pal ? root.pal.tile : "transparent"
+
     /**
      * Names this window to the centred picker: every `Dropdown` under the dock
      * reports it so the picker is drawn by the dock's own window and not the
@@ -85,6 +104,15 @@ Item {
     signal requestClose()
     signal requestSurface(string name)
 
+    /** Step back one page: to `backSurface` when set, otherwise dismiss. */
+    function surfaceBack() {
+        if (root.backSurface && root.backSurface.length > 0) {
+            root.requestSurface(root.backSurface);
+            return;
+        }
+        root.requestClose();
+    }
+
     /**
      * The behaviour, shared with the pill. `active` mirrors `open` so closing
      * the panel drops the keyboard cursor and the next open starts clean rather
@@ -93,6 +121,7 @@ Item {
     readonly property SettingsRows nav: SettingsRows {
         active: root.open
         rows: root.rows
+        onRequestSurface: (name) => root.requestSurface(name)
     }
 
     readonly property Item focusRowItem: nav.focusRowItem
@@ -100,6 +129,21 @@ Item {
 
     function reportRowHover(item, hovered) { nav.reportRowHover(item, hovered); }
     function activateRow(item) { nav.activateRow(item); }
+    function kbMove(dir) { nav.kbMove(dir); }
+    function kbAdjust(dir) { nav.kbAdjust(dir); }
+    function kbActivate() { nav.kbActivate(); }
+
+    /** The panel owns the keyboard while open, so arrows/Enter/Esc reach the rows. */
+    focus: true
+    Keys.onUpPressed: (e) => { nav.kbMove(-1); e.accepted = true; }
+    Keys.onDownPressed: (e) => { nav.kbMove(1); e.accepted = true; }
+    Keys.onLeftPressed: (e) => { nav.kbAdjust(-1); e.accepted = true; }
+    Keys.onRightPressed: (e) => { nav.kbAdjust(1); e.accepted = true; }
+    Keys.onReturnPressed: (e) => { nav.kbActivate(); e.accepted = true; }
+    Keys.onEnterPressed: (e) => { nav.kbActivate(); e.accepted = true; }
+    Keys.onEscapePressed: (e) => { root.surfaceBack(); e.accepted = true; }
+
+    onOpenChanged: if (open) root.forceActiveFocus()
 
     /**
      * Height and width follow the page, and the page owns both implicit sizes.
@@ -122,6 +166,11 @@ Item {
      * body: the same rounded gradient, hairline and drop shadow the dock's own
      * bar uses, so the panel reads as part of the dock, but sized and coloured
      * from the dock's palette.
+     *
+     * When `dockStyle` is `"transparent"` the backdrop mirrors the pill's
+     * regular glass: cream at 10% alpha on top, vermLit at 30% alpha on the
+     * bottom, with a 30% vermLit border. This gives the same readability veil
+     * effect the pill uses.
      */
     Rectangle {
         id: pane
@@ -129,11 +178,11 @@ Item {
         radius: 16 * root.s
         clip: true
         gradient: Gradient {
-            GradientStop { position: 0.0; color: root.pal ? root.pal.paneTop : "transparent" }
-            GradientStop { position: 1.0; color: root.pal ? root.pal.paneBot : "transparent" }
+            GradientStop { position: 0.0; color: Flags.dockStyle === "transparent" ? Qt.alpha(Theme.cream, 0.10) : (root.pal ? root.pal.paneTop : "transparent") }
+            GradientStop { position: 1.0; color: Flags.dockStyle === "transparent" ? Qt.alpha(Theme.vermLit, 0.30) : (root.pal ? root.pal.paneBot : "transparent") }
         }
         border.width: 1
-        border.color: root.pal ? root.pal.edge : "transparent"
+        border.color: Flags.dockStyle === "transparent" ? Qt.alpha(Theme.vermLit, 0.30) : (root.pal ? root.pal.edge : "transparent")
 
         layer.enabled: true
         layer.effect: MultiEffect {
@@ -158,15 +207,34 @@ Item {
     }
 
     /**
-     * The page. The dock's settings are ONE page, not a stack: there is no
-     * `requestSurface` to route, so a row navigates by changing the panel's own
-     * state instead of by asking the host for another page. What used to be the
-     * separate app-picker page is a section inside this one.
+     * The page content. A page declares its Column inside this; the panel owns
+     * the insets, so every page lines up with the same pads and no page can
+     * drift from the others.
      */
     default property alias content: page.data
 
     Item {
         id: page
         anchors.fill: parent
+        anchors.topMargin: root.padTop * root.s
+        anchors.bottomMargin: root.padBottom * root.s
+        anchors.leftMargin: root.padLeft * root.s
+        anchors.rightMargin: root.padLeft * root.s
+    }
+
+    /**
+     * The header strip is the back target: it folds to `backSurface`, or closes
+     * when this is the index. Sized to the header plus the top pad so it can
+     * never steal a click from the first row.
+     */
+    MouseArea {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: (root.padTop + 24) * root.s
+        z: 10
+        enabled: root.open
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.surfaceBack()
     }
 }

@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import "../Singletons"
 import "../components"
 
@@ -13,17 +12,17 @@ DockPanel {
     id: root
 
     backSurface: "dockSettings"
-    implicitHeight: content.implicitHeight
+    implicitHeight: col.implicitHeight + (root.padTop + root.padBottom) * root.s
 
     rows: [
         { item: autoHideRow, kind: "toggle", get: function () { return Flags.dockAutoHide; }, set: function (v) { Flags.dockAutoHide = v; } },
-        { item: scaleRow, kind: "seg", vals: [0.9, 1.0, 1.1, 1.25], get: function () { return Flags.uiScale; }, set: function (v) { Flags.uiScale = v; } },
+        { item: scaleRow, kind: "seg", vals: [0.9, 1.0, 1.1, 1.25], get: function () { return Flags.dockUiScale; }, set: function (v) { Flags.dockUiScale = v; } },
         { item: gapRow, kind: "seg", vals: [0.25, 0.5, 1.0, 1.5], get: function () { return Flags.dockGap; }, set: function (v) { Flags.dockGap = v; } },
         { item: minimalRow, kind: "toggle", get: function () { return Flags.dockMinimal; }, set: function (v) { Flags.dockMinimal = v; } }
     ]
 
     Column {
-        id: content
+        id: col
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -64,9 +63,9 @@ DockPanel {
                 s: root.s
                 pal: root.pal
                 options: [{ label: "90%", value: 0.9 }, { label: "100%", value: 1.0 }, { label: "110%", value: 1.1 }, { label: "125%", value: 1.25 }]
-                value: Flags.uiScale
+                value: Flags.dockUiScale
                 onChipClicked: scaleDrop.open = !scaleDrop.open
-                onPicked: (v) => Flags.uiScale = v
+                onPicked: (v) => Flags.dockUiScale = v
             }
         }
 

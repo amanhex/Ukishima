@@ -26,6 +26,8 @@ Singleton {
     property alias wallpaperDir: adapter.wallpaperDir
     property alias wallpaperFit: adapter.wallpaperFit
     property alias uiScale: adapter.uiScale
+    //* The dock's own UI scale, independent of the pill's `uiScale`.
+    property alias dockUiScale: adapter.dockUiScale
     property alias reduceMotion: adapter.reduceMotion
     property alias manualHue: adapter.manualHue
     property alias manualDark: adapter.manualDark
@@ -172,6 +174,7 @@ Singleton {
             //* Still/video wallpaper scaling: awww --resize "no" (center), "crop" (cover), "fit" (contain) or "stretch", driving the strip's Cover/Contain/Stretch/Center control.
             property string wallpaperFit: "crop"
             property real uiScale: 1
+            property real dockUiScale: 1
             property bool reduceMotion: false
             property int manualHue: 30
             property bool manualDark: true

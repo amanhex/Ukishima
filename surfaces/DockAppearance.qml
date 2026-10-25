@@ -1,10 +1,9 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
+import Quickshell.Io
 import "../Singletons"
 import "../components"
-import "../lib/fuzzy.js" as Fuzzy
 
 /**
  * 相 DOCK APPEARANCE: theme, OLED, glass, manual hue editor.
@@ -14,7 +13,7 @@ DockPanel {
     id: root
 
     backSurface: "dockSettings"
-    implicitHeight: content.implicitHeight
+    implicitHeight: col.implicitHeight + (root.padTop + root.padBottom) * root.s
 
     /** Current theme key; legacy "auto"/"transparent" saves read as dark. */
     readonly property string themeShown: (Flags.dockTheme === "auto"
@@ -69,7 +68,7 @@ DockPanel {
     }
 
     Column {
-        id: content
+        id: col
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -150,7 +149,7 @@ DockPanel {
         Item {
             id: manualSection
             width: parent.width
-            height: manualCol.implicitHeight
+            height: (Flags.dockTheme === "manual" && !Flags.dockOled) ? manualCol.implicitHeight : 0
             clip: true
             Behavior on height { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
 

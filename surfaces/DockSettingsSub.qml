@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import "../Singletons"
 import "../components"
 
@@ -16,7 +15,12 @@ DockPanel {
     id: root
 
     backSurface: ""
-    implicitHeight: content.implicitHeight
+    implicitHeight: col.implicitHeight + (root.padTop + root.padBottom) * root.s
+
+    /** Sub-caption for the apps tile: how many apps are pinned live. */
+    readonly property string pinSummary: DockPins.pins.length === 0
+        ? "Choose which apps to pin"
+        : DockPins.pins.length + (DockPins.pins.length === 1 ? " app pinned" : " apps pinned") + " · drag to reorder"
 
     rows: [
         { item: behaviorTile, kind: "nav", surface: "dockBehavior" },
@@ -26,7 +30,7 @@ DockPanel {
     ]
 
     Column {
-        id: content
+        id: col
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -37,7 +41,7 @@ DockPanel {
             pal: root.pal
             glyph: "泊"
             title: "DOCK SETTINGS"
-            showBack: true
+            showBack: false
         }
 
         Item { width: 1; height: 10 * root.s }

@@ -418,7 +418,7 @@ ShellRoot {
         PanelWindow {
             id: dockReserve
             required property var modelData
-            readonly property real s: modelData ? (modelData.height / 1080) * Flags.uiScale : 1
+            readonly property real s: modelData ? (modelData.height / 1080) * Flags.dockUiScale : 1
             /**
              * Bottom band the dock sits in: the bar's footprint plus its
              * float lip and the dock-to-window air above it, so tiled
@@ -863,11 +863,12 @@ ShellRoot {
         PanelWindow {
             id: dockWin
             required property var modelData
-            readonly property real s: modelData ? (modelData.height / 1080) * Flags.uiScale : 1
+            readonly property real s: modelData ? (modelData.height / 1080) * Flags.dockUiScale : 1
             /** Float gap between the resting dock and the screen's bottom edge: a subtle lip, smaller than the pill's topGap float. */
             readonly property real dockLip: 4 * Flags.topGap * s
             readonly property string surface: root.openMon === modelData.name ? root.openSurface : ""
             readonly property bool surfaceOpen: surface.length > 0
+            property string dockSurface: "dockSettings"
 
             /**
              * True while the centred picker was opened from this dock window's
@@ -1240,6 +1241,66 @@ ShellRoot {
              * zero. That is the panel's own input-mask region, so a silent zero
              * there is a panel that draws and takes no clicks.
              */
+            Component {
+                id: compDockSettings
+                DockSettingsSub {
+                    s: dock.s
+                    pal: dock.dockPal
+                    pickerKey: "dock:" + dockWin.modelData.name
+                    open: true
+                    onRequestClose: dock.closeSettings()
+                    onRequestSurface: (name) => dockWin.dockSurface = name
+                }
+            }
+
+            Component {
+                id: compDockBehavior
+                DockBehavior {
+                    s: dock.s
+                    pal: dock.dockPal
+                    pickerKey: "dock:" + dockWin.modelData.name
+                    open: true
+                    onRequestClose: dock.closeSettings()
+                    onRequestSurface: (name) => dockWin.dockSurface = name
+                }
+            }
+
+            Component {
+                id: compDockAppearance
+                DockAppearance {
+                    s: dock.s
+                    pal: dock.dockPal
+                    pickerKey: "dock:" + dockWin.modelData.name
+                    open: true
+                    onRequestClose: dock.closeSettings()
+                    onRequestSurface: (name) => dockWin.dockSurface = name
+                }
+            }
+
+            Component {
+                id: compDockApps
+                DockApps {
+                    s: dock.s
+                    pal: dock.dockPal
+                    pickerKey: "dock:" + dockWin.modelData.name
+                    open: true
+                    onRequestClose: dock.closeSettings()
+                    onRequestSurface: (name) => dockWin.dockSurface = name
+                }
+            }
+
+            Component {
+                id: compDockMotion
+                DockMotion {
+                    s: dock.s
+                    pal: dock.dockPal
+                    pickerKey: "dock:" + dockWin.modelData.name
+                    open: true
+                    onRequestClose: dock.closeSettings()
+                    onRequestSurface: (name) => dockWin.dockSurface = name
+                }
+            }
+
             Loader {
                 id: dockPanel
                 active: dock.settingsOpen
@@ -1252,13 +1313,13 @@ ShellRoot {
                  * many pixels above the anchor line. */
                 anchors.bottomMargin: dock.panelGap
 
-                sourceComponent: Component {
-                    DockSurface {
-                        s: dock.s
-                        pal: dock.dockPal
-                        pickerKey: "dock:" + dockWin.modelData.name
-                        open: true
-                        onRequestClose: dock.closeSettings()
+                sourceComponent: {
+                    switch (dockWin.dockSurface) {
+                    case "dockBehavior": return compDockBehavior;
+                    case "dockAppearance": return compDockAppearance;
+                    case "dockApps": return compDockApps;
+                    case "dockMotion": return compDockMotion;
+                    default: return compDockSettings;
                     }
                 }
             }
@@ -1339,6 +1400,14 @@ ShellRoot {
                         dock.revealSession = false;
                         dock.hovered = false;
                     }
+                }
+            }
+
+            Connections {
+                target: dock
+                function onSettingsOpenChanged() {
+                    if (!dock.settingsOpen)
+                        dockWin.dockSurface = "dockSettings";
                 }
             }
 

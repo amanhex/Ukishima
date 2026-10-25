@@ -8,7 +8,6 @@ Clipboard Clipboard.qml
 Emoji Emoji.qml
 DisplaySurface DisplaySurface.qml
 Profile Profile.qml
-DockSurface DockSurface.qml
 DockSettingsSub DockSettingsSub.qml
 DockBehavior DockBehavior.qml
 DockAppearance DockAppearance.qml

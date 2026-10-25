@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import "../Singletons"
 import "../components"
 
@@ -13,14 +12,14 @@ DockPanel {
     id: root
 
     backSurface: "dockSettings"
-    implicitHeight: content.implicitHeight
+    implicitHeight: col.implicitHeight + (root.padTop + root.padBottom) * root.s
 
     rows: [
         { item: motionRow, kind: "seg", vals: ["standard", "snap", "float", "bounce"], get: function () { return Flags.dockMotionStyle; }, set: function (v) { Flags.dockMotionStyle = v; } }
     ]
 
     Column {
-        id: content
+        id: col
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right

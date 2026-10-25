@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import Quickshell
 import "../Singletons"
 import "../components"
 import "../lib/fuzzy.js" as Fuzzy
@@ -15,10 +16,12 @@ DockPanel {
     id: root
 
     backSurface: "dockSettings"
-    implicitHeight: content.implicitHeight
+    implicitHeight: col.implicitHeight + (root.padTop + root.padBottom) * root.s
 
     property string query: ""
     property int focusIndex: 0
+
+    Component.onCompleted: appSearch.forceActiveFocus()
 
     /** Every installed, displayable desktop entry — the launcher's own source,
      * so the two can never disagree about what is installed. */
@@ -123,13 +126,6 @@ DockPanel {
             root.togglePin(e.id);
     }
 
-    /** The picker's natural height: the sum of its rows' own heights. */
-    readonly property real appsNaturalHeight: {
-        var h = 0;
-        for (var i = 0; i < appsBody.children.length; i++)
-            if (appsBody.children[i]) h += appsBody.children[i].height;
-        return h;
-    }
 
     /** Window position of the last hover event allowed to move the highlight.
      * Rows sliding under a stationary cursor during keyboard scrolling repeat
@@ -143,7 +139,7 @@ DockPanel {
     ]
 
     Column {
-        id: content
+        id: col
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -210,8 +206,7 @@ DockPanel {
                         root.activateAppFocus();
                         e.accepted = true;
                     } else if (e.key === Qt.Key_Escape) {
-                        root.requestClose();
-                        root.reportRowHover(appsTile, true);
+                        root.surfaceBack();
                         e.accepted = true;
                     }
                 }
@@ -307,7 +302,7 @@ DockPanel {
                         height: 22 * root.s
                         radius: 5 * root.s
                         color: Qt.rgba(1, 1, 1, 0.05)
-                        visible: !(icon.status === Image.Ready && icon.source != "")
+                        visible: !(icon.status === Image.Ready && icon.source !== "")
                     }
 
                     Image {
@@ -318,7 +313,7 @@ DockPanel {
                         fillMode: Image.PreserveAspectFit
                         asynchronous: true
                         smooth: true
-                        visible: status === Image.Ready && source != ""
+                        visible: status === Image.Ready && source !== ""
                         source: {
                             if (!arow.modelData || !arow.modelData.icon)
                                 return "";
