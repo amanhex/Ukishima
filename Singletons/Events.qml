@@ -4,8 +4,8 @@ import Quickshell
 import Quickshell.Io
 
 /**
- * Local calendar events, persisted as a plain JSON array beside the session
- * flags (~/.local/state/ukishima/events.json). The in-memory `events` is the
+ * Local calendar events, persisted as a plain JSON array under
+ * ~/.local/state/ukishima/events.json. The in-memory `events` is the
  * source of truth: add/remove mutate it and write the file, which is read back
  * only at startup. The file is deliberately NOT watched — re-reading our own
  * write races the FileView's cached text and dropped the just-added event (it
@@ -47,7 +47,10 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/pill"
+    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima"
+    readonly property string eventsFile: root.stateDir + "/events.json"
+    readonly property string legacyEventsFile: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/pill/events.json"
+    property bool migrationAttempted: false
 
     property var events: []
     property int nextId: 1
@@ -428,20 +431,36 @@ Singleton {
         id: remProc
     }
 
-    Component.onCompleted: {
-        reloadEvents();
-        root.armReminder();
-    }
-
     FileView {
         id: file
-        path: root.stateDir + "/events.json"
+        path: root.eventsFile
         blockLoading: true
         printErrors: false
 
+        onLoaded: {
+            root.reloadEvents();
+            root.armReminder();
+        }
+
         onLoadFailed: function (error) {
-            if (error === FileViewError.FileNotFound)
-                file.setText("[]");
+            if (error !== FileViewError.FileNotFound || root.migrationAttempted)
+                return;
+            root.migrationAttempted = true;
+            migrateEvents.running = true;
+        }
+    }
+
+    Process {
+        id: migrateEvents
+        command: ["sh", "-c",
+            "dir=$1; target=$2; legacy=$3; mkdir -p -- \"$dir\" || exit 1; "
+            + "if [ -e \"$target\" ]; then exit 0; "
+            + "elif [ -f \"$legacy\" ]; then cp -n -- \"$legacy\" \"$target\"; "
+            + "else (set -C; printf '[]' > \"$target\") 2>/dev/null || true; fi",
+            "ukishima-events-migrate", root.stateDir, root.eventsFile, root.legacyEventsFile]
+        onExited: function (exitCode) {
+            if (exitCode === 0)
+                file.reload();
         }
     }
 }

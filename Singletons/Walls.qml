@@ -17,7 +17,7 @@ import Quickshell.Io
  *
  * The folder resolves through one chain, first hit wins: an explicit
  * `wallpaperDir` in flags.json, then the dir wallpaper.sh resolved and wrote
- * to the ukishima-wallpaper-dir state file on its last run, then
+ * to the `ukishima/wallpaper-dir` state file on its last run, then
  * ~/Pictures/Wallpapers for a first boot before wallpaper.sh init has run.
  *
  * The pipeline is triggered by the wallpaper strip's refresh button, an
@@ -66,8 +66,8 @@ Singleton {
     readonly property string thumbDir: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/ukishima/wp-thumbs/"
     readonly property string thumbScript: Config.hyprPath("scripts", "wallpaper-thumbs.sh")
     readonly property string setScript: Config.hyprPath("scripts", "wallpaper.sh")
-    readonly property string stateFile: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima-wallpaper"
-    readonly property string dirStateFile: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima-wallpaper-dir"
+    readonly property string stateFile: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima/wallpaper"
+    readonly property string dirStateFile: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima/wallpaper-dir"
 
     FileView {
         id: dirFile
@@ -294,7 +294,9 @@ Singleton {
 
     Process {
         id: stateProc
-        command: ["sh", "-c", "cat \"$1\" 2>/dev/null || true", "_", root.stateFile]
+        command: ["sh", "-c", "cat \"$1\" 2>/dev/null || cat \"$2\" 2>/dev/null || true",
+            "_", root.stateFile,
+            (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima-wallpaper"]
         stdout: StdioCollector {
             onStreamFinished: {
                 var live = this.text.trim();

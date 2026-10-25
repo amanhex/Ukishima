@@ -5,7 +5,22 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=wm.sh
 . "$SCRIPT_DIR/wm.sh"
 
-flags_file="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima/flags.json"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+STATE_DIR="$STATE_HOME/ukishima"
+mkdir -p "$STATE_DIR"
+
+# Copy legacy wallpaper state once, leaving the originals and any newer files alone.
+for name in wallpaper-dir wallpaper wallpaper-map wallpaper-bag wallpaper-still.png wallpaper-fit; do
+    legacy="$STATE_HOME/ukishima-$name"
+    [ -f "$legacy" ] && cp -n -- "$legacy" "$STATE_DIR/$name"
+done
+for legacy in "$STATE_HOME"/ukishima-wallpaper-still-*.png; do
+    [ -f "$legacy" ] || continue
+    name=${legacy##*/ukishima-}
+    cp -n -- "$legacy" "$STATE_DIR/$name"
+done
+
+flags_file="$STATE_DIR/flags.json"
 WPDIR=$(jq -r '.wallpaperDir // ""' "$flags_file" 2>/dev/null || echo "")
 FIT=$(jq -r '.wallpaperFit // "crop"' "$flags_file" 2>/dev/null || echo crop)
 case "$FIT" in no|crop|fit|stretch) ;; *) FIT=crop ;; esac
@@ -20,16 +35,16 @@ if [ -z "$WPDIR" ]; then
     done
     [ -n "$WPDIR" ] || WPDIR="$HOME/Pictures/Wallpapers"
 fi
-RESOLVED="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-dir"
+RESOLVED="$STATE_DIR/wallpaper-dir"
 printf '%s\n' "$WPDIR" > "$RESOLVED"
 # No-op mode for the QML side: re-resolve the folder and exit before touching any daemon state.
 [ "${1:-}" = "resolve" ] && exit 0
-STATE="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper"
-MAP="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-map"
-BAG="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-bag"
-STILL="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-still.png"
-FIT_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-fit"
-WLOG="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima/wallcolors.log"
+STATE="$STATE_DIR/wallpaper"
+MAP="$STATE_DIR/wallpaper-map"
+BAG="$STATE_DIR/wallpaper-bag"
+STILL="$STATE_DIR/wallpaper-still.png"
+FIT_STATE="$STATE_DIR/wallpaper-fit"
+WLOG="$STATE_DIR/wallcolors.log"
 
 is_video() {
     case "${1##*.}" in

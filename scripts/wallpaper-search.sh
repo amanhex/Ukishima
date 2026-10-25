@@ -352,6 +352,7 @@ download() {
 
     flags="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima/flags.json"
     wpdir=$(jq -r '.wallpaperDir // ""' "$flags" 2>/dev/null || echo "")
+    [ -n "$wpdir" ] || wpdir=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/ukishima/wallpaper-dir" 2>/dev/null || true)
     [ -n "$wpdir" ] || wpdir=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/ukishima-wallpaper-dir" 2>/dev/null || true)
     [ -n "$wpdir" ] || wpdir="$HOME/Pictures/Wallpapers"
     # Every pick lands directly in the collection root so it joins the shuffle

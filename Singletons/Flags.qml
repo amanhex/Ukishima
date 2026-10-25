@@ -169,7 +169,7 @@ Singleton {
             //* Resting pill's clock icon, left of the time. Only drawn when showGlyphs is off — the two are alternatives in the same slot, \u6642 or a clock face.
             property bool clockIcon: true
             property string paletteMode: "static"
-            //* Explicit wallpaper folder override. Empty means autodetect: the dir wallpaper.sh last resolved (ukishima-wallpaper-dir state file), then ~/Pictures/Wallpapers. Lives in user state so an in-app update never clobbers a custom folder.
+            //* Explicit wallpaper folder override. Empty means autodetect: the dir wallpaper.sh last resolved (ukishima/wallpaper-dir state file), then ~/Pictures/Wallpapers. Lives in user state so an in-app update never clobbers a custom folder.
             property string wallpaperDir: ""
             //* Still/video wallpaper scaling: awww --resize "no" (center), "crop" (cover), "fit" (contain) or "stretch", driving the strip's Cover/Contain/Stretch/Center control.
             property string wallpaperFit: "crop"
