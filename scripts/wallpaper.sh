@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=wm.sh
+. "$SCRIPT_DIR/wm.sh"
+
 flags_file="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima/flags.json"
 WPDIR=$(jq -r '.wallpaperDir // ""' "$flags_file" 2>/dev/null || echo "")
 FIT=$(jq -r '.wallpaperFit // "crop"' "$flags_file" 2>/dev/null || echo crop)
@@ -171,17 +175,17 @@ daemon_painted() {
 # installed: hyprctl is present on a niri box too but has no instance to talk
 # to, so the compositor env var decides first.
 outputs() {
-    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null 2>&1; then
+    if [ "$UKISHIMA_WM" = hyprland ] && command -v hyprctl >/dev/null 2>&1; then
         hyprctl monitors -j 2>/dev/null | jq -r '.[].name'
-    elif [ -n "${NIRI_SOCKET:-}" ] && command -v niri >/dev/null 2>&1; then
+    elif [ "$UKISHIMA_WM" = niri ] && command -v niri >/dev/null 2>&1; then
         niri msg --json outputs 2>/dev/null | jq -r 'keys[]'
     fi
 }
 
 focused_output() {
-    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null 2>&1; then
+    if [ "$UKISHIMA_WM" = hyprland ] && command -v hyprctl >/dev/null 2>&1; then
         hyprctl monitors -j 2>/dev/null | jq -r '[.[] | select(.focused)] | first.name // empty'
-    elif [ -n "${NIRI_SOCKET:-}" ] && command -v niri >/dev/null 2>&1; then
+    elif [ "$UKISHIMA_WM" = niri ] && command -v niri >/dev/null 2>&1; then
         niri msg --json focused-output 2>/dev/null | jq -r '.name // empty'
     fi
 }
@@ -190,7 +194,7 @@ cursor_output() {
     local pos cx cy hit
     # niri exposes no cursor-position IPC, so cursor scope degrades to the
     # focused output there.
-    if [ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || ! command -v hyprctl >/dev/null 2>&1; then
+    if [ "$UKISHIMA_WM" != hyprland ] || ! command -v hyprctl >/dev/null 2>&1; then
         focused_output
         return
     fi
@@ -344,7 +348,9 @@ palette_update() {
         ms=$(jq -r '.manualSat // 0.5' "$flags_file" 2>/dev/null || echo 0.5)
         python3 "$(dirname "$0")/wallcolors.py" --hue "$mh" "$md" "$ms" >>"$WLOG" 2>&1 || true
     fi
-    hyprctl reload >/dev/null 2>&1 || true
+    if [ "$UKISHIMA_WM" = hyprland ]; then
+        hyprctl reload >/dev/null 2>&1 || true
+    fi
     busctl --user call com.mitchellh.ghostty /com/mitchellh/ghostty org.gtk.Actions \
         Activate "sava{sv}" reload-config 0 0 >/dev/null 2>&1 || true
     # kitty: remote-control reload (needs allow_remote_control in kitty.conf);

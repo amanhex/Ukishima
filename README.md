@@ -25,11 +25,12 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 
 ## Compositor support
 
-Ukishima works on both Hyprland and niri. The pill, dock, surfaces, wallpapers,
-notifications, lock, and game mode are shared between them. Hyprland‑only rows
-(special workspaces, minimized tray, workspace rules, keyboard layout, global
-media keys) hide themselves when running on niri. Night light uses
-`hyprsunset` on Hyprland and is planned for niri.
+Ukishima supports Hyprland and niri through compositor-specific and generic
+Wayland providers. The pill, dock, surfaces, wallpapers, notifications, and
+Quickshell lock are available on both. Keyboard layout is read from Hyprland's
+provider on Hyprland and niri's IPC event stream on niri. Special workspaces,
+the minimized tray, workspace rules, global media shortcuts, and night light
+are Hyprland-only; the corresponding controls are hidden on niri.
 
 Keybinds are compositor‑specific: Hyprland uses `SUPER` (or your modifier) while
 niri defaults to `Super`. The `spawn-sh` helper runs the command through a
@@ -166,7 +167,7 @@ Lock is a script, not an IPC surface:
 ~/.local/share/quickshell/ukishima/scripts/lock.sh
 ```
 
-The lock can hand off to a standalone locker or use the built-in Quickshell lockscreen. Set the backend under **Lock** in settings (the built-in lock's background, blur, avatar and indicators live there too).
+Lock settings offer Hyprlock or Quickshell on Hyprland, and swaylock or Quickshell on niri. The external lockers are optional; selecting one that is not installed warns and falls back to the built-in Quickshell lockscreen.
 
 ### Wallpaper daemon
 

@@ -14,9 +14,17 @@
     },
     {
       "id": "compositor",
-      "check": { "anyBin": ["hyprctl", "niri"] },
+      "compositor": "hyprland",
+      "check": { "bin": "hyprctl" },
       "pkg": ["hyprland"],
-      "why": "compositor IPC — Hyprland's hyprctl or niri's niri; the running session provides one"
+      "why": "Hyprland compositor IPC"
+    },
+    {
+      "id": "compositor-niri",
+      "compositor": "niri",
+      "check": { "bin": "niri" },
+      "pkg": ["niri"],
+      "why": "niri compositor IPC"
     },
     {
       "id": "notify",
@@ -108,6 +116,7 @@
     },
     {
       "id": "hyprsunset",
+      "compositor": "hyprland",
       "check": { "bin": "hyprsunset" },
       "pkg": ["hyprsunset"],
       "why": "the night light on Hyprland — niri night light is not implemented yet"
@@ -149,9 +158,18 @@
     },
     {
       "id": "hyprlock",
+      "compositor": "hyprland",
       "check": { "bin": "hyprlock" },
       "pkg": ["hyprlock"],
-      "why": "the default lock backend — without it the lock falls back to the built-in Quickshell one, and the LOCK settings surface hides the option",
+      "why": "optional external lock backend selectable in Lock settings; the Quickshell lock remains available without it",
+      "nudge": true
+    },
+    {
+      "id": "swaylock",
+      "compositor": "niri",
+      "check": { "bin": "swaylock" },
+      "pkg": ["swaylock"],
+      "why": "optional external niri lock backend selectable in Lock settings; the Quickshell lock remains available without it",
       "nudge": true
     },
     {
@@ -181,6 +199,7 @@
     },
     {
       "id": "hypridle",
+      "compositor": "hyprland",
       "check": { "bin": "hypridle" },
       "pkg": ["hypridle"],
       "why": "idle / DPMS lock integration alongside the built-in keep-awake"

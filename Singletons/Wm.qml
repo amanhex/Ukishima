@@ -7,8 +7,7 @@ import Quickshell
  * The one compositor seam. Everything outside the providers talks to this
  * object; nothing else asks which window manager is running.
  *
- * `UKISHIMA_WM=hypr|generic` forces a provider (useful to test the generic
- * path while still inside Hyprland). Left unset, Hyprland is chosen when its
+ * `UKISHIMA_WM=hypr|hyprland|niri|generic` forces a provider. Left unset, Hyprland is chosen when its
  * instance signature is in the environment, generic otherwise. Adding another
  * compositor means one provider file and one branch here — no edits in the
  * pill, dock or workspaces strip.
@@ -22,8 +21,13 @@ Singleton {
     }
 
     readonly property string provider: {
-        if (requested === "hypr" || requested === "generic")
-            return requested;
+        if (requested === "hypr" || requested === "hyprland")
+            return "hypr";
+        if (requested === "generic" || requested === "niri")
+            return "generic";
+        const niri = Quickshell.env("NIRI_SOCKET");
+        if (niri && niri.length > 0)
+            return "generic";
         const sig = Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE");
         return sig && sig.length > 0 ? "hypr" : "generic";
     }
@@ -35,6 +39,7 @@ Singleton {
 
     /** Human name for messages: hyprland, niri, generic. Not used to branch. */
     readonly property string compositor: impl.compositor
+    readonly property string keyboardLayoutName: impl.keyboardLayoutName || ""
     /** Feature gates for the few things one compositor cannot do. */
     readonly property var caps: impl.caps
 

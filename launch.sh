@@ -28,6 +28,7 @@ export QT_LOGGING_RULES="${QT_LOGGING_RULES:+$QT_LOGGING_RULES;}qt.qpa.wayland.t
 # line actually appears on your hardware — that one is raw lib output no
 # logging rule can touch).
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$DIR/scripts/wm.sh"
 
 if command -v quickshell >/dev/null 2>&1; then
   exec quickshell --config "$DIR" "$@"

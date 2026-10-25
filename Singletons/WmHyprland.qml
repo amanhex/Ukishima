@@ -29,7 +29,7 @@ Singleton {
         nightLight: true,
         gameModeStrip: true,
         globalShortcuts: true,
-        lock: "hyprlock"
+        lock: ["hyprlock", "quickshell"]
     })
 
     /** Raw hyprctl snapshots. The pill has always read these rather than the

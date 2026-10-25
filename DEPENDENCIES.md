@@ -9,7 +9,7 @@ Install these or the shell starts but breaks in places.
 | Tool | Package | Used for |
 | --- | --- | --- |
 | `quickshell` | `quickshell` | the shell runtime itself — nothing starts without it |
-| `hyprctl` or `niri` | `hyprland` / `niri` | compositor IPC: workspaces, monitors, dispatch and the niri focus-workspace fallback |
+| Hyprland: `hyprctl`; niri: `niri` | Hyprland: `hyprland`; niri: `niri` | compositor IPC for the active compositor |
 | `notify-send` | `libnotify` | desktop notifications for the pill and for these dependency reports |
 | `jq` | `jq` | JSON parsing in the helper scripts, and for reading the manifest |
 | `xdg-open` | `xdg-utils` | opening files and links, including the dependency report page |
@@ -37,7 +37,8 @@ ones you actually want.
 | `ddcutil` | monitor brightness via DDC (external display faders) |
 | `kdialog` / `zenity` | the native folder picker for the record output directory |
 | `power-profiles-daemon` | the power-profile picker on the battery hover — the row shows "Not installed" without it, and it isn't needed on desktops |
-| `hyprlock` | the lock backend the shell prefers — without it the lock falls back to the Quickshell lockscreen, which has its own background, blur, avatar and indicator settings |
+| `hyprlock` (Hyprland only) | optional external lock backend; the Quickshell lockscreen remains available without it |
+| `swaylock` (niri only) | optional external niri lock backend; the Quickshell lockscreen remains available without it |
 | `grim` | the screen capture behind the lock's capture backdrop — without it that backdrop falls back to the wallpaper |
 | `kitty` | live terminal palette reload via `kitty @ set-colors` (needs `allow_remote_control yes`, and `include ~/.cache/ukishima/kitty-colors` for persistence) |
 | `ghostty` | live terminal palette reload over D-Bus |
@@ -49,8 +50,12 @@ ones you actually want.
 - **Hyprland** has the full feature set: special workspaces and the minimized
   tray, workspace rules, the keyboard-layout readout, global media shortcuts,
   the game-mode strip, and the night light.
-- **niri** uses the generic protocol provider for workspaces and windows. The
-  pill, dock, surfaces, wallpapers, notifications, and lock work; Hyprland-only
-  rows are hidden. Night light is planned for a later stage.
-- The compositor check accepts **either** `hyprctl` or `niri`; you do not need
-  both installed.
+- **niri** uses the generic Wayland protocol provider for workspaces and
+  windows. Keyboard layout reads its initial state and live changes from niri's
+  IPC event stream. Hyprland-only rows are hidden; night light and global media
+  shortcuts are not implemented for niri.
+- Lock settings offer Hyprlock and Quickshell on Hyprland, and swaylock and
+  Quickshell on niri. The external lockers are optional; choosing an unavailable
+  one warns and falls back to the Quickshell lock.
+- The dependency checker filters compositor-specific entries for the detected
+  session, so it does not ask niri users for Hyprland tools or vice versa.

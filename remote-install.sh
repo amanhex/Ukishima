@@ -83,9 +83,10 @@ Add these to your Hyprland or niri config. The installer never edits either.
   Any other keybind is the same shape — swap the IPC call for the one you want.
   Most calls take a monitor name; pass "" for the focused monitor.
 
-  Lock is a script, not an IPC surface. On Hyprland it uses hyprlock if you
-  have it, otherwise its own Quickshell lockscreen; niri uses the built-in
-  Quickshell lock. Set the backend under Lock in settings:
+  Lock is a script, not an IPC surface. Lock settings offer Hyprlock or
+  Quickshell on Hyprland, and swaylock or Quickshell on niri. The external
+  lockers are optional; an unavailable selection warns and falls back to the
+  built-in Quickshell lock:
     $INSTALL_ROOT/scripts/lock.sh
 
   Launch manually:

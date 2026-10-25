@@ -27,6 +27,7 @@
 set -eu
 
 SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SELF_DIR/wm.sh"
 
 # The manifest lives at the repo root, one level up from scripts/. UKISHIMA_MANIFEST
 # overrides it so a caller can point at a specific checkout.
@@ -202,10 +203,12 @@ TSV=$(jq -r '
   # Arch but in plain bluez on Debian and Fedora. Absent an override the Arch
   # name is used, which is right on Arch and a recognisable hint anywhere else.
   def pkgs_for($e): (($e.pkgAlt[$pm] // $e.pkg) | join(" "));
-  ( .core[]?    | ["core",    .id, .why, pkgs_for(.), kind(.check), arg(.check), "0"] ),
-  ( .optional[]? | ["optional", .id, .why, pkgs_for(.), kind(.check), arg(.check),
+  ( .core[]?    | select((.compositor // "shared") == "shared" or .compositor == $wm)
+                  | ["core",    .id, .why, pkgs_for(.), kind(.check), arg(.check), "0"] ),
+  ( .optional[]? | select((.compositor // "shared") == "shared" or .compositor == $wm)
+                  | ["optional", .id, .why, pkgs_for(.), kind(.check), arg(.check),
                     (if .nudge then "1" else "0" end)] )
-  | @tsv' --arg pm "$PM_ID" "$MANIFEST") || {
+  | @tsv' --arg pm "$PM_ID" --arg wm "$UKISHIMA_WM" "$MANIFEST") || {
   printf 'check-deps: could not read entries out of %s\n' "$MANIFEST" >&2
   exit 2
 }

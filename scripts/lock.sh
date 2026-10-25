@@ -1,13 +1,13 @@
 #!/bin/sh
 # Ukishima session lock.
 #
-# One script, two locks. The pill's power menu, a keybind and hypridle all call
+# One script, compositor-supported locks. The pill's power menu, a keybind and hypridle all call
 # this; which lock you get is the `lockMethod` flag in the ukishima flags.json
 # (the same file the shell writes), so the pill and any keybind stay in sync:
 #
-#   "hyprlock"   → hyprlock, if it is actually installed
-#   "quickshell" → the Quickshell lockscreen (lockscreen/shell.qml), which falls
-#                  back to hyprlock by itself if Quickshell cannot lock
+#   Hyprland: "hyprlock" or "quickshell"
+#   niri:     "swaylock" or "quickshell"
+#   Quickshell failures fall back only to the active compositor's external lock.
 #
 # It used to be two scripts. lock.sh was hyprlock-only; lock-qs.sh was an opt-in
 # alternative you picked by pointing `lock_cmd` at one or the other; and adding
@@ -38,6 +38,7 @@ LOG="$CACHE_DIR/lock.log"
 # and 290 KB for JPEG at q90. That gap is why the capture used to arrive late.
 SHOT="$CACHE_DIR/lock-shot.jpg"
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+. "$SCRIPT_DIR/wm.sh"
 LOCK_QML="$SCRIPT_DIR/../lockscreen/shell.qml"
 mkdir -p "$CACHE_DIR" 2>/dev/null
 
@@ -55,21 +56,44 @@ fi
 
 QS_BIN="$(command -v quickshell 2>/dev/null || command -v qs 2>/dev/null)"
 have_hyprlock=0
-command -v hyprlock >/dev/null 2>&1 && have_hyprlock=1
-# hyprlock talks to Hyprland's socket. On a non-Hyprland session it cannot take
-# the lock, so even when the binary is installed the Quickshell lock is the one
-# backend that works here.
-if [ -n "${NIRI_SOCKET:-}" ] || [ "${XDG_CURRENT_DESKTOP:-}" = "niri" ]; then
-    have_hyprlock=0
+have_swaylock=0
+if [ "$UKISHIMA_WM" = hyprland ] && command -v hyprlock >/dev/null 2>&1; then
+    have_hyprlock=1
+elif [ "$UKISHIMA_WM" = niri ] && command -v swaylock >/dev/null 2>&1; then
+    have_swaylock=1
 fi
+
+# A stale choice from another compositor resolves safely without rewriting the
+# user's preference, so it can become active again when they switch back.
+case "$UKISHIMA_WM:$METHOD" in
+    niri:hyprlock)
+        note "saved hyprlock choice is unsupported on niri; using the Quickshell lock"
+        METHOD=quickshell
+        ;;
+    niri:swaylock)
+        if [ "$have_swaylock" -ne 1 ]; then
+            note "swaylock was selected but is not installed; using the Quickshell lock"
+            echo "lock.sh: swaylock is selected but not installed; using the Quickshell lock" >&2
+            METHOD=quickshell
+        fi
+        ;;
+    hyprland:swaylock)
+        note "saved swaylock choice is unsupported on Hyprland; using the Quickshell lock"
+        METHOD=quickshell
+        ;;
+    generic:hyprlock | generic:swaylock)
+        note "saved $METHOD choice is unsupported on this compositor; using the Quickshell lock"
+        METHOD=quickshell
+        ;;
+esac
 # Ask the running compositor whether it is still there, instead of assuming
 # Hyprland: hyprctl exists on a niri box but cannot answer. Used only on the
 # signal-death path, where a dead compositor means there is nothing left to
 # protect and re-locking would only stack a surface on a teardown.
 compositor_gone() {
-    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null 2>&1; then
+    if [ "$UKISHIMA_WM" = hyprland ] && command -v hyprctl >/dev/null 2>&1; then
         ! hyprctl version >/dev/null 2>&1
-    elif [ -n "${NIRI_SOCKET:-}" ] && command -v niri >/dev/null 2>&1; then
+    elif [ "$UKISHIMA_WM" = niri ] && command -v niri >/dev/null 2>&1; then
         ! niri msg version >/dev/null 2>&1
     else
         return 1
@@ -131,8 +155,24 @@ run_hyprlock() {
     exec hyprlock
 }
 
+run_swaylock() {
+    note "method=swaylock -> swaylock"
+    exec swaylock
+}
+
+run_external_fallback() {
+    if [ "$UKISHIMA_WM" = hyprland ] && [ "$have_hyprlock" -eq 1 ]; then
+        note "Quickshell lock unavailable or failed -> hyprlock"
+        run_hyprlock
+    elif [ "$UKISHIMA_WM" = niri ] && [ "$have_swaylock" -eq 1 ]; then
+        note "Quickshell lock unavailable or failed -> swaylock"
+        run_swaylock
+    fi
+    return 1
+}
+
 # The Quickshell lock. Returns only on failure; every other outcome exits or
-# execs, so the caller's hyprlock fallback below is reached exactly when the
+# execs, so the compositor-supported external-locker fallback below is reached
 # session still needs protecting.
 run_quickshell_lock() {
     note "starting $QS_BIN -p $LOCK_QML"
@@ -179,7 +219,7 @@ run_quickshell_lock() {
 
     # Quickshell parses and validates the QML before rendering, so it exits
     # non-zero immediately if an import (e.g. a missing compiled module) cannot
-    # be resolved. If we exec'd it here, the hyprlock fallback below would be
+    # be resolved. If we exec'd it here, the external-locker fallback below would be
     # unreachable and the session would stay unlocked while appearing to lock.
     # Run in the foreground instead.
     "$QS_BIN" -p "$LOCK_QML" >>"$LOG" 2>&1
@@ -191,9 +231,10 @@ run_quickshell_lock() {
     # rc > 128 means quickshell was killed by a signal, which means it was ALIVE
     # and holding a session lock when it died. That is not "locking failed" -- the
     # compositor has already released the lock by the time the process is gone.
-    # Starting a second locker on top of that teardown is what crashes Hyprland,
-    # which is why the wait below is not optional. Re-lock with hyprlock so the
-    # session is not left wide open. This path deliberately bypasses the guard:
+    # Starting a second locker on top of that teardown can crash the compositor,
+    # which is why the wait below is not optional. Re-lock with the active
+    # compositor's external locker so the session is not left wide open. This
+    # path deliberately bypasses the guard:
     # the lock was granted and torn down, so there is no live instance to
     # compare against and refusing here would be the one case that leaves the
     # session open.
@@ -211,36 +252,36 @@ run_quickshell_lock() {
             note "compositor is gone -- not re-locking"
             exit $rc
         fi
-        if [ "$have_hyprlock" = 1 ]; then
-            note "re-locking with hyprlock after clean teardown"
-            exec hyprlock
-        fi
+        run_external_fallback || true
         exit $rc
     fi
     # 255 is Quickshell's "failed to load/validate the config". Nothing was ever
     # locked, so the fallback is the only thing protecting the session.
-    note "quickshell exited $rc -- config never loaded, falling back to hyprlock"
+    note "quickshell exited $rc -- config never loaded"
 }
 
-if [ "$METHOD" = "hyprlock" ] && [ "$have_hyprlock" = 1 ]; then
+if [ "$METHOD" = "hyprlock" ] && [ "$UKISHIMA_WM" = hyprland ] && [ "$have_hyprlock" = 1 ]; then
     note "method=hyprlock -> hyprlock"
     run_hyprlock
 fi
 
+if [ "$METHOD" = "swaylock" ] && [ "$UKISHIMA_WM" = niri ] && [ "$have_swaylock" = 1 ]; then
+    run_swaylock
+fi
+
 if [ "$have_qs" = 1 ]; then
-    if [ "$METHOD" = "hyprlock" ]; then
+    if [ "$METHOD" = "hyprlock" ] && [ "$UKISHIMA_WM" = hyprland ]; then
         note "method=hyprlock but hyprlock is not installed -> downgrading to the Quickshell lock"
+    elif [ "$METHOD" = "swaylock" ]; then
+        note "method=swaylock but swaylock is not installed -> using the Quickshell lock"
     else
         note "method=$METHOD -> the Quickshell lock"
     fi
     run_quickshell_lock
 fi
 
-if [ "$have_hyprlock" = 1 ]; then
-    note "Quickshell lock unavailable or failed -> hyprlock"
-    run_hyprlock
-fi
+run_external_fallback || true
 
-note "ERROR no hyprlock installed and no Quickshell lockscreen at $LOCK_QML — nothing to lock with"
-echo "lock.sh: no hyprlock installed and no $LOCK_QML — cannot lock" >&2
+note "ERROR no compositor-supported locker installed and no Quickshell lockscreen at $LOCK_QML"
+echo "lock.sh: no supported locker installed and no Quickshell lockscreen at $LOCK_QML — cannot lock" >&2
 exit 1

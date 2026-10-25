@@ -71,7 +71,7 @@ SettingsSurface {
     Process {
         id: paletteProc
         command: ["sh", "-c",
-            "wallscript=\"" + Config.hyprPath("scripts", "wallcolors.py") + "\"; python3 \"$wallscript\" --hue \"$1\" \"$2\" \"$3\" && hyprctl reload >/dev/null 2>&1; busctl --user call com.mitchellh.ghostty /com/mitchellh/ghostty org.gtk.Actions Activate \"sava{sv}\" reload-config 0 0 >/dev/null 2>&1; command -v kitty >/dev/null 2>&1 && timeout -k 1 5 kitty @ set-colors \"${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/kitty-colors\" >/dev/null 2>&1 || true",
+            "wallscript=\"" + Config.hyprPath("scripts", "wallcolors.py") + "\"; python3 \"$wallscript\" --hue \"$1\" \"$2\" \"$3\" && { [ -z \"${HYPRLAND_INSTANCE_SIGNATURE:-}\" ] || hyprctl reload >/dev/null 2>&1; }; busctl --user call com.mitchellh.ghostty /com/mitchellh/ghostty org.gtk.Actions Activate \"sava{sv}\" reload-config 0 0 >/dev/null 2>&1; command -v kitty >/dev/null 2>&1 && timeout -k 1 5 kitty @ set-colors \"${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/kitty-colors\" >/dev/null 2>&1 || true",
             "sh", root.hueArg, root.modeArg, root.satArg]
     }
 

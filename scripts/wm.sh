@@ -15,10 +15,10 @@ case "${UKISHIMA_WM:-}" in
     niri) UKISHIMA_WM=niri ;;
     generic) UKISHIMA_WM=generic ;;
     *)
-        if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-            UKISHIMA_WM=hyprland
-        elif [ -n "${NIRI_SOCKET:-}" ]; then
+        if [ -n "${NIRI_SOCKET:-}" ]; then
             UKISHIMA_WM=niri
+        elif [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+            UKISHIMA_WM=hyprland
         else
             case "${XDG_CURRENT_DESKTOP:-}" in
                 *Hyprland* | *hyprland*) UKISHIMA_WM=hyprland ;;

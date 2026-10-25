@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.WindowManager
+import Quickshell.Io
 
 /**
  * Protocol-generic provider: ext-workspace-v1 for workspaces and
@@ -18,8 +19,9 @@ Singleton {
     readonly property bool available: true
 
     readonly property string compositor: {
+        const requested = Quickshell.env("UKISHIMA_WM");
         const niri = Quickshell.env("NIRI_SOCKET");
-        return niri && niri.length > 0 ? "niri" : "generic";
+        return requested === "niri" || (niri && niri.length > 0) ? "niri" : "generic";
     }
 
     readonly property var caps: ({
@@ -31,8 +33,48 @@ Singleton {
         gameModeStrip: false,
         windowSnap: false,
         globalShortcuts: false,
-        lock: "quickshell"
+        lock: root.compositor === "niri"
+            ? ["quickshell", "swaylock"] : ["quickshell"]
     })
+
+    property var keyboardLayoutNames: []
+    property string keyboardLayoutName: ""
+
+    function setKeyboardLayout(index) {
+        if (!Array.isArray(keyboardLayoutNames) ||
+            !Number.isInteger(index) || index < 0 ||
+            index >= keyboardLayoutNames.length)
+            return;
+        const name = keyboardLayoutNames[index];
+        if (typeof name === "string")
+            keyboardLayoutName = name;
+    }
+
+    function handleKeyboardEvent(line) {
+        try {
+            const event = JSON.parse(line);
+            if (event.KeyboardLayoutsChanged &&
+                event.KeyboardLayoutsChanged.keyboard_layouts) {
+                const layouts = event.KeyboardLayoutsChanged.keyboard_layouts;
+                if (!Array.isArray(layouts.names))
+                    return;
+                keyboardLayoutNames = layouts.names;
+                setKeyboardLayout(layouts.current_idx);
+            } else if (event.KeyboardLayoutSwitched) {
+                setKeyboardLayout(event.KeyboardLayoutSwitched.idx);
+            }
+        } catch (e) {
+            console.warn("WmGeneric: malformed niri keyboard event:", e);
+        }
+    }
+
+    Process {
+        running: root.compositor === "niri"
+        command: ["niri", "msg", "--json", "event-stream"]
+        stdout: SplitParser {
+            onRead: (line) => root.handleKeyboardEvent(line)
+        }
+    }
 
     readonly property var windows: {
         const out = [];

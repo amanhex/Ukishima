@@ -35,12 +35,19 @@ SettingsSurface {
     /** True once the probe has run and hyprlock is on PATH. False before that
      *  and forever after if it is not there. */
     property bool hyprlockAvailable: false
+    property bool swaylockAvailable: false
 
     Process {
         id: hyprlockProbe
-        running: true
+        running: Wm.compositor === "hyprland"
         command: ["sh", "-c", "command -v hyprlock >/dev/null 2>&1"]
         onExited: (code) => root.hyprlockAvailable = (code === 0)
+    }
+
+    Process {
+        running: Wm.compositor === "niri"
+        command: ["sh", "-c", "command -v swaylock >/dev/null 2>&1"]
+        onExited: (code) => root.swaylockAvailable = (code === 0)
     }
 
     /**
@@ -52,9 +59,12 @@ SettingsSurface {
      * a seg row's keyboard cycling walks `vals`, so a hardcoded copy there
      * would let the arrow keys select a method the row no longer shows.
      */
-    readonly property var methodValues: hyprlockAvailable
-        ? ["hyprlock", "quickshell"]
-        : ["quickshell"]
+    readonly property var methodValues: {
+        const supported = Wm.caps.lock || ["quickshell"];
+        if (Wm.compositor !== "hyprland" || hyprlockAvailable)
+            return supported;
+        return supported.filter((method) => method !== "hyprlock");
+    }
 
     /**
      * What the control shows, which is not always what the flag says. A flag
@@ -78,6 +88,7 @@ SettingsSurface {
      * reachable. Gating on the raw flag would hide settings that do work.
      */
     readonly property bool quickshellLock: methodValue === "quickshell"
+        || (methodValue === "swaylock" && !swaylockAvailable)
 
     /**
      * Says why the option is missing, instead of silently showing one pill.
@@ -93,9 +104,13 @@ SettingsSurface {
      * row under it.
      */
     readonly property string methodSub: {
-        if (!hyprlockAvailable)
+        if (methodValue === "swaylock")
+            return swaylockAvailable
+                ? "Uses swaylock"
+                : "swaylock is not installed — using Quickshell lockscreen";
+        if (Wm.compositor === "hyprland" && !hyprlockAvailable)
             return "Quickshell lockscreen — hyprlock is not installed";
-        if (!root.quickshellLock)
+        if (methodValue === "hyprlock")
             return "Uses your hyprlock.conf";
         return "Uses the Quickshell lockscreen";
     }
@@ -302,13 +317,16 @@ SettingsSurface {
             Dropdown {
                 id: methodDrop
                 s: root.s
-                //* Built from methodValues so the pills and the row registry
+                //* Built from the compositor capability list in methodValues
+                //* so the picker and row registry
                 //* below are the same list, and neither can offer a method
                 //* that is not installed.
                 options: {
                     const out = [];
                     for (const v of root.methodValues) {
-                        out.push({ label: v === "hyprlock" ? "Hyprlock" : "Quickshell", value: v });
+                        const label = v === "hyprlock" ? "Hyprlock"
+                            : (v === "swaylock" ? "swaylock" : "Quickshell");
+                        out.push({ label: label, value: v });
                     }
                     return out;
                 }
