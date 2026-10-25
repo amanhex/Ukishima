@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Hyprland-only by design: niri has no equivalent live decoration strip, so a
+# direct call from a stale keybind is a quiet no-op instead of a pile of failed
+# hyprctl probes (hyprctl is installed on a niri box too, just with no instance).
+[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || exit 0
+
 # Game-mode Hyprland strip: `on` quiets the compositor for a game, `off`
 # restores it. No hyprland.conf / hyprland.lua is ever edited — everything is
 # a live, session-scoped override, so a `hyprctl reload` or Hyprland restart

@@ -56,6 +56,25 @@ fi
 QS_BIN="$(command -v quickshell 2>/dev/null || command -v qs 2>/dev/null)"
 have_hyprlock=0
 command -v hyprlock >/dev/null 2>&1 && have_hyprlock=1
+# hyprlock talks to Hyprland's socket. On a non-Hyprland session it cannot take
+# the lock, so even when the binary is installed the Quickshell lock is the one
+# backend that works here.
+if [ -n "${NIRI_SOCKET:-}" ] || [ "${XDG_CURRENT_DESKTOP:-}" = "niri" ]; then
+    have_hyprlock=0
+fi
+# Ask the running compositor whether it is still there, instead of assuming
+# Hyprland: hyprctl exists on a niri box but cannot answer. Used only on the
+# signal-death path, where a dead compositor means there is nothing left to
+# protect and re-locking would only stack a surface on a teardown.
+compositor_gone() {
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null 2>&1; then
+        ! hyprctl version >/dev/null 2>&1
+    elif [ -n "${NIRI_SOCKET:-}" ] && command -v niri >/dev/null 2>&1; then
+        ! niri msg version >/dev/null 2>&1
+    else
+        return 1
+    fi
+}
 # The Quickshell lock needs both halves: a Quickshell to run and the config to
 # run it against. Probing only for one of them was how "quickshell" could be
 # selected on a machine that had neither.
@@ -188,7 +207,7 @@ run_quickshell_lock() {
     if [ $rc -gt 128 ] && [ $rc -ne 255 ]; then
         note "quickshell killed by signal $((rc - 128)) -- lock was granted, waiting for teardown"
         sleep 1
-        if command -v hyprctl >/dev/null 2>&1 && ! hyprctl version >/dev/null 2>&1; then
+        if compositor_gone; then
             note "compositor is gone -- not re-locking"
             exit $rc
         fi

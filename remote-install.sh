@@ -42,33 +42,51 @@ IPC_PREFIX="qs -p $INSTALL_ROOT"
 printf '\n\033[1;32mUkishima installed!\033[0m\n\n'
 
 cat <<EOF
-Add these to your Hyprland config:
+Add these to your Hyprland or niri config. The installer never edits either.
 
-  Auto-launch (lower-memory launcher):
+  Hyprland (hyprlang):
     exec-once = $INSTALL_ROOT/launch.sh
-
-  Wallpaper daemon — start it here rather than letting the shell start it, so
-  it is already up when the shell restores your wallpaper (no ~1s delay):
     exec-once = awww-daemon
 
-  Keybinds — the shell ships none. Every surface answers over IPC, so bind the
-  ones you want (hyprlang):
-    bind = SUPER, SHIFT+W, exec, $IPC_PREFIX ipc call ukishima wallpaper ""
-    bind = SUPER, SHIFT+E, exec, $IPC_PREFIX ipc call ukishima emoji ""
+    bind = SUPER SHIFT, W, exec, $IPC_PREFIX ipc call ukishima wallpaper ""
+    bind = SUPER SHIFT, V, exec, $IPC_PREFIX ipc call ukishima clipboard ""
+    bind = SUPER, slash, exec, $IPC_PREFIX ipc call ukishima launcher ""
+    bind = SUPER, N, exec, $IPC_PREFIX ipc call ukishima notifications ""
+    bind = SUPER, L, exec, $INSTALL_ROOT/scripts/lock.sh
 
-  or lua:
-    hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("$IPC_PREFIX ipc call ukishima wallpaper \\"\\""))
-    hl.bind(var_mainMod .. " + SHIFT + E", hl.dsp.exec_cmd("$IPC_PREFIX ipc call ukishima emoji \\"\\""))
+  Hyprland (Lua):
+    hl.exec_cmd("$INSTALL_ROOT/launch.sh")
+    hl.exec_cmd("awww-daemon")
+
+    local uk = "$IPC_PREFIX"
+    hl.bind(var_mainMod .. " + SHIFT + W", hl.dsp.exec_cmd(uk .. " ipc call ukishima wallpaper \\"\\""))
+    hl.bind(var_mainMod .. " + SHIFT + V", hl.dsp.exec_cmd(uk .. " ipc call ukishima clipboard \\"\\""))
+    hl.bind(var_mainMod .. " + slash", hl.dsp.exec_cmd(uk .. " ipc call ukishima launcher \\"\\""))
+    hl.bind(var_mainMod .. " + N", hl.dsp.exec_cmd(uk .. " ipc call ukishima notifications \\"\\""))
+    hl.bind(var_mainMod .. " + L", hl.dsp.exec_cmd("$INSTALL_ROOT/scripts/lock.sh"))
+
+  niri (KDL, ~/.config/niri/config.kdl):
+    spawn-at-startup "sh" "-c" "exec $INSTALL_ROOT/launch.sh"
+    spawn-at-startup "awww-daemon"
+
+    binds {
+        Mod+Shift+W { spawn-sh "$IPC_PREFIX ipc call ukishima wallpaper \\"\\""; }
+        Mod+Shift+V { spawn-sh "$IPC_PREFIX ipc call ukishima clipboard \\"\\""; }
+        Mod+Slash { spawn-sh "$IPC_PREFIX ipc call ukishima launcher \\"\\""; }
+        Mod+N { spawn-sh "$IPC_PREFIX ipc call ukishima notifications \\"\\""; }
+        Mod+L { spawn-sh "$INSTALL_ROOT/scripts/lock.sh"; }
+    }
 
   List every surface you can bind:
     $IPC_PREFIX ipc show
 
   Any other keybind is the same shape — swap the IPC call for the one you want.
+  Most calls take a monitor name; pass "" for the focused monitor.
 
-  Lock is a script, not an IPC surface. It uses hyprlock if you have it,
-  otherwise its own Quickshell lockscreen — set the backend under Lock in
-  settings once it is running:
-    bind = SUPER, L, exec, $INSTALL_ROOT/scripts/lock.sh
+  Lock is a script, not an IPC surface. On Hyprland it uses hyprlock if you
+  have it, otherwise its own Quickshell lockscreen; niri uses the built-in
+  Quickshell lock. Set the backend under Lock in settings:
+    $INSTALL_ROOT/scripts/lock.sh
 
   Launch manually:
     quickshell --config $INSTALL_ROOT

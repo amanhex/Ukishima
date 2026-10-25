@@ -190,16 +190,23 @@ Singleton {
     }
 
     /**
-     * Focus the app's Hyprland window (workspace switch included) by matching the
-     * notification's desktopEntry/appName against the live window classes.
+     * Focus the app's window (workspace switch included) by matching the
+     * notification's desktopEntry/appName against the live window classes. Goes
+     * through the compositor seam so it works on niri as well as Hyprland.
      */
     function raiseWindow(n) {
         if (!n) return;
         var token = String(n.desktopEntry && n.desktopEntry.length ? n.desktopEntry : (n.appName || "")).toLowerCase();
         if (token.length === 0) return;
-        Quickshell.execDetached(["sh", "-c",
-            "addr=$(hyprctl clients -j | jq -r --arg q \"$1\" 'first(.[] | select(((.class | if . then ascii_downcase else \"\" end) | contains($q)) or ((.initialClass | if . then ascii_downcase else \"\" end) | contains($q))) | .address)'); [ -n \"$addr\" ] && hyprctl dispatch \"hl.dsp.focus({ window = \\\"address:$addr\\\" })\"",
-            "sh", token]);
+        var bare = token.replace(/\.desktop$/, "");
+        var wins = Wm.windows || [];
+        for (var i = 0; i < wins.length; i++) {
+            var app = String(wins[i].appId || "").toLowerCase();
+            if (app.indexOf(bare) >= 0) {
+                Wm.focusWindow(wins[i]);
+                return;
+            }
+        }
     }
 
     /**

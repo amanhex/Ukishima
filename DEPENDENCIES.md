@@ -1,6 +1,6 @@
 # Dependencies
 
-Arch names, unless noted.
+Arch names, unless noted. Ukishima runs on **Hyprland** and **niri**.
 
 ## Required
 
@@ -9,7 +9,7 @@ Install these or the shell starts but breaks in places.
 | Tool | Package | Used for |
 | --- | --- | --- |
 | `quickshell` | `quickshell` | the shell runtime itself — nothing starts without it |
-| `hyprctl` | `hyprland` | IPC for workspaces, monitors, dispatch and reload |
+| `hyprctl` or `niri` | `hyprland` / `niri` | compositor IPC: workspaces, monitors, dispatch and the niri focus-workspace fallback |
 | `notify-send` | `libnotify` | desktop notifications for the pill and for these dependency reports |
 | `jq` | `jq` | JSON parsing in the helper scripts, and for reading the manifest |
 | `xdg-open` | `xdg-utils` | opening files and links, including the dependency report page |
@@ -17,7 +17,6 @@ Install these or the shell starts but breaks in places.
 | `bluetoothctl` | `bluez-utils` | the bluetooth surface |
 | `nmcli` | `networkmanager` | the wifi surface |
 | `brightnessctl` | `brightnessctl` | internal laptop backlight control |
-| `hyprsunset` | `hyprsunset` | the night light |
 | `awww + awww-daemon` | `awww` | the wallpaper backend (client and daemon) |
 | `curl + magick + python3 + ffmpeg` | `curl`, `imagemagick`, `python`, `ffmpeg` | wallpaper download, thumbnails, palette generation and video-wallpaper stills |
 | `cava` | `cava` | the music visualiser |
@@ -31,6 +30,7 @@ ones you actually want.
 
 | Package | Adds |
 | --- | --- |
+| `hyprsunset` | the night light on Hyprland; niri night light is not implemented yet |
 | `gpu-screen-recorder` | the screen-recording backend — recording is disabled without it |
 | `mpvpaper` | animated / video wallpapers |
 | `matugen` | Material base16 palettes (always-dark terminal theme, dynamic wallpaper palette) |
@@ -42,4 +42,15 @@ ones you actually want.
 | `kitty` | live terminal palette reload via `kitty @ set-colors` (needs `allow_remote_control yes`, and `include ~/.cache/ukishima/kitty-colors` for persistence) |
 | `ghostty` | live terminal palette reload over D-Bus |
 | `fastfetch` | the recoloured system readout (needs `~/.config/fastfetch/config.jsonc.in`) |
-| `hypridle` | idle / DPMS lock integration alongside the built-in keep-awake |
+| `hypridle` | idle / DPMS lock integration alongside the built-in keep-awake (Hyprland) |
+
+## Compositor notes
+
+- **Hyprland** has the full feature set: special workspaces and the minimized
+  tray, workspace rules, the keyboard-layout readout, global media shortcuts,
+  the game-mode strip, and the night light.
+- **niri** uses the generic protocol provider for workspaces and windows. The
+  pill, dock, surfaces, wallpapers, notifications, and lock work; Hyprland-only
+  rows are hidden. Night light is planned for a later stage.
+- The compositor check accepts **either** `hyprctl` or `niri`; you do not need
+  both installed.

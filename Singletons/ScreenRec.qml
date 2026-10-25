@@ -332,13 +332,18 @@ Singleton {
     /**
      * Combined Window / Region picker: feeds each Hyprland client's current
      * rectangle to `slurp`, so clicking a window snaps to its `WxH+X+Y` geometry
-     * while dragging draws a freeform region. The rectangle is captured
-     * statically, so a window moved or resized after the pick is not followed.
-     * Empty pick or non-zero exit (Escape) aborts.
+     * while dragging draws a freeform region. Other compositors have no window
+     * rectangles to hand (niri exposes layout positions, not screen geometry),
+     * so there `slurp` still offers the freeform region. The rectangle is
+     * captured statically, so a window moved or resized after the pick is not
+     * followed. Empty pick or non-zero exit (Escape) aborts.
      */
     Process {
         id: windowProc
-        command: ["sh", "-c", "hyprctl clients -j | jq -r '.[] | \"\\(.at[0]),\\(.at[1]) \\(.size[0])x\\(.size[1])\"' | slurp -f \"%wx%h+%x+%y\""]
+        command: ["sh", "-c",
+            "if [ -n \"${HYPRLAND_INSTANCE_SIGNATURE:-}\" ] && command -v hyprctl >/dev/null 2>&1; then "
+            + "hyprctl clients -j | jq -r '.[] | \"\\(.at[0]),\\(.at[1]) \\(.size[0])x\\(.size[1])\"' | slurp -f \"%wx%h+%x+%y\"; "
+            + "else slurp -f \"%wx%h+%x+%y\"; fi"]
         stdout: StdioCollector {
             onStreamFinished: {
                 var geom = this.text.trim();

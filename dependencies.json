@@ -13,10 +13,10 @@
       "why": "the shell runtime itself — nothing starts without it"
     },
     {
-      "id": "hyprland",
-      "check": { "bin": "hyprctl" },
+      "id": "compositor",
+      "check": { "anyBin": ["hyprctl", "niri"] },
       "pkg": ["hyprland"],
-      "why": "IPC for workspaces, monitors, dispatch and reload"
+      "why": "compositor IPC — Hyprland's hyprctl or niri's niri; the running session provides one"
     },
     {
       "id": "notify",
@@ -67,12 +67,6 @@
       "why": "internal laptop backlight control"
     },
     {
-      "id": "hyprsunset",
-      "check": { "bin": "hyprsunset" },
-      "pkg": ["hyprsunset"],
-      "why": "the night light"
-    },
-    {
       "id": "awww",
       "check": { "bins": ["awww", "awww-daemon"] },
       "pkg": ["awww"],
@@ -111,6 +105,12 @@
       "pkg": ["gpu-screen-recorder"],
       "why": "the screen-recording backend — recording is disabled without it",
       "nudge": true
+    },
+    {
+      "id": "hyprsunset",
+      "check": { "bin": "hyprsunset" },
+      "pkg": ["hyprsunset"],
+      "why": "the night light on Hyprland — niri night light is not implemented yet"
     },
     {
       "id": "mpvpaper",

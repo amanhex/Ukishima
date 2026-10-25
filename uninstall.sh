@@ -44,7 +44,8 @@ rm -rf "$CACHE/ukishima-wp-thumbs"
 rm -rf "$CACHE/cliphist-thumbs"
 rm -rf "$CACHE/pill"
 
-# Note: this script never edits your Hyprland config. The auto-launch line and
-# the SUPER keybinds were added by you, so remove them yourself:
+# Note: this script never edits your compositor config. The launch line and
+# keybinds were added by you, so remove them yourself:
 echo "Ukishima removed."
-echo "Remove the exec-once auto-launch line and the SUPER keybinds from your Hyprland config."
+echo "Remove the launch line and keybinds from your Hyprland config, or the"
+echo "spawn-at-startup lines and binds block from ~/.config/niri/config.kdl."

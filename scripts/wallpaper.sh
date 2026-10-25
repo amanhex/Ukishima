@@ -167,16 +167,33 @@ daemon_painted() {
     printf '%s' "$js" | grep -qE '"image"[[:space:]]*:[[:space:]]*"[^"]+"'
 }
 
+# Output discovery follows the session, not whichever CLI happens to be
+# installed: hyprctl is present on a niri box too but has no instance to talk
+# to, so the compositor env var decides first.
 outputs() {
-    hyprctl monitors -j 2>/dev/null | jq -r '.[].name'
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null 2>&1; then
+        hyprctl monitors -j 2>/dev/null | jq -r '.[].name'
+    elif [ -n "${NIRI_SOCKET:-}" ] && command -v niri >/dev/null 2>&1; then
+        niri msg --json outputs 2>/dev/null | jq -r 'keys[]'
+    fi
 }
 
 focused_output() {
-    hyprctl monitors -j 2>/dev/null | jq -r '[.[] | select(.focused)] | first.name // empty'
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null 2>&1; then
+        hyprctl monitors -j 2>/dev/null | jq -r '[.[] | select(.focused)] | first.name // empty'
+    elif [ -n "${NIRI_SOCKET:-}" ] && command -v niri >/dev/null 2>&1; then
+        niri msg --json focused-output 2>/dev/null | jq -r '.name // empty'
+    fi
 }
 
 cursor_output() {
     local pos cx cy hit
+    # niri exposes no cursor-position IPC, so cursor scope degrades to the
+    # focused output there.
+    if [ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || ! command -v hyprctl >/dev/null 2>&1; then
+        focused_output
+        return
+    fi
     pos=$(hyprctl cursorpos 2>/dev/null) || { focused_output; return; }
     cx=${pos%%,*}
     cy=${pos##*, }
