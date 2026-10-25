@@ -10,8 +10,8 @@ import Quickshell
  * `UKISHIMA_WM=hypr|generic` forces a provider (useful to test the generic
  * path while still inside Hyprland). Left unset, Hyprland is chosen when its
  * instance signature is in the environment, generic otherwise. Adding another
- * compositor means one entry in `providers` and one provider file — no edits
- * in the pill, dock or workspaces strip.
+ * compositor means one provider file and one branch here — no edits in the
+ * pill, dock or workspaces strip.
  */
 Singleton {
     id: root
@@ -28,12 +28,10 @@ Singleton {
         return sig && sig.length > 0 ? "hypr" : "generic";
     }
 
-    readonly property var providers: ({
-        hypr: WmHyprland,
-        generic: WmGeneric
-    })
-
-    readonly property var impl: providers[provider] || WmGeneric
+    // A ternary, not a provider map: an object literal evaluates both values,
+    // which instantiates WmHyprland on niri and makes Quickshell.Hyprland log
+    // "HYPRLAND_INSTANCE_SIGNATURE is unset" before the shell even asks for it.
+    readonly property var impl: provider === "hypr" ? WmHyprland : WmGeneric
 
     /** Human name for messages: hyprland, niri, generic. Not used to branch. */
     readonly property string compositor: impl.compositor

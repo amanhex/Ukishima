@@ -31,7 +31,14 @@ Row {
         return Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1;
     }
 
+    /**
+     * Only Hyprland has `special:minimized`, and the tray is still created on
+     * every compositor. Gate the Hyprland read on the capability so niri does
+     * not touch the Hyprland service just to discover an empty list.
+     */
     readonly property var items: {
+        if (!Wm.caps.minimizable)
+            return [];
         var out = [];
         var tl = Hyprland.toplevels.values;
         for (var i = 0; i < tl.length; i++) {

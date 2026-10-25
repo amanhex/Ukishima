@@ -83,7 +83,9 @@ Item {
     }
 
     Connections {
-        target: Hyprland
+        // A ternary keeps the Hyprland singleton untouched where the
+        // capability is off; `enabled: false` alone still evaluates the target.
+        target: root.active ? Hyprland : null
         enabled: root.active
         function onRawEvent(event) {
             if (event.name !== "activelayout")
