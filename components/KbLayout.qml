@@ -24,6 +24,8 @@ Item {
     property string code: "?"
     /** Show the layout chip only when the compositor declares it. */
     property bool active: Wm.caps.keyboardLayout
+    /** Tracks whether hyprctl successfully provided a layout. */
+    property bool hyprFound: false
 
     function shortCode(full) {
         var f = String(full || "").toLowerCase();
@@ -79,13 +81,38 @@ Item {
                             root.code = chosen.layout.slice(0, 2).toUpperCase();
                         else if (chosen.active_keymap)
                             root.code = root.shortCode(chosen.active_keymap);
+                        root.hyprFound = true;
                     }
                 } catch (e) {
-                    // non‑JSON or command not available (e.g. niri) → keep "US"
+                    // non‑JSON or command not available → keep "?" and try fallback
                 }
             }
         }
     }
 
-    Component.onCompleted: if (root.active) seedProc.running = true
+    // ── fallback: try setxkbmap -query (works on most Linux systems) ─────
+    Process {
+        id: fallbackProc
+        // only run if hyprctl did not find a layout
+        running: !root.hyprFound
+        command: ["sh", "-c", "setxkbmap -query 2>/dev/null || echo 'NO'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var txt = this.text || "";
+                if (txt.indexOf("layout:") >= 0) {
+                    var layout = txt.split("layout:")[1].split("\n")[0].trim();
+                    // take the first alphabetic token (e.g. "us", "fr", "us,colemak")
+                    var m = layout.match(/[A-Za-z]+/);
+                    if (m) {
+                        var code = m[0].toUpperCase();
+                        // limit to two letters if longer
+                        if (code.length > 2) code = code.slice(0, 2);
+                        root.code = code;
+                    }
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: fallbackProc.running = !root.hyprFound
 }
