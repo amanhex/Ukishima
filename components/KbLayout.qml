@@ -8,7 +8,7 @@ import Quickshell.Io
  * Compact keyboard-layout code for the collapsed pill.
  * Seeds once from `hyprctl devices -j` (Hyprland‑specific). On other
  * compositors the command will fail silently and the pill keeps the default
- * "US" code. The pill shows the layout chip only when
+ * "?" code. The pill shows the layout chip only when
  * `Wm.caps.keyboardLayout` is true.
  *
  * To add support for another compositor:
@@ -21,7 +21,7 @@ import Quickshell.Io
 Item {
     id: root
 
-    property string code: "US"
+    property string code: "?"
     /** Show the layout chip only when the compositor declares it. */
     property bool active: Wm.caps.keyboardLayout
 
