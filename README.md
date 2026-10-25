@@ -25,16 +25,15 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 
 ## Compositor support
 
-| | Hyprland | niri |
-| --- | --- | --- |
-| Pill, dock, surfaces, wallpapers, notifications | yes | yes |
-| Workspaces and window focus | `hyprctl` | ext-workspace-v1 + `niri msg` fallback |
-| Special workspaces / minimized tray | yes | — |
-| Workspace rules, keyboard layout, global media keys | yes | — |
-| Screen recording | monitor, window, region | monitor, region (window snapping needs Hyprland geometry) |
-| Night light | `hyprsunset` | not yet — planned |
-| Lock | `hyprlock` or built-in | built-in Quickshell lock |
-| Game mode | yes | yes, without the Hyprland strip |
+Ukishima works on both Hyprland and niri. The pill, dock, surfaces, wallpapers,
+notifications, lock, and game mode are shared between them. Hyprland‑only rows
+(special workspaces, minimized tray, workspace rules, keyboard layout, global
+media keys) hide themselves when running on niri. Night light uses
+`hyprsunset` on Hyprland and is planned for niri.
+
+Keybinds are compositor‑specific: Hyprland uses `SUPER` (or your modifier) while
+niri defaults to `Super`. The `spawn-sh` helper runs the command through a
+shell, so `$HOME` expands correctly.
 
 ## Requirements
 
@@ -132,31 +131,31 @@ qs -p ~/.local/share/quickshell/ukishima ipc show
 qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher ""
 ```
 
-| Call | Opens / does |
-| --- | --- |
-| `launcher` | app launcher |
-| `wallpaper` | wallpaper strip and wallhaven search |
-| `clipboard` | clipboard history |
-| `emoji` | emoji picker |
-| `scratch` | scratchpad |
-| `calendar` | calendar |
-| `mixer` | audio mixer |
-| `media` | media surface (only if a player exists) |
-| `notifications` | notification history |
-| `battery` | battery surface |
-| `sysmon` / `system` | system monitor |
-| `recorder` / `record` / `screenrec` | screen recorder |
-| `quickRecord` | start, stop, cancel or dismiss the quick-record flow |
-| `gameMode` | toggle game mode |
-| `power` | power menu |
-| `peek` | toggle the pill's peek view |
-| `hide` | close the open surface |
-| `page` | open any surface by name: `page "" appearance`, `page "" wifi`, `page "" bt`, … |
-| `unloadAll` | free every closed surface immediately |
-| `minimizeWindow` / `restoreWindow` | Hyprland minimize internals used by the SUPER+M script |
+Surface names and a one-line description:
 
-Settings pages reachable through `page` include `appearance`, `appcat`, `display`, `modules`, `theme`, `accent`, `glass`, `fontcolor`, `interface`, `rightclick`, `fontpicker`, `profile`, `update`, and `locksettings`. Regular surfaces such as `wifi`, `bt`, `weather`, and `timer` work the same way.
-
+- `launcher` – app launcher
+- `wallpaper` – wallpaper strip and wallhaven search
+- `clipboard` – clipboard history
+- `notifications` – notification history
+- `battery` – battery surface
+- `sysmon` / `system` – system monitor
+- `recorder` / `record` / `screenrec` – screen recorder
+- `quickRecord` – start, stop, cancel or dismiss the quick-record flow
+- `gameMode` – toggle game mode
+- `power` – power menu
+- `peek` – toggle the pill's peek view
+- `hide` – close the open surface
+- `page` – open any surface by name
+- `unloadAll` – free every closed surface immediately
+- `minimizeWindow` / `restoreWindow` – minimize/restore (Hyprland)
+- `emoji` – emoji picker
+- `calendar` – calendar
+- `mixer` – audio mixer
+- `media` – media surface (if a player is running)
+- `appearance`, `appcat`, `display`, `modules`, `theme`, `accent`, `glass`,
+  `fontcolor`, `interface`, `rightclick`, `fontpicker`, `profile`, `update`,
+  `locksettings` – settings pages
+- `wifi`, `bt`, `weather`, `timer` – regular surfaces
 </details>
 
 ### Lock
@@ -167,7 +166,7 @@ Lock is a script, not an IPC surface:
 ~/.local/share/quickshell/ukishima/scripts/lock.sh
 ```
 
-On Hyprland it uses `hyprlock` if you have it, otherwise its own Quickshell lockscreen. niri always uses the built-in Quickshell lock. Set the backend under **Lock** in settings (the built-in lock's background, blur, avatar and indicators live there too).
+The lock can hand off to a standalone locker or use the built-in Quickshell lockscreen. Set the backend under **Lock** in settings (the built-in lock's background, blur, avatar and indicators live there too).
 
 ### Wallpaper daemon
 
