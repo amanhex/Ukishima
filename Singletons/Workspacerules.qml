@@ -2,7 +2,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 
 /**
  * Persistent workspace→monitor map from Hyprland's workspace rules
@@ -12,6 +11,9 @@ import Quickshell.Hyprland
  * names. Empty when a setup has no rules (the usual single-monitor case) and
  * the dots fall back to live workspaces. Re-read on config reload, since
  * editing monitors.lua rewrites the rules.
+ *
+ * Hyprland-only. WmHyprland calls this on start and on a config reload; the
+ * generic provider never asks, so no `hyprctl` runs on another compositor.
  */
 Singleton {
     id: root
@@ -48,14 +50,4 @@ Singleton {
             }
         }
     }
-
-    Connections {
-        target: Hyprland
-        function onRawEvent(event) {
-            if (event.name === "configreloaded")
-                root.refresh();
-        }
-    }
-
-    Component.onCompleted: refresh()
 }

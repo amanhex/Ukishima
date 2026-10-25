@@ -342,6 +342,7 @@ PillSurface {
             }
             IconChip {
                 glyph: "sun"
+                visible: Wm.caps.nightLight
                 on: Flags.nightLightMode !== "off"
                 tipTitle: "Night light"
                 tipDesc: "Warm the screen"
@@ -351,7 +352,7 @@ PillSurface {
                 glyph: "gamepad"
                 on: Flags.gameMode
                 tipTitle: "Game mode"
-                tipDesc: "Strip effects, quiet the desktop"
+                tipDesc: Wm.caps.gameModeStrip ? "Strip effects, quiet the desktop" : "Quiet the desktop"
                 onToggled: Flags.gameMode = !Flags.gameMode
             }
         }

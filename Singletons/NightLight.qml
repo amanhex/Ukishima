@@ -18,6 +18,7 @@ Singleton {
     id: root
 
     readonly property string confPath: Config.hyprPath("hyprsunset.conf")
+    readonly property bool supported: Wm.caps.nightLight
     property bool available: false
     property string pendingMode: ""
 
@@ -121,6 +122,8 @@ Singleton {
      * conf is a single all-day profile that only fires at 0:00.
      */
     function setMode(m) {
+        if (!root.supported)
+            return;
         if (m !== "off") {
             root.pendingMode = m;
             availProc.command = root.startCmd;
@@ -203,6 +206,8 @@ Singleton {
     }
 
     Component.onCompleted: {
+        if (!root.supported)
+            return;
         availProc.command = root.checkCmd;
         availProc.running = true;
     }

@@ -57,6 +57,11 @@ Singleton {
     }
 
     function run(arg) {
+        /* The strip is a Hyprland decoration snapshot; on a compositor with
+         * no equivalent there is nothing to quiet, and the flags above still
+         * do the real work (DND, keep-awake, performance, dock/pill hidden). */
+        if (!Wm.caps.gameModeStrip)
+            return;
         if (proc.running) {
             root.pending = arg;
             return;

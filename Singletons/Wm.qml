@@ -79,6 +79,10 @@ Singleton {
         impl.restoreWindow(arg);
     }
 
+    function logout() {
+        impl.logout();
+    }
+
     function refresh() {
         impl.refresh();
     }

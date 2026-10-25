@@ -27,6 +27,8 @@ Singleton {
         minimizable: true,
         keyboardLayout: true,
         nightLight: true,
+        gameModeStrip: true,
+        globalShortcuts: true,
         lock: "hyprlock"
     })
 
@@ -194,6 +196,10 @@ Singleton {
         Hyprland.dispatch('hl.dsp.window.move({ workspace = "' + p[1] + '", window = "address:' + p[0] + '" })');
     }
 
+    function logout() {
+        Hyprland.dispatch("hl.dsp.exit()");
+    }
+
     function refresh() {
         if (!root.available)
             return;
@@ -220,6 +226,8 @@ Singleton {
         target: Hyprland
         enabled: root.available
         function onRawEvent(event) {
+            if (event.name === "configreloaded")
+                Workspacerules.refresh();
             if (root.refreshEvents[event.name])
                 root.refresh();
         }
@@ -257,5 +265,8 @@ Singleton {
         }
     }
 
-    Component.onCompleted: if (root.available) root.refresh()
+    Component.onCompleted: if (root.available) {
+        root.refresh();
+        Workspacerules.refresh();
+    }
 }

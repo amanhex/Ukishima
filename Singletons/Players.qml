@@ -2,8 +2,8 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Services.Mpris
 import Quickshell.Hyprland
+import Quickshell.Services.Mpris
 import "../lib/apps.js" as Apps
 
 /**
@@ -392,22 +392,34 @@ Singleton {
         xhr.send();
     }
 
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "mediaToggle"
-        description: "Play or pause the active media player"
-        onPressed: { var a = root.active; if (a && a.canTogglePlaying) a.togglePlaying(); }
-    }
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "mediaNext"
-        description: "Skip to the next track"
-        onPressed: { var a = root.active; if (a && a.canGoNext) a.next(); }
-    }
-    GlobalShortcut {
-        appid: "quickshell"
-        name: "mediaPrev"
-        description: "Skip to the previous track"
-        onPressed: { var a = root.active; if (a && a.canGoPrevious) a.previous(); }
+    /**
+     * Hyprland's global-shortcut protocol is the only way to register these,
+     * and on a compositor without it every GlobalShortcut object logs a
+     * warning. Load the block only where the capability exists.
+     */
+    Loader {
+        active: Wm.caps.globalShortcuts
+        sourceComponent: Component {
+            Item {
+                GlobalShortcut {
+                    appid: "quickshell"
+                    name: "mediaToggle"
+                    description: "Play or pause the active media player"
+                    onPressed: { var a = root.active; if (a && a.canTogglePlaying) a.togglePlaying(); }
+                }
+                GlobalShortcut {
+                    appid: "quickshell"
+                    name: "mediaNext"
+                    description: "Skip to the next track"
+                    onPressed: { var a = root.active; if (a && a.canGoNext) a.next(); }
+                }
+                GlobalShortcut {
+                    appid: "quickshell"
+                    name: "mediaPrev"
+                    description: "Skip to the previous track"
+                    onPressed: { var a = root.active; if (a && a.canGoPrevious) a.previous(); }
+                }
+            }
+        }
     }
 }

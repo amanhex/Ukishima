@@ -1977,7 +1977,7 @@ Item {
             Text {
                 id: stripWs
                 anchors.verticalCenter: parent.verticalCenter
-                text: ws.activeWs
+                text: ws.activeName
                 color: Theme.vermLit
                 font.family: Theme.font
                 font.pixelSize: 12 * pill.s
@@ -2153,9 +2153,9 @@ Item {
             }
             Text {
                 visible: pill.specialView === "" && Flags.mainDisplay === "system"
-                    && ws.activeWs !== ""
+                    && ws.activeName !== ""
                 anchors.verticalCenter: parent.verticalCenter
-                text: ws.activeWs
+                text: ws.activeName
                 color: Theme.vermLit
                 font.family: Theme.font
                 font.pixelSize: 11 * pill.s

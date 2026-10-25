@@ -28,6 +28,8 @@ Singleton {
         minimizable: false,
         keyboardLayout: false,
         nightLight: false,
+        gameModeStrip: false,
+        globalShortcuts: false,
         lock: "quickshell"
     })
 
@@ -75,9 +77,14 @@ Singleton {
 
     readonly property string focusedScreenName: {
         const t = ToplevelManager.activeToplevel;
+        let n = "";
         if (t && t.screens && t.screens.length > 0 && t.screens[0])
-            return String(t.screens[0].name);
-        return Quickshell.screens.length > 0 ? String(Quickshell.screens[0].name) : "";
+            n = t.screens[0].name;
+        if (typeof n !== "string") {
+            const s = Quickshell.screens && Quickshell.screens.length > 0 ? Quickshell.screens[0] : null;
+            n = s ? s.name : "";
+        }
+        return typeof n === "string" ? n : "";
     }
 
     function screenFor(output) {
@@ -203,6 +210,16 @@ Singleton {
 
     function restoreWindow(arg) {
         // No generic special-workspace stash; capability-gated.
+    }
+
+    function logout() {
+        if (Quickshell.env("NIRI_SOCKET")) {
+            Quickshell.execDetached(["niri", "msg", "action", "quit"]);
+            return;
+        }
+        const user = Quickshell.env("USER");
+        if (user)
+            Quickshell.execDetached(["loginctl", "terminate-user", user]);
     }
 
     function refresh() {
