@@ -126,7 +126,9 @@ PillSurface {
     /**
      * Turns the adapter on or off. BlueZ rejects the enable call outright while
      * RFKILL soft-blocks the controller (the off-blocked state), so first drop
-     * the rfkill block and only then ask BlueZ to power on.
+     * the rfkill block and only then ask BlueZ to power on. A hard block cannot
+     * be cleared here; leave the adapter alone rather than asking BlueZ and
+     * logging a failure on every click.
      */
     function toggleAdapter() {
         if (!root.adapter)
@@ -148,8 +150,18 @@ PillSurface {
         id: rfkillProc
         stdout: StdioCollector {}
         stderr: StdioCollector {}
-        onExited: function() {
-            root.adapter.enabled = true;
+        onExited: rfkillSettle.restart()
+    }
+
+    Timer {
+        id: rfkillSettle
+        interval: 300
+        onTriggered: {
+            if (!root.adapter)
+                return;
+            if (typeof BluetoothAdapterState === "undefined"
+                    || root.adapter.state !== BluetoothAdapterState.Blocked)
+                root.adapter.enabled = true;
         }
     }
 
