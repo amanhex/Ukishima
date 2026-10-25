@@ -1,8 +1,8 @@
 # 浮島 Ukishima
 
-> A dynamic-island Quickshell shell for Hyprland and niri.
+> A dynamic-island Quickshell shell for Hyprland and Niri.
 
-Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland and niri built around a morphing pill at the top of every monitor that expands in place into a control centre, plus a floating macOS-style 泊 dock at the bottom edge for pinned and running apps. Fully self-contained — it makes no changes to your existing compositor configuration.
+Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland and Niri built around a morphing pill at the top of every monitor that expands in place into a control centre, plus a floating macOS-style 泊 dock at the bottom edge for pinned and running apps. Fully self-contained — it makes no changes to your existing compositor configuration.
 
 ## Preview
 
@@ -20,12 +20,12 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 - **泊 Dock** — pinned and running apps with hover magnification and multi-window previews (no cursor warp), auto-hide, and its own theme (Light / Dark / Dynamic / Manual) and glass.
 - **Surfaces** — launcher, weather, calendar, media, mixer, wallpaper strip + Wallhaven search, screen recorder, clipboard, Wi-Fi, Bluetooth, battery, power menu, system monitor, notifications, OSD, toasts, scratchpad, settings.
 - **Wallpapers** — shuffled `awww` bag, live `mpvpaper` videos, per-wallpaper fit, and a palette that retints the UI.
-- **Compositor-aware** — supports both Hyprland and niri, with compositor-specific features enabled where available.
+- **Compositor-aware** — supports both Hyprland and Niri, with compositor-specific features enabled where available.
 - **Extras** — night light (Hyprland), game mode, keep-awake, in-app updater.
 
 ## Requirements
 
-- Linux + Wayland, **Hyprland** or **niri**
+- Linux + Wayland, **Hyprland** or **Niri**
 - **Quickshell** 0.3.0+ 
 - Additional CLI tools — the installer checks them; see [Dependencies](DEPENDENCIES.md)
 
@@ -55,7 +55,7 @@ For Hyprland Lua configurations:
 hl.exec_cmd("~/.local/share/quickshell/ukishima/launch.sh")
 ```
 
-**niri** (`~/.config/niri/config.kdl`):
+**Niri** (`~/.config/niri/config.kdl`):
 
 ```kdl
 spawn-at-startup "sh" "-c" "exec $HOME/.local/share/quickshell/ukishima/launch.sh"
@@ -71,7 +71,7 @@ Hyprland:
 exec-once = awww-daemon
 ```
 
-niri:
+Niri:
 
 ```kdl
 spawn-at-startup "awww-daemon"
@@ -87,7 +87,7 @@ For example, opening the wallpaper surface:
 qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper ""
 ```
 
-For compositor-specific keybinding examples, including **Hyprland, Hyprland Lua, and niri**, see:
+For compositor-specific keybinding examples, including **Hyprland, Hyprland Lua, and Niri**, see:
 
 **[Keybindings & IPC Guide](docs/KEYBINDINGS.md)**
 
@@ -98,7 +98,7 @@ The guide also includes the full list of available IPC commands.
 Ukishima provides its own lockscreen and supports external lockers.
 
 - **Hyprland** — Hyprlock or Quickshell lockscreen
-- **niri** — swaylock or Quickshell lockscreen
+- **Niri** — swaylock or Quickshell lockscreen
 
 The lock script is:
 
