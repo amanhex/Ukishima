@@ -27,9 +27,9 @@ import "../Singletons"
  * no pill margins, it paints its own backdrop from the dock's palette, and its
  * focus indicator is the focused row's own backdrop rather than the pill's
  * flame seam. The shell places it as a sibling of the dock bar and the dock's
- * gear chip opens it, so the pill's surface stack does not mention it. It gets
- * its own small fade/slide on open, close and page swap, timed by the dock's
- * Motion setting.
+ * gear chip opens it, so the pill's surface stack does not mention it. It rises
+ * out of the dock and sinks back into it on open, close and page swap, using
+ * the dock's own Motion setting for the duration and curve.
  *
  * `pal` is supplied by the host (DockBar), which owns the dock's palette. A
  * panel never derives colours itself, so there is exactly one place where the
@@ -136,19 +136,43 @@ Item {
     Keys.onEnterPressed: (e) => { nav.kbActivate(); e.accepted = true; }
     Keys.onEscapePressed: (e) => { root.surfaceBack(); e.accepted = true; }
 
-    /** Plays the fade/slide in. A page swap creates a new panel, so this also
-     *  covers the sub-page transition. The zero is left on screen for one event
-     *  loop turn: setting both values in the same turn as creation gives the
-     *  binding no chance to ever read the start state, which is how the first
-     *  version ended up appearing instantly. */
+    /** How far the panel travels to clear the dock. It starts behind the bar
+     *  and below the screen edge, so the whole slab has to rise by its own
+     *  height plus the gap it leaves there; the extra 20 is the lip and shadow.
+     *  This is what makes the motion read like the dock bar's own slide rather
+     *  than a 10px nudge. */
+    readonly property real slideDistance: root.height + 20 * root.s
+
+    /** True while the offset is being planted at the start of the rise without
+     *  animating the plant itself. */
+    property bool snappingOffset: false
+
+    /**
+     * Plays the rise. A page swap creates a new panel, so this also covers the
+     * sub-page transition.
+     *
+     * The start offset CANNOT be planted in the creation turn: `implicitHeight`
+     * is still a stub (the page's Column has not been laid out), so the first
+     * version read 16–45 px instead of the panel's real height and read as a
+     * nudge rather than a slide. Wait one event loop turn for the height, plant
+     * the full distance with the Behavior disabled, then release it on the next
+     * turn. To the user this is still the first painted frame — opacity stays
+     * at zero until the release — but the slide now travels the whole panel.
+     */
     function playIntro() {
         root.opacity = 0;
-        root.introOffset = 10;
         Qt.callLater(function() {
             if (!root.open)
                 return;
-            root.opacity = 1;
-            root.introOffset = 0;
+            root.snappingOffset = true;
+            root.introOffset = root.slideDistance;
+            root.snappingOffset = false;
+            Qt.callLater(function() {
+                if (!root.open)
+                    return;
+                root.opacity = 1;
+                root.introOffset = 0;
+            });
         });
     }
 
@@ -158,7 +182,7 @@ Item {
             playIntro();
         } else {
             root.opacity = 0;
-            root.introOffset = 10;
+            root.introOffset = root.slideDistance;
         }
     }
 
@@ -172,11 +196,11 @@ Item {
 
     enabled: open
 
-    property real introOffset: 10
+    property real introOffset: 0
 
     opacity: 0
     visible: opacity > 0.01
-    transform: Translate { y: root.introOffset * root.s }
+    transform: Translate { y: root.introOffset }
 
     Behavior on opacity {
         NumberAnimation {
@@ -186,6 +210,7 @@ Item {
         }
     }
     Behavior on introOffset {
+        enabled: !root.snappingOffset
         NumberAnimation {
             duration: Motion.dockMorph
             easing.type: Motion.dockEase
