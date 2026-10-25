@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 import "../lib/apps.js" as Apps
 import "../Singletons"
 
@@ -837,11 +836,11 @@ Item {
 
     function itemsSignature() {
         var s = "";
-        var tls = Hyprland.toplevels.values;
+        var tls = Wm.windows;
         for (var i = 0; i < tls.length; i++) {
             var t = tls[i];
             if (t && t.workspace)
-                s += root.classOf(t) + ":" + t.address
+                s += root.classOf(t) + ":" + (t.address || t.handle)
                     + (t.activated ? ":1" : ":0") + ";";
         }
         for (var j = 0; j < root.pins.length; j++)
@@ -1000,7 +999,7 @@ Item {
         var out = [];
         var byClass = {};
         var order = [];
-        var tls = Hyprland.toplevels.values;
+        var tls = Wm.windows;
         for (var i = 0; i < tls.length; i++) {
             var t = tls[i];
             if (!t || !t.workspace) continue;
@@ -1159,34 +1158,11 @@ Item {
         }
         var t = best || fallback;
         if (!t) return;
-        root.focusAddress(t.address);
-    }
-
-    /**
-     * Raise the window at `address` without moving the pointer. Hyprland's
-     * focuswindow warps the cursor to the focused window's centre, so a dock
-     * click would teleport the pointer away; toggling cursor:no_warps around
-     * this single dispatch suppresses that warp only for this call. The toggle
-     * is scoped here — no global config change, everything else keeps warping
-     * as configured.
-     */
-    function focusAddress(addr) {
-        if (addr.indexOf("0x") !== 0) addr = "0x" + addr;
-        Quickshell.execDetached(["sh", "-c",
-            "hyprctl eval 'hl.config({ cursor = { no_warps = true } })' >/dev/null 2>&1; " +
-            "hyprctl dispatch 'hl.dsp.focus({ window = \"address:" + addr + "\" })' >/dev/null 2>&1; " +
-            "hyprctl eval 'hl.config({ cursor = { no_warps = false } })' >/dev/null 2>&1",
-            "sh"]);
+        Wm.focusWindow(t);
     }
 
     function activeWsName() {
-        var ms = Hyprland.monitors.values;
-        for (var i = 0; i < ms.length; i++)
-            if (ms[i].name === root.screenName && ms[i].activeWorkspace
-                && ms[i].activeWorkspace.name)
-                return String(ms[i].activeWorkspace.name);
-        return Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.name
-            ? String(Hyprland.focusedWorkspace.name) : "";
+        return Wm.activeWorkspaceName(root.screenName);
     }
 
     /**
@@ -1585,7 +1561,7 @@ Item {
                             if (i < 0) return;
                             var win = preview.wins[i];
                             root.previewOpen = false;
-                            root.focusAddress(win.address);
+                            Wm.focusWindow(win);
                         }
                     }
 

@@ -2,29 +2,18 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Io
-import Quickshell.Hyprland
 import "../Singletons"
 
 /**
  * Workspace dots for one monitor. No numbers, no icons. Active one is a larger
  * filled vermillion dot; the rest are small and dim, brightening on hover.
- * Clicking a dot focuses that workspace (Hyprland workspace dispatcher). Active
- * marker tracks the monitor's live active workspace name.
+ * Clicking a dot activates that workspace.
  *
- * The dot range unions this monitor's workspace rules ([[Workspacerules]]) with
- * the workspaces Hyprland currently has on it, so a rule-driven setup (e.g.
- * monitors.lua splitting 1-5 / 6-10 across two screens) always shows every
- * assigned dot while a workspace outside the rules (r+1 past the last ruled
- * one) still appears instead of vanishing from the strip.
- *
- * The workspace list and active workspace are read straight from hyprctl
- * (monitors -j / workspaces -j) rather than the Quickshell Hyprland models:
- * on a fresh launch `Hyprland.monitors.values` stays empty, workspace entries
- * carry a null monitor, and `focusedWorkspace` is null — so the dots would
- * only appear after the first switch re-populates the models. A raw hyprctl
- * fetch is deterministic from the first frame and matches the pattern
- * [[Workspacerules]] already uses for the rule map.
+ * The list comes from [[Wm]], not from a compositor: the Hyprland provider
+ * unions that monitor's workspace rules with its live workspaces, the generic
+ * provider maps ext-workspace's screen projection. A rule-driven setup (e.g.
+ * 1-5 / 6-10 across two screens) still shows every assigned dot, and a dynamic
+ * workspace (niri) still appears as soon as the compositor creates it.
  */
 Item {
     id: workspaces
@@ -36,82 +25,26 @@ Item {
     property real gap: 4 * s
 
     /**
-     * When false, the watcher is fully inert: no hyprctl fetches, no Hyprland
-     * event hooks, no boot polling. The hidden OSD controller in Pill.qml owns a
-     * copy of this component that is never rendered, and gating it here stops
-     * it from spawning sh + hyprctl on every workspace event. The OSD popup
-     * instance stays watched, so visible workspace flashes keep fresh dots.
-     * Input (enabled) is untouched: the strip face must stay live while
-     * hovering, and the OSD dots are never interactive regardless.
+     * Kept for callers that mount a hidden copy (the OSD indicator). The
+     * provider owns the data feed now, so this no longer gates a process; it
+     * stays because the OSD still passes it and because a future provider may
+     * want to know whether its strip is visible.
      */
     property bool watch: true
 
-    /**
-     * The dot range and active marker are plain properties, recomputed
-     * imperatively by rebuild() from the last hyprctl snapshot rather than
-     * chained computed bindings. A switch onto an already-created workspace
-     * only changes the active workspace — the list itself stays untouched —
-     * so a computed binding could be left empty or stale, which is the "dots
-     * missing until the next switch" glitch. rebuild always includes this
-     * monitor's active workspace, so the strip never sits empty once the
-     * monitor's data is known.
-     */
-    property var range: []
-    property string activeName: ""
+    readonly property var range: Wm.workspacesFor(screenName)
+    readonly property string activeName: Wm.activeWorkspaceName(screenName)
 
-    property string activeWs: ""
-    property var wsList: []
-
-    function refreshData() {
-        if (!workspaces.watch)
-            return;
-        proc.running = true;
-    }
-
-    function rebuild() {
-        var out = [];
-        var seen = ({});
-        var ruled = Workspacerules.byMonitor[screenName];
-        if (ruled && ruled.length) {
-            for (var r = 0; r < ruled.length; r++) {
-                if (!seen[ruled[r]]) {
-                    seen[ruled[r]] = true;
-                    out.push(ruled[r]);
-                }
-            }
-        }
-
-        var wss = workspaces.wsList;
-        for (var i = 0; i < wss.length; i++) {
-            var w = wss[i];
-            if (w && w.id >= 1 && w.monitor === screenName && !seen[w.id]) {
-                seen[w.id] = true;
-                out.push(w.id);
-            }
-        }
-        var a = parseInt(workspaces.activeWs);
-        if (a >= 1 && !seen[a])
-            out.push(a);
-        out.sort(function (x, y) { return x - y; });
-        activeName = workspaces.activeWs;
-        if (!rangesEqual(range, out))
-            range = out;
-        if (hoverIndex >= range.length)
-            hoverIndex = -1;
-    }
-
-    function rangesEqual(a, b) {
-        if (a.length !== b.length)
-            return false;
-        for (var i = 0; i < a.length; i++)
-            if (a[i] !== b[i])
-                return false;
-        return true;
-    }
+    onRangeChanged: if (hoverIndex >= range.length) hoverIndex = -1
 
     property int hoverIndex: -1
 
-    readonly property int activeIndex: range.indexOf(parseInt(activeName))
+    readonly property int activeIndex: {
+        for (let i = 0; i < range.length; i++)
+            if (range[i] && String(range[i].name) === activeName)
+                return i;
+        return -1;
+    }
 
     /**
      * Centre x of a dot slot from target layout widths (active stick is wider).
@@ -126,83 +59,10 @@ Item {
     }
 
     readonly property point activeDotPoint: {
+        void workspaces.range;
         void workspaces.activeName;
         void workspaces.width;
         return Qt.point(slotCenterX(Math.max(0, activeIndex)), height / 2);
-    }
-
-    property int bootTries: 0
-
-    /**
-     * The first hyprctl fetch runs on load, but a slow compositor reply could
-     * still beat us to the first frame. Poll briefly until a snapshot lands
-     * (or give up after the window), then rely on events from there on.
-     */
-    Timer {
-        id: bootPoll
-        interval: 250
-        repeat: true
-        running: workspaces.watch
-        onTriggered: {
-            workspaces.refreshData();
-            workspaces.bootTries += 1;
-            if (workspaces.wsList.length > 0 || workspaces.bootTries >= 8)
-                bootPoll.running = false;
-        }
-    }
-
-    Component.onCompleted: refreshData()
-    onScreenNameChanged: refreshData()
-    onWatchChanged: if (workspaces.watch) workspaces.refreshData()
-
-    Connections {
-        target: Hyprland
-        enabled: workspaces.watch
-        function onRawEvent(event) {
-            var n = event.name;
-            if (n === "workspace" || n === "workspacev2"
-                || n === "createworkspace" || n === "destroyworkspace"
-                || n === "moveworkspace" || n === "renameworkspace"
-                || n === "focusedmon" || n === "focusedmonv2"
-                || n === "monitoradded" || n === "monitorremoved")
-                workspaces.refreshData();
-        }
-    }
-
-    Connections {
-        target: Workspacerules
-        enabled: workspaces.watch
-        function onByMonitorChanged() { workspaces.rebuild() }
-    }
-
-    Process {
-        id: proc
-        command: ["sh", "-c", "hyprctl monitors -j; printf '@@@'; hyprctl workspaces -j"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                var text = this.text;
-                var sep = text.indexOf("@@@");
-                var monJson = sep >= 0 ? text.slice(0, sep) : "[]";
-                var wsJson = sep >= 0 ? text.slice(sep + 3) : text;
-                var act = "";
-                try {
-                    var mons = JSON.parse(monJson);
-                    for (var m = 0; m < mons.length; m++) {
-                        if (mons[m] && mons[m].name === workspaces.screenName && mons[m].activeWorkspace)
-                            act = String(mons[m].activeWorkspace.name);
-                    }
-                } catch (e) { }
-                var list = [];
-                try {
-                    var arr = JSON.parse(wsJson);
-                    for (var w = 0; w < arr.length; w++)
-                        list.push({ id: arr[w].id, monitor: arr[w].monitor || "" });
-                } catch (e) { }
-                workspaces.activeWs = act;
-                workspaces.wsList = list;
-                workspaces.rebuild();
-            }
-        }
     }
 
     implicitWidth: row.implicitWidth
@@ -223,8 +83,8 @@ Item {
                 required property var modelData
                 required property int index
 
-                readonly property string wsName: String(modelData)
-                readonly property bool isActive: workspaces.activeName === wsName
+                readonly property bool isActive: workspaces.activeName.length > 0
+                    && String(modelData.name) === workspaces.activeName
 
                 Layout.preferredWidth: slot.isActive ? workspaces.stickW : workspaces.dotW
                 Layout.preferredHeight: 22 * workspaces.s
@@ -249,7 +109,7 @@ Item {
                     anchors.bottomMargin: -8 * workspaces.s
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Hyprland.dispatch("hl.dsp.focus({ workspace = " + slot.wsName + " })")
+                    onClicked: Wm.activateWorkspace(slot.modelData)
                     onContainsMouseChanged: {
                         if (containsMouse)
                             workspaces.hoverIndex = slot.index;

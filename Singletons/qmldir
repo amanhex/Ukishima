@@ -14,6 +14,9 @@ singleton PaletteHue PaletteHue.qml
 singleton Weather Weather.qml
 singleton Events Events.qml
 singleton Workspacerules Workspacerules.qml
+singleton Wm Wm.qml
+singleton WmHyprland WmHyprland.qml
+singleton WmGeneric WmGeneric.qml
 singleton Cava Cava.qml
 singleton Spaces Spaces.qml
 singleton Surfaces Surfaces.qml

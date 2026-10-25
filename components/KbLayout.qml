@@ -19,6 +19,8 @@ Item {
     id: root
 
     property string code: "US"
+    /** Hyprland-only for now; false keeps the hyprctl seed and event hook idle. */
+    property bool active: true
 
     function shortCode(full) {
         var f = String(full || "").toLowerCase();
@@ -82,6 +84,7 @@ Item {
 
     Connections {
         target: Hyprland
+        enabled: root.active
         function onRawEvent(event) {
             if (event.name !== "activelayout")
                 return;
@@ -91,5 +94,5 @@ Item {
         }
     }
 
-    Component.onCompleted: seedProc.running = true
+    Component.onCompleted: if (root.active) seedProc.running = true
 }

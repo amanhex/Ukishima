@@ -6,7 +6,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
 import Quickshell.Bluetooth
-import Quickshell.Hyprland
 import "Singletons"
 import "components"
 import "surfaces"
@@ -205,10 +204,7 @@ Item {
      * central and does not key off monitor focus, so transient (OSD/toast)
      * appearances retract on their own even on the focused monitor.
      */
-    readonly property bool monFocused: {
-        const m = Hyprland.focusedMonitor;
-        return m ? m.name === pill.screenName : false;
-    }
+    readonly property bool monFocused: Wm.screenFocused(pill.screenName)
 
     /**
      * Auto-hide mode retracts as soon as this monitor loses focus, even if the
@@ -253,24 +249,17 @@ Item {
      * or the private space rather than your real desktop. Empty in the normal case.
      */
     readonly property string specialView: {
-        var ms = Hyprland.monitors.values;
-        for (var i = 0; i < ms.length; i++) {
-            if (ms[i] && ms[i].name === pill.screenName) {
-                var o = ms[i].lastIpcObject;
-                var sw = (o && o.specialWorkspace) ? o.specialWorkspace.name : "";
-                if (sw && sw.indexOf("special:") === 0) {
-                    var id = sw.slice("special:".length);
-                    var sl = Spaces.list;
-                    for (var j = 0; j < sl.length; j++)
-                        if (sl[j] && sl[j].id === id)
-                            return sl[j].name;
-                    if (id === "minimized") return "Minimized";
-                    if (id === "private") return "Private";
-                    if (id === "stash") return "Stash";
-                    return id.charAt(0).toUpperCase() + id.slice(1);
-                }
-                return "";
-            }
+        var sw = Wm.specialWorkspaceName(pill.screenName);
+        if (sw && sw.indexOf("special:") === 0) {
+            var id = sw.slice("special:".length);
+            var sl = Spaces.list;
+            for (var j = 0; j < sl.length; j++)
+                if (sl[j] && sl[j].id === id)
+                    return sl[j].name;
+            if (id === "minimized") return "Minimized";
+            if (id === "private") return "Private";
+            if (id === "stash") return "Stash";
+            return id.charAt(0).toUpperCase() + id.slice(1);
         }
         return "";
     }
@@ -2220,6 +2209,8 @@ Item {
 
     KbLayout {
         id: kbLayout
+        active: Wm.caps.keyboardLayout
+        visible: Wm.caps.keyboardLayout
     }
 
     Item {
@@ -2372,12 +2363,12 @@ Item {
                     s: pill.s
                     screenName: pill.screenName
                     enabled: hover.live
-                    visible: count > 0
+                    visible: Wm.caps.minimizable && count > 0
                 }
 
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: minimized.count > 0
+                    visible: Wm.caps.minimizable && minimized.count > 0
                     width: 1
                     height: 14 * pill.s
                     color: Theme.hair

@@ -1,7 +1,6 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 
 /**
@@ -76,8 +75,7 @@ Singleton {
      * probed regardless.
      */
     function detect() {
-        var monValues = Hyprland.monitors.values;
-        var count = monValues ? monValues.length : 0;
+        var count = Quickshell.screens.length;
         if (count > 1) {
             ddcDetect.running = true;
         } else {
