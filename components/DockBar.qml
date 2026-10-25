@@ -534,38 +534,19 @@ Item {
     }
 
     /**
-     * The one place that learns the pointer has left, and the one place the
-     * settings panel closes because of it.
-     *
-     * The panel's click-away hangs off this timer deliberately, so the bar and
-     * the panel cannot disagree: the bar cannot retract while its own panel is
-     * open, and the panel cannot outlive the pointer by a different amount of
-     * time than the bar does. It used to have an outline drawn just outside the
-     * block, which was a second mechanism watching the same event, in the one
-     * place where a second opinion is least welcome.
-     *
-     * The grace period is the reason to route through here at all. A pointer
-     * crossing the block on its way to something behind it should not take the
-     * panel with it on the way past, and 350ms is the delay the bar has always
-     * applied to that same judgement.
-     *
-     * No open-time guard is needed, which is worth stating because one used to
-     * be here. `openSettings` has a single call site — the gear's `onClicked` —
-     * and the gear is inside `dockRegion`, which is in the input mask both
-     * before and after the panel opens. So the pointer is on the bar when the
-     * panel appears, `hovered` is already true, and this cannot fire on the
-     * way in. That is a property of the geometry, so if a second way to open
-     * the panel is ever added it has to be re-checked rather than assumed.
+     * The bar's leave-grace. It retracts the bar after the pointer leaves;
+     * the settings panel does NOT hang off it. On niri a layer input-region
+     * commit can synthesize a leave while the pointer is still on the gear, so
+     * hover dismissal closed the panel the instant it opened. The panel is
+     * dismissed by its full-screen click floor, the gear, the back chevron or
+     * Esc instead.
      */
     Timer {
         id: revealTimer
         interval: 350
         onTriggered: {
-            if (root.hovered)
-                return;
-            root.revealSession = false;
-            if (root.settingsOpen)
-                root.closeSettings();
+            if (!root.hovered)
+                root.revealSession = false;
         }
     }
 

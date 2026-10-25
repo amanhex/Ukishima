@@ -826,6 +826,9 @@ ShellRoot {
             readonly property string surface: root.openMon === modelData.name ? root.openSurface : ""
             readonly property bool surfaceOpen: surface.length > 0
             property string dockSurface: "dockSettings"
+            /** The panel survives one close animation frame so it can fade and
+             *  slide out; the Loader drops it once the timer completes. */
+            property bool dockPanelAlive: dock.settingsOpen
 
             /**
              * True while the centred picker was opened from this dock window's
@@ -846,63 +849,13 @@ ShellRoot {
             readonly property bool suppressed: !root.dockBarShown(modelData.name)
 
             /**
-             * The one state where suppression must NOT take the panel with it.
-             *
-             * The dock's settings panel carries its own "Dock" switch, and that
-             * switch turns off the very bar whose gear opened the panel. Hosting
-             * the panel here, as a sibling of the bar rather than a child of it,
-             * is what makes that survivable: the panel stays put while the bar
-             * goes, so the panel is still a way back for the few seconds it takes
-             * to change your mind.
-             *
-             * The pill's Display surface also carries a "Dock" switch
-             * (`dockRow` there), which is the real way back and needs none of
-             * this. This is the belt to that pair of braces, so switching the
-             * dock off from the dock's own settings never becomes a one-way door
-             * — and it is scoped narrowly, so fullscreen and game mode still
-             * hide everything and nothing else can pin a panel to the screen.
+             * While the panel is open the whole screen is the input region.
+             * That is what makes click-away the dismissal signal: on niri a
+             * region commit can synthesize a pointer leave while the cursor is
+             * still on the gear, so hover must not decide this. The full-screen
+             * mask keeps the pointer inside the window, and the click floor
+             * answers a click anywhere outside the panel or the bar.
              */
-            readonly property bool dockForcedOpen: dock.settingsOpen && !Flags.dockEnabled
-
-            /**
-             * The block the panel and the bar occupy together, and the whole of
-             * the input region while the panel is open. Dismissal is NOT decided
-             * here: it rides the bar's existing "the pointer has left" signal —
-             * the same `hovered` flag and the same 350ms grace that drive the
-             * dock's own auto-hide — so the panel and the bar cannot disagree
-             * about when the pointer went away. See `revealTimer` in DockBar.
-             *
-             * This is not the arrangement that was here first, and the reason is
-             * worth keeping because the wrong version looked defensible. It
-             * asked the panel for a `pointerInside` flag and treated that as a
-             * VETO on dismissing, which made it unreliable: the panel is opened
-             * from the gear, which sits on the bar, so on the ordinary path the
-             * pointer never crosses the panel and the veto is never satisfied.
-             * It fired only when the pointer happened to travel through the
-             * panel on its way somewhere else — which is the "sometimes" exactly.
-             *
-             * The part of that diagnosis that was wrong, and that a sentinel
-             * outline was built on: leave events are not the problem. A
-             * per-item hover flag does go stale, because leaving is the absence
-             * of an event rather than an event, so a flag can only ever say "I
-             * think it left" and never "it left". But the same signal drives the
-             * bar's auto-hide, which demonstrably works, so the honest reading
-             * is that stale flags were never what made this intermittent. The
-             * fix is to decide from the one flag the bar already acts on, not to
-             * stand a second mechanism up beside it.
-             *
-             * The region is the block itself, with no margin grown around it.
-             * Extra margin buys a hover-based dismissal nothing — the pointer
-             * only has to leave the block to be gone — and it is not free: every
-             * pixel of margin is screen this window takes from whatever is
-             * underneath. A bounding box is not a union, though, so the block
-             * does carry dead space beside the panel and in the gap above the
-             * bar, and the click floor below is what answers for that.
-             */
-            readonly property rect dismissBase: dockForcedOpen
-                ? Qt.rect(dockPanelRegion.x, dockPanelRegion.y, dockPanelRegion.width, dockPanelRegion.height)
-                : Qt.rect(dockSettingsUnion.x, dockSettingsUnion.y, dockSettingsUnion.width, dockSettingsUnion.height)
-
             screen: modelData
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
@@ -920,89 +873,38 @@ ShellRoot {
             anchors { top: true; left: true; right: true; bottom: true }
 
             /**
-             * The dock's settings panel floats above the bar, so it needs its own
-             * region or it draws without taking clicks. Unioned with the bar
-             * itself: the gear that opened it stays clickable to close it, and the
-             * chips stay live underneath.
-             */
-            Region {
-                id: dockSettingsUnion
-                readonly property real l: Math.min(dockRegion.x, dockPanelRegion.x)
-                readonly property real t: Math.min(dockRegion.y, dockPanelRegion.y)
-                x: l
-                y: t
-                width: Math.max(dockRegion.x + dockRegion.width, dockPanelRegion.x + dockPanelRegion.width) - l
-                height: Math.max(dockRegion.y + dockRegion.height, dockPanelRegion.y + dockPanelRegion.height) - t
-            }
-
-            Region {
-                id: dockPanelRegion
-                x: dockPanel.x
-                y: dockPanel.y
-                width: dockPanel.width
-                height: dockPanel.height
-            }
-
-            /**
              * The panel is a sibling of the bar, not a child, so it is NOT
-             * translated when the bar slides away. That is deliberate and is what
-             * `dockForcedOpen` above exists for: switching the dock off from
-             * inside its own settings must not strand the user.
+             * translated when the bar slides away. It survives the dock being
+             * switched off from inside its own panel because DockBar keeps the
+             * bar forced open while `settingsOpen`.
              *
-             * While the panel is open the region is `dismissBase`: the panel and
-             * the bar as one rect. It is a single rect rather than the two it
-             * stands in for, because a bounding box is what `hovered` needs to
-             * agree with — the pointer can cross the gap between the panel and the
-             * bar on its way from one to the other without that reading as a
-             * departure, which is what you want. The cost is dead space beside
-             * the panel, and that is what the click floor exists to cover: it is
-             * exactly the space where a click would be delivered to this window
-             * and hit nothing at all.
-             *
-             * The rest of the mask, and what each state needs to keep reachable:
-             *
-             *  - Suppressed or empty: nothing, so the screen is entirely free.
-             *  - Auto-hide on: the reveal strip alone while retracted, so the
-             *    pointer can always find the bar again; the strip unioned with
-             *    the pop band once it is up, so the pull-in cannot flicker.
-             *  - Auto-hide off: the bar can never retract, so no reveal strip is
-             *    needed at any point. Naming the pop band alone covers the bar
-             *    plus the space above it — it already contains the bar, whose
-             *    width it spans and whose bottom edge it stops at.
+             * Mask states:
+             *  - Settings open or picker up: whole screen. The compositor cannot
+             *    synthesize a leave by re-committing the region, and the click
+             *    floor catches clicks outside the panel and bar.
+             *  - Suppressed or empty: nothing.
+             *  - Auto-hide on: the reveal strip alone while retracted, unioned
+             *    with the pop band once it is up, so the pull-in cannot flicker.
+             *  - Auto-hide off: the pop band, which already contains the bar.
              */
-            mask: dockWin.pickerHere
+            mask: (dockWin.pickerHere || dockWin.dockPanelAlive)
                 ? dockFullRegion
-                : (dock.settingsOpen
-                    ? dockDismissRegion
-                    : (suppressed || dock.empty ? dockHiddenRegion
-                        : (Flags.dockAutoHide ? ((dock.revealSession || dock.hovered) ? dockRevealUnion : dockRevealRegion)
-                            : (dock.hovered || dock.previewOpen ? dockPopBand : dockRegion))))
+                : (suppressed || dock.empty ? dockHiddenRegion
+                    : (Flags.dockAutoHide ? ((dock.revealSession || dock.hovered) ? dockRevealUnion : dockRevealRegion)
+                        : (dock.hovered || dock.previewOpen ? dockPopBand : dockRegion)))
 
             Region { id: dockHiddenRegion }
 
             /**
-             * The whole screen, kept in the input mask while the picker is up so
-             * a click anywhere dismisses it — and so the pointer never leaves
-             * this window, which would otherwise auto-hide the panel out from
-             * under the picker.
+             * The whole screen, kept in the input mask while the picker or the
+             * settings panel is up. For the picker it keeps a click anywhere
+             * dismissible; for the panel it removes the compositor's chance to
+             * synthesize a leave when the region is committed.
              */
             Region {
                 id: dockFullRegion
                 width: dockWin.width
                 height: dockWin.height
-            }
-
-            /**
-             * The region behind the panel: the block, and nothing grown around it.
-             * It is the same rect `dismissBase` describes, and it is the whole of
-             * what `hovered` is measured against while the panel is open.
-             */
-            Region {
-                id: dockDismissRegion
-                x: dockWin.dismissBase.x
-                y: dockWin.dismissBase.y
-                width: dockWin.dismissBase.width
-                height: dockWin.dismissBase.height
             }
 
             /**
@@ -1183,10 +1085,11 @@ ShellRoot {
              * anchoring here reads the untranslated position and the panel holds
              * still while the bar slides away.
              *
-             * And the shell, not the dock, decides the panel's palette input and
-             * its input-mask region, because the mask has to cover the panel
-             * alone in `dockForcedOpen` — the bar is gone, so the union would be
-             * wrong.
+             * The shell, not the dock, owns the panel's palette input and its
+             * input-mask region, because both have to survive the bar being
+             * switched off from inside the panel. While the panel is open the
+             * mask is the whole screen, so the panel is always clickable and a
+             * click outside it can close it.
              *
              * Loaded, not instantiated, so the app list's desktop-entry scan is
              * not paid for while the panel is closed. Its size is left entirely
@@ -1204,7 +1107,7 @@ ShellRoot {
                     s: dock.s
                     pal: dock.dockPal
                     pickerKey: "dock:" + dockWin.modelData.name
-                    open: true
+                    open: dock.settingsOpen
                     onRequestClose: dock.closeSettings()
                     onRequestSurface: (name) => dockWin.dockSurface = name
                 }
@@ -1216,7 +1119,7 @@ ShellRoot {
                     s: dock.s
                     pal: dock.dockPal
                     pickerKey: "dock:" + dockWin.modelData.name
-                    open: true
+                    open: dock.settingsOpen
                     onRequestClose: dock.closeSettings()
                     onRequestSurface: (name) => dockWin.dockSurface = name
                 }
@@ -1228,7 +1131,7 @@ ShellRoot {
                     s: dock.s
                     pal: dock.dockPal
                     pickerKey: "dock:" + dockWin.modelData.name
-                    open: true
+                    open: dock.settingsOpen
                     onRequestClose: dock.closeSettings()
                     onRequestSurface: (name) => dockWin.dockSurface = name
                 }
@@ -1240,7 +1143,7 @@ ShellRoot {
                     s: dock.s
                     pal: dock.dockPal
                     pickerKey: "dock:" + dockWin.modelData.name
-                    open: true
+                    open: dock.settingsOpen
                     onRequestClose: dock.closeSettings()
                     onRequestSurface: (name) => dockWin.dockSurface = name
                 }
@@ -1252,7 +1155,7 @@ ShellRoot {
                     s: dock.s
                     pal: dock.dockPal
                     pickerKey: "dock:" + dockWin.modelData.name
-                    open: true
+                    open: dock.settingsOpen
                     onRequestClose: dock.closeSettings()
                     onRequestSurface: (name) => dockWin.dockSurface = name
                 }
@@ -1260,8 +1163,8 @@ ShellRoot {
 
             Loader {
                 id: dockPanel
-                active: dock.settingsOpen
-                visible: dock.settingsOpen
+                active: dockWin.dockPanelAlive
+                visible: dockWin.dockPanelAlive
                 z: 200
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: dock.top
@@ -1282,42 +1185,31 @@ ShellRoot {
             }
 
             /**
-             * The other half of click-away: a click that lands on THIS window but
-             * on neither the panel nor the bar.
-             *
-             * The region while the panel is open is one rect that encloses both,
-             * which leaves dead space beside the panel and in the gap between
-             * panel and bar. A click in any of it is delivered to this window
-             * and hits nothing, so it deserves a direct answer rather than
-             * waiting on a hover that may not come. Note what this floor is
-             * standing in for: the panel's own dismissal is the bar's
-             * `revealTimer`, and the pointer has to LEAVE the block for that to
-             * fire, which a click never does on its own. This is what answers
-             * the click, so the two are not redundant.
-             *
-             * z is BELOW the bar (which is 0) and far below the panel (200), so
-             * this never sees a click meant for a chip or a row — it is a floor,
-             * not a lid.
+             * The click-away floor. With the whole screen in the input mask
+             * while the panel is open, this catches a click anywhere outside
+             * the panel or the bar and closes the panel. z is BELOW the bar
+             * (0) and far below the panel (200), so it never sees a click meant
+             * for a chip or a row — it is a floor, not a lid. It stays for the
+             * close animation too, so a click during the fade cannot leak
+             * through to the window underneath.
              */
             MouseArea {
                 z: -1
                 anchors.fill: parent
-                visible: dock.settingsOpen
+                visible: dockWin.dockPanelAlive
                 onClicked: dock.closeSettings()
             }
 
             /**
-             * The one hover feed for the whole dock window, and with it the
-             * panel's dismissal: while the panel is open the mask is the block,
-             * so `hovered` reads as "over the panel or the bar" and the bar's
-             * `revealTimer` closes the panel once the pointer has left.
+             * The one hover feed for the whole dock window. While the panel is
+             * open the full-screen mask keeps `hovered` true, but the panel is
+             * not dismissed by hover: the click floor, gear, back chevron and
+             * Esc do that. The bar still uses this feed for its own auto-hide.
              *
              * It stays enabled while `suppressed`, which looks wrong and is not.
              * `suppressed` covers the dock being switched off, and that is
              * reachable from inside the open panel — the panel is a sibling of
-             * the bar precisely so it survives the bar sliding away. Pause the
-             * feed there and the one case that most needs a dismissal signal
-             * loses it, with the flag frozen at whatever it last read. DockBar
+             * the bar precisely so it survives the bar sliding away. DockBar
              * clears the flags on the way in, so nothing is left latched.
              */
             HoverHandler {
@@ -1363,8 +1255,25 @@ ShellRoot {
             Connections {
                 target: dock
                 function onSettingsOpenChanged() {
-                    if (!dock.settingsOpen)
+                    if (dock.settingsOpen) {
+                        /* Every open starts at the index; a sub-page is a
+                         * journey within one session, not a bookmark. */
                         dockWin.dockSurface = "dockSettings";
+                        dockWin.dockPanelAlive = true;
+                        dockCloseTimer.stop();
+                    } else if (dockWin.dockPanelAlive) {
+                        /* Keep the Loader alive for one fade/slide-out. */
+                        dockCloseTimer.restart();
+                    }
+                }
+            }
+
+            Timer {
+                id: dockCloseTimer
+                interval: Math.max(80, Motion.dockFast + 40)
+                onTriggered: {
+                    dockWin.dockPanelAlive = false;
+                    dockWin.dockSurface = "dockSettings";
                 }
             }
 

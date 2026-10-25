@@ -24,10 +24,12 @@ import "../Singletons"
  *     chrome, which reads whichever palette it is handed.
  *
  * Everything else is the dock's own: it is NOT a `PillSurface`, so it carries
- * no pill margins and no morph, it paints its own backdrop from the dock's
- * palette, and its focus indicator is the focused row's own backdrop rather than
- * the pill's flame seam. The shell places it as a sibling of the dock bar and the
- * dock's gear chip opens it, so the pill's surface stack does not mention it.
+ * no pill margins, it paints its own backdrop from the dock's palette, and its
+ * focus indicator is the focused row's own backdrop rather than the pill's
+ * flame seam. The shell places it as a sibling of the dock bar and the dock's
+ * gear chip opens it, so the pill's surface stack does not mention it. It gets
+ * its own small fade/slide on open, close and page swap, timed by the dock's
+ * Motion setting.
  *
  * `pal` is supplied by the host (DockBar), which owns the dock's palette. A
  * panel never derives colours itself, so there is exactly one place where the
@@ -76,21 +78,12 @@ Item {
     property var rows: []
 
     /**
-     * Dismissal is NOT the panel's business.
-     *
-     * This used to carry a `pointerInside` hover watch, and the host asked it
-     * whether the pointer was still over the panel before closing. That is gone,
-     * and the reason is worth keeping in mind before putting anything like it
-     * back: the panel is opened from the gear, which is on the BAR, so on the
-     * ordinary path the pointer never crosses the panel at all. A host that
-     * requires "the pointer was over the panel" before it will dismiss therefore
-     * vetoes the exact case it appears to be guarding, and fires only when the
-     * pointer happens to have travelled through the panel on its way elsewhere.
-     *
-     * The host decides instead, from the block it already measures: the panel
-     * and the bar are one input region, `hovered` reads as "over either", and
-     * the bar's existing leave-grace closes this. See `dismissBase` in
-     * shell.qml and `revealTimer` in DockBar.
+     * Dismissal is NOT the panel's business. The shell keeps a full-screen
+     * click floor under it while open, so a click anywhere outside the panel or
+     * the bar closes it; Esc and the back chevron are handled above. Hover is
+     * deliberately not a dismissal signal: on niri, re-committing the layer
+     * input region can synthesize a leave while the pointer is still on the
+     * gear, which used to close the panel the instant it opened.
      */
 
     /*
@@ -143,7 +136,11 @@ Item {
     Keys.onEnterPressed: (e) => { nav.kbActivate(); e.accepted = true; }
     Keys.onEscapePressed: (e) => { root.surfaceBack(); e.accepted = true; }
 
-    onOpenChanged: if (open) root.forceActiveFocus()
+    onOpenChanged: {
+        if (open)
+            root.forceActiveFocus();
+        introOffset = open ? 0 : 8;
+    }
 
     /**
      * Height and width follow the page, and the page owns both implicit sizes.
@@ -154,11 +151,27 @@ Item {
     width: implicitWidth
 
     enabled: open
-    opacity: open ? 1 : 0
+
+    /** Starts at zero and rises on completion, so the first frame can animate
+     *  instead of being created already opaque. A page swap creates a new
+     *  panel, which is why this also covers the sub-page transition. */
+    property real intro: 0
+    property real introOffset: 8
+
+    opacity: open ? intro : 0
     visible: opacity > 0.01
+    transform: Translate { y: root.introOffset * root.s }
 
     Behavior on opacity {
-        NumberAnimation { duration: Motion.fast; easing.type: Motion.easeStandard }
+        NumberAnimation { duration: Motion.dockFast; easing.type: Motion.dockEase; easing.bezierCurve: Motion.morphCurve }
+    }
+    Behavior on introOffset {
+        NumberAnimation { duration: Motion.dockFast; easing.type: Motion.dockEase; easing.bezierCurve: Motion.morphCurve }
+    }
+
+    Component.onCompleted: {
+        intro = 1;
+        introOffset = 0;
     }
 
     /**
@@ -167,10 +180,10 @@ Item {
      * bar uses, so the panel reads as part of the dock, but sized and coloured
      * from the dock's palette.
      *
-     * When `dockStyle` is `"transparent"` the backdrop mirrors the pill's
-     * regular glass: cream at 10% alpha on top, vermLit at 30% alpha on the
-     * bottom, with a 30% vermLit border. This gives the same readability veil
-     * effect the pill uses.
+     * The pane tokens already carry the dock's effective glass alpha, so this
+     * stays neutral and palette-matched in both transparent and solid modes.
+     * Do not re-tint it from the pill's Theme: vermLit at 30% turned the
+     * transparent panel red, and it ignored a forced dock palette.
      */
     Rectangle {
         id: pane
@@ -178,11 +191,11 @@ Item {
         radius: 16 * root.s
         clip: true
         gradient: Gradient {
-            GradientStop { position: 0.0; color: Flags.dockStyle === "transparent" ? Qt.alpha(Theme.cream, 0.10) : (root.pal ? root.pal.paneTop : "transparent") }
-            GradientStop { position: 1.0; color: Flags.dockStyle === "transparent" ? Qt.alpha(Theme.vermLit, 0.30) : (root.pal ? root.pal.paneBot : "transparent") }
+            GradientStop { position: 0.0; color: root.pal ? root.pal.paneTop : "transparent" }
+            GradientStop { position: 1.0; color: root.pal ? root.pal.paneBot : "transparent" }
         }
         border.width: 1
-        border.color: Flags.dockStyle === "transparent" ? Qt.alpha(Theme.vermLit, 0.30) : (root.pal ? root.pal.edge : "transparent")
+        border.color: root.pal ? root.pal.edge : "transparent"
 
         layer.enabled: true
         layer.effect: MultiEffect {
