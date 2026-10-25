@@ -75,16 +75,13 @@ Singleton {
         return out;
     }
 
-    readonly property string focusedScreenName: {
+    function focusedScreen() {
         const t = ToplevelManager.activeToplevel;
-        let n = "";
-        if (t && t.screens && t.screens.length > 0 && t.screens[0])
-            n = t.screens[0].name;
-        if (typeof n !== "string") {
-            const s = Quickshell.screens && Quickshell.screens.length > 0 ? Quickshell.screens[0] : null;
-            n = s ? s.name : "";
-        }
-        return typeof n === "string" ? n : "";
+        const own = t && t.screens && t.screens.length > 0 ? t.screens[0] : null;
+        if (own && own.name)
+            return String(own.name);
+        const s = Quickshell.screens && Quickshell.screens.length > 0 ? Quickshell.screens[0] : null;
+        return s && s.name ? String(s.name) : "";
     }
 
     function screenFor(output) {

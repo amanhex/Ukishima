@@ -75,11 +75,12 @@ Singleton {
         return out;
     }
 
-    readonly property string focusedScreenName: {
+    function focusedScreen() {
         for (let i = 0; i < root.snapMons.length; i++)
             if (root.snapMons[i] && root.snapMons[i].focused)
                 return String(root.snapMons[i].name);
-        return Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name) : "";
+        return Hyprland.focusedMonitor && Hyprland.focusedMonitor.name
+            ? String(Hyprland.focusedMonitor.name) : "";
     }
 
     function monitorSnap(name) {

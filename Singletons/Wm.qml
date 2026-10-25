@@ -41,10 +41,13 @@ Singleton {
     readonly property var caps: impl.caps
 
     readonly property var windows: impl.windows
-    readonly property string focusedScreenName: impl.focusedScreenName
+    function focusedScreenName() {
+        return impl.focusedScreen() || "";
+    }
 
     function screenFocused(name) {
-        return focusedScreenName.length === 0 || focusedScreenName === name;
+        const focused = focusedScreenName();
+        return focused.length === 0 || focused === name;
     }
 
     function workspacesFor(output) {
