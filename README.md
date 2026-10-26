@@ -108,13 +108,7 @@ Quickshell output is written to `$XDG_STATE_HOME/ukishima/ukishima.log` (default
 curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/uninstall.sh | bash
 ```
 
-This is a complete removal: application files, settings, state, caches, and generated wallpaper stills. To remove the application but keep settings, state, and caches:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/uninstall.sh | bash -s -- --keep-data
-```
-
-The uninstaller asks for confirmation. It refuses symlinked, modified, or development checkouts and does not touch personal wallpapers, other applications, or compositor configuration. Remove any Ukishima startup commands or keybindings afterwards.
+This completely removes Ukishima: application files, settings, state, caches, and generated wallpaper stills. It does not touch personal wallpapers, other applications, or compositor configuration. Remove any Ukishima startup commands or keybindings afterwards.
 
 ## Credits
 
