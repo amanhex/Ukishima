@@ -1,8 +1,8 @@
 # 浮島 Ukishima
 
-> A dynamic-island Quickshell shell for Hyprland and Niri.
+> A dynamic-island Quickshell shell for Hyprland and niri.
 
-Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland and Niri built around a morphing pill at the top of every monitor that expands in place into a control centre, plus a floating macOS-style 泊 dock at the bottom edge for pinned and running apps. Fully self-contained — it makes no changes to your existing compositor configuration.
+Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland and niri built around a morphing pill at the top of every monitor that expands in place into a control centre, plus a floating macOS-style 泊 dock at the bottom edge for pinned and running apps. Fully self-contained — it makes no changes to your compositor configuration.
 
 ## Preview
 
@@ -16,18 +16,18 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 
 ## Features
 
-- **Dynamic island** — one morphing pill per monitor; every module grows its own surface out of it, in place. Right-click walks the pill: collapse, media, timer, then up to two more surfaces you pick under **Settings → Interface → Right-click**.
-- **泊 Dock** — pinned and running apps with hover magnification and multi-window previews (no cursor warp), auto-hide, and its own theme (Light / Dark / Dynamic / Manual) and glass.
-- **Surfaces** — launcher, weather, calendar, media, mixer, wallpaper strip + Wallhaven search, screen recorder, clipboard, Wi-Fi, Bluetooth, battery, power menu, system monitor, notifications, OSD, toasts, scratchpad, settings.
+- **Dynamic island** — one morphing pill per monitor. Modules grow their surfaces out of it in place; right-click walks the pill through media, timer, and up to two more surfaces you pick under **Settings → Interface → Right-click**.
+- **泊 Dock** — pinned and running apps with hover magnification and multi-window previews, auto-hide, and its own theme and glass.
+- **Surfaces** — launcher, emoji, weather, calendar, media, mixer, wallpaper strip + Wallhaven search, screen recorder, clipboard, Wi-Fi, Bluetooth, battery, power menu, system monitor, notifications, OSD, toasts, scratchpad, settings.
 - **Wallpapers** — shuffled `awww` bag, live `mpvpaper` videos, per-wallpaper fit, and a palette that retints the UI.
-- **Compositor-aware** — supports both Hyprland and Niri, with compositor-specific features enabled where available.
+- **Compositor-aware** — workspaces, window state, keyboard layout, lock backends, and dependency checks all follow the active compositor. Hyprland-only features are hidden on niri.
 - **Extras** — night light (Hyprland), game mode, keep-awake, in-app updater.
 
 ## Requirements
 
-- Linux + Wayland, **Hyprland** or **Niri**
-- **Quickshell** 0.3.0+ 
-- Additional CLI tools — the installer checks them; see [Dependencies](docs/DEPENDENCIES.md)
+- Linux + Wayland, **Hyprland** or **niri**
+- **Quickshell** 0.3.0+
+- CLI tools checked by the installer — see [Dependencies](docs/DEPENDENCIES.md)
 
 ## Install
 
@@ -35,13 +35,9 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/remote-install.sh | bash
 ```
 
-Clones Ukishima to `~/.local/share/quickshell/ukishima`, checks dependencies, and detects your compositor. The installer provides the relevant startup instructions without modifying your configuration.
+Clones to `~/.local/share/quickshell/ukishima`, checks the tools your compositor needs, and prints the matching startup command. An existing clean, official `master` checkout with no local commits is updated only after confirmation; local changes and other directories are left untouched. The installer does not edit your configuration.
 
-## Use
-
-### Launch / Auto-launch
-
-Launch Ukishima through `launch.sh` — it applies jemalloc decay settings to help keep memory usage closer to the live working set.
+## Launch
 
 **Hyprland** (`~/.config/hypr/hyprland.conf`):
 
@@ -49,88 +45,76 @@ Launch Ukishima through `launch.sh` — it applies jemalloc decay settings to he
 exec-once = ~/.local/share/quickshell/ukishima/launch.sh
 ```
 
-For Hyprland Lua configurations:
+**Hyprland — Lua**:
 
 ```lua
 hl.exec_cmd("~/.local/share/quickshell/ukishima/launch.sh")
 ```
 
-**Niri** (`~/.config/niri/config.kdl`):
+**niri** (`~/.config/niri/config.kdl`):
 
 ```kdl
 spawn-at-startup "sh" "-c" "exec $HOME/.local/share/quickshell/ukishima/launch.sh"
 ```
 
-### Wallpaper daemon
-
-Start `awww-daemon` alongside Ukishima so wallpapers can be applied without waiting for the daemon to start.
-
-Hyprland:
+Start `awww-daemon` alongside the shell so wallpapers apply immediately:
 
 ```ini
+# Hyprland
 exec-once = awww-daemon
 ```
 
-Niri:
-
 ```kdl
+# niri
 spawn-at-startup "awww-daemon"
 ```
 
-### Keybinds
+## Keybinds
 
-Ukishima doesn't modify your compositor's keybindings. You can assign shortcuts to whichever surfaces you use most.
-
-For example, opening the wallpaper surface:
+Ukishima does not modify your keybindings. For example:
 
 ```bash
-qs -p ~/.local/share/quickshell/ukishima ipc call ukishima wallpaper ""
+qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher ""
 ```
 
-For compositor-specific keybinding examples, including **Hyprland, Hyprland Lua, and Niri**, see:
+See the [Keybindings & IPC Guide](docs/KEYBINDINGS.md) for Hyprland, Hyprland Lua, and niri examples and the full IPC list.
 
-**[Keybindings & IPC Guide](docs/KEYBINDINGS.md)**
+## Lock
 
-The guide also includes the full list of available IPC commands.
+Ukishima provides its own lockscreen and supports external lockers:
 
-### Lock
+- **Hyprland** — Hyprlock or Quickshell
+- **niri** — swaylock or Quickshell
 
-Ukishima provides its own lockscreen and supports external lockers.
-
-- **Hyprland** — Hyprlock or Quickshell lockscreen
-- **Niri** — swaylock or Quickshell lockscreen
-
-The lock script is:
-
-```bash
-~/.local/share/quickshell/ukishima/scripts/lock.sh
-```
-
-Choose your preferred backend under **Settings → Lock**. You can bind the script to your preferred keyboard shortcut using the [keybindings guide](docs/KEYBINDINGS.md).
+Choose a backend under **Settings → Lock**, then bind `~/.local/share/quickshell/ukishima/scripts/lock.sh` to a shortcut.
 
 ## Update
 
-Ukishima includes a built-in updater.
+Open **Settings → Update**, click **Check for Updates**, and select **Update Ukishima**. The in-app updater keeps local modifications.
 
-Open **Settings → Update**, click **Check for Updates**, and select **Update Ukishima** when a new version is available.
-
-Updates are applied safely without discarding local modifications. Modified or development checkouts can be updated manually.
+To update from a terminal, run the install command again. It asks before updating and only touches a clean, official `master` checkout tracking `origin/master` with no local commits. Local changes and development checkouts are left alone.
 
 ## Troubleshooting
 
-Quickshell output is saved locally to `$XDG_STATE_HOME/ukishima/ukishima.log` (by default `~/.local/state/ukishima/ukishima.log`), with one rotated copy. If you open an issue, you can attach the log after checking it for private paths or other sensitive details. Ukishima does not upload logs or poll for errors.
+Quickshell output is written to `$XDG_STATE_HOME/ukishima/ukishima.log` (default `~/.local/state/ukishima/ukishima.log`), with one rotated copy, and is also printed to the terminal when you launch from one. Check the log for private paths before attaching it to an issue. To see which tools are missing, run:
+
+```bash
+~/.local/share/quickshell/ukishima/scripts/check-deps.sh
+```
 
 ## Uninstall
-
-To completely remove Ukishima, run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/uninstall.sh | bash
 ```
 
-This removes Ukishima's application files, settings, state, caches, and generated wallpaper files.
+This is a complete removal: application files, settings, state, caches, and generated wallpaper stills. To remove the application but keep settings, state, and caches:
 
-After uninstalling, remove any Ukishima startup commands or keybindings from your compositor configuration.
+```bash
+curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/uninstall.sh | bash -s -- --keep-data
+```
+
+The uninstaller asks for confirmation. It refuses symlinked, modified, or development checkouts and does not touch personal wallpapers, other applications, or compositor configuration. Remove any Ukishima startup commands or keybindings afterwards.
 
 ## Credits
 

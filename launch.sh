@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 # Launch Ukishima with jemalloc decay settings. Quickshell links jemalloc; by
 # default the allocator keeps freed pages around, so resident memory rides at
 # the session's peak instead of the live working set. Turning decay on returns
@@ -39,7 +39,13 @@ if mkdir -p "$STATE_DIR" 2>/dev/null; then
     mv -f -- "$LOG_FILE" "$LOG_FILE.1" 2>/dev/null || true
   fi
   if { : >> "$LOG_FILE"; } 2>/dev/null; then
-    exec >> "$LOG_FILE" 2>&1
+    # Keep the file for issue reports, but do not swallow the output when there
+    # is a terminal watching. tee writes both streams to the original stdout.
+    if command -v tee >/dev/null 2>&1; then
+      exec > >(tee -a -- "$LOG_FILE") 2>&1
+    else
+      exec >> "$LOG_FILE" 2>&1
+    fi
     printf '\n--- Ukishima launch %s (%s) ---\n' "$(date '+%Y-%m-%d %H:%M:%S %z')" "$UKISHIMA_WM"
   fi
 fi
