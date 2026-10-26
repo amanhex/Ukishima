@@ -1383,7 +1383,7 @@ PillSurface {
 
                 /**
                  * Marks the wallpaper actually on screen. Walls.current is the
-                 * contents of the ukishima-wallpaper state file — the same file
+                 * contents of the ukishima/wallpaper state file — the same file
                  * wallpaper.sh rewrites on every apply, and the same one the
                  * lockscreen reads — so this dot and the lock screen can never
                  * disagree about which wallpaper is current. Same 4px dot the

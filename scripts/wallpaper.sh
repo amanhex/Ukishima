@@ -8,20 +8,24 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 STATE_DIR="$STATE_HOME/ukishima"
 mkdir -p "$STATE_DIR"
+WALLPAPER_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/wallpapers"
+mkdir -p "$WALLPAPER_CACHE"
 
 # Copy legacy wallpaper state once, leaving the originals and any newer files alone.
-for name in wallpaper-dir wallpaper wallpaper-map wallpaper-bag wallpaper-still.png wallpaper-fit; do
+for name in wallpaper-dir wallpaper wallpaper-map wallpaper-bag wallpaper-fit; do
     legacy="$STATE_HOME/ukishima-$name"
     [ -f "$legacy" ] && cp -n -- "$legacy" "$STATE_DIR/$name"
 done
-for legacy in "$STATE_HOME"/ukishima-wallpaper-still-*.png; do
+for legacy in "$STATE_HOME"/ukishima-wallpaper-still*.png "$STATE_DIR"/wallpaper-still*.png; do
     [ -f "$legacy" ] || continue
-    name=${legacy##*/ukishima-}
-    cp -n -- "$legacy" "$STATE_DIR/$name"
+    name=${legacy##*/}
+    case "$name" in ukishima-*) name=${name#ukishima-} ;; esac
+    cp -n -- "$legacy" "$WALLPAPER_CACHE/$name"
 done
 
 flags_file="$STATE_DIR/flags.json"
 WPDIR=$(jq -r '.wallpaperDir // ""' "$flags_file" 2>/dev/null || echo "")
+[ -n "$WPDIR" ] || WPDIR=$(cat "$STATE_DIR/wallpaper-dir" 2>/dev/null || true)
 FIT=$(jq -r '.wallpaperFit // "crop"' "$flags_file" 2>/dev/null || echo crop)
 case "$FIT" in no|crop|fit|stretch) ;; *) FIT=crop ;; esac
 if [ -z "$WPDIR" ]; then
@@ -42,7 +46,7 @@ printf '%s\n' "$WPDIR" > "$RESOLVED"
 STATE="$STATE_DIR/wallpaper"
 MAP="$STATE_DIR/wallpaper-map"
 BAG="$STATE_DIR/wallpaper-bag"
-STILL="$STATE_DIR/wallpaper-still.png"
+STILL="$WALLPAPER_CACHE/wallpaper-still.png"
 FIT_STATE="$STATE_DIR/wallpaper-fit"
 WLOG="$STATE_DIR/wallcolors.log"
 

@@ -6,7 +6,6 @@ STATE="${XDG_STATE_HOME:-$HOME/.local/state}"
 flags="$STATE/ukishima/flags.json"
 raw=$(jq -r '.wallpaperDir // ""' "$flags" 2>/dev/null || echo "")
 [ -n "$raw" ] || raw=$(cat "$STATE/ukishima/wallpaper-dir" 2>/dev/null || true)
-[ -n "$raw" ] || raw=$(cat "$STATE/ukishima-wallpaper-dir" 2>/dev/null || true)
 [ -n "$raw" ] || raw="$HOME/Pictures/Wallpapers"
 # Drop any trailing slash so a flags/state trailing-slash drift cannot spawn a
 # second cache directory (the folder hash must match the pill's listing hash).
@@ -84,7 +83,6 @@ done
 # count exactly.
 raw_flags=$(jq -r '.wallpaperDir // ""' "$flags" 2>/dev/null || echo "")
 raw_state=$(cat "$STATE/ukishima/wallpaper-dir" 2>/dev/null || true)
-[ -n "$raw_state" ] || raw_state=$(cat "$STATE/ukishima-wallpaper-dir" 2>/dev/null || true)
 for d in "$cache"/*/; do
     [ -d "$d" ] || continue
     k=$(basename "$d")

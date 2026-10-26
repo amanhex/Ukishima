@@ -30,8 +30,9 @@
 # hyprlock that cannot be honoured is downgraded to it, and the downgrade is
 # logged, not failed. Only when neither exists is this a real failure, and
 # then it says so on stderr.
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ukishima"
-LOG="$CACHE_DIR/lock.log"
+LOG="$STATE_DIR/lock.log"
 # JPEG, not PNG. The backdrop is drawn blurred and then never looked at
 # closely, so PNG's lossless encode buys nothing and costs a great deal:
 # measured here across two outputs, ~830ms and 1.3 MB for PNG against ~50ms
@@ -40,10 +41,13 @@ SHOT="$CACHE_DIR/lock-shot.jpg"
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$SCRIPT_DIR/wm.sh"
 LOCK_QML="$SCRIPT_DIR/../lockscreen/shell.qml"
-mkdir -p "$CACHE_DIR" 2>/dev/null
+mkdir -p "$CACHE_DIR" "$STATE_DIR" 2>/dev/null
+if [ -f "$CACHE_DIR/lock.log" ] && [ ! -e "$LOG" ]; then
+    cp -n -- "$CACHE_DIR/lock.log" "$LOG" 2>/dev/null || true
+fi
 
 note() {
-    mkdir -p "$CACHE_DIR" 2>/dev/null
+    mkdir -p "$STATE_DIR" 2>/dev/null
     echo "$(date '+%F %T'): $*" >>"$LOG"
 }
 

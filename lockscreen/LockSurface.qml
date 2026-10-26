@@ -49,10 +49,10 @@ Rectangle {
     // then live ukishima wallpaper, then static fallback
     // .jpg because lock.sh captures with `grim -t jpeg`; see the note there.
     readonly property string lockShot: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/ukishima/lock-shot.jpg"
-    readonly property string stateWallpaper: (Quickshell.env("XDG_STATE_HOME") || (home + "/.local/state")) + "/ukishima-wallpaper"
+    readonly property string stateWallpaper: (Quickshell.env("XDG_STATE_HOME") || (home + "/.local/state")) + "/ukishima/wallpaper"
     readonly property string wallpaperFallback: home + "/Pictures/Wallpapers/current_wallpaper.jpg"
     //* The wallpaper the shell is actually showing, read from the same state
-    //* file Singletons/Walls.qml writes (ukishima-wallpaper holds the current
+    //* file wallpaper.sh writes (ukishima/wallpaper holds the current
     //* wallpaper's path, one line). The lockscreen runs as its own process and
     //* cannot import Singletons, so it re-reads the file itself. Falls back to
     //* the legacy current_wallpaper.jpg only when that state file is missing.
@@ -69,7 +69,7 @@ Rectangle {
     readonly property bool wallpaperIsVideo: /\.(mp4|webm|mkv|mov)$/i.test(wallpaperSource)
 
     //* lock.sh redirects the lock's stderr into its own log
-    //* (${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/lock.log), so one
+    //* (${XDG_STATE_HOME:-$HOME/.local/state}/ukishima/lock.log), so one
     //* console.log per lock says exactly which file the backdrop resolved to and
     //* whether it came from the state file or the legacy fallback. Without it,
     //* "the lock shows the wrong wallpaper" is unanswerable from outside the

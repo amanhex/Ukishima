@@ -17,7 +17,9 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string confPath: Config.hyprPath("hyprsunset.conf")
+    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima"
+    readonly property string confPath: root.stateDir + "/hyprsunset.conf"
+    readonly property string legacyConfPath: Config.hyprPath("hyprsunset.conf")
     readonly property bool supported: Wm.caps.nightLight
     property bool available: false
     property string pendingMode: ""
@@ -152,6 +154,14 @@ Singleton {
         path: root.confPath
         atomicWrites: true
         printErrors: false
+    }
+
+    Process {
+        id: migrateConf
+        command: ["sh", "-c",
+            "mkdir -p -- \"$1\" && { [ -e \"$2\" ] || [ ! -f \"$3\" ] || cp -n -- \"$3\" \"$2\"; }",
+            "ukishima-nightlight-migrate", root.stateDir, root.confPath, root.legacyConfPath]
+        running: true
     }
 
     Process {

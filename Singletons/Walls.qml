@@ -294,9 +294,7 @@ Singleton {
 
     Process {
         id: stateProc
-        command: ["sh", "-c", "cat \"$1\" 2>/dev/null || cat \"$2\" 2>/dev/null || true",
-            "_", root.stateFile,
-            (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima-wallpaper"]
+        command: ["sh", "-c", "cat \"$1\" 2>/dev/null || true", "_", root.stateFile]
         stdout: StdioCollector {
             onStreamFinished: {
                 var live = this.text.trim();

@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 
-keep_data=0
-case "${1:-}" in
-  '') [[ $# -eq 0 ]] || { printf 'Usage: %s [--keep-data]\n' "$0" >&2; exit 2; } ;;
-  --keep-data) [[ $# -eq 1 ]] || { printf 'Usage: %s [--keep-data]\n' "$0" >&2; exit 2; }; keep_data=1 ;;
-  *) printf 'Usage: %s [--keep-data]\n' "$0" >&2; exit 2 ;;
-esac
+[[ $# -eq 0 ]] || { printf 'Usage: %s\n' "$0" >&2; exit 2; }
 
 : "${HOME:?HOME is not set}"
 root="$HOME/.local/share/quickshell/ukishima"
@@ -84,11 +79,7 @@ else
   printf 'Ukishima application files are not installed; checking application data.\n'
 fi
 
-if (( keep_data )); then
-  printf 'Remove Ukishima application files, keeping settings and caches? [y/N]: '
-else
-  printf 'Remove Ukishima, including its settings, state and caches? [y/N]: '
-fi
+printf 'Remove Ukishima, including its settings, state and caches? [y/N]: '
 answer=''
 IFS= read -r answer </dev/tty 2>/dev/null || answer=''
 case "$answer" in
@@ -96,37 +87,104 @@ case "$answer" in
   *) printf 'Cancelled.\n'; exit 0 ;;
 esac
 
-rm -rf -- "$root"
-
-if (( ! keep_data )); then
-  rm -rf -- "$state/ukishima" "$cache/ukishima"
-
-  # Legacy wallpaper state stored directly under XDG_STATE_HOME. Remove only
-  # the exact files Ukishima wrote; never follow a symlink out of the state dir.
-  for file in \
-    "$state/ukishima-wallpaper-dir" \
-    "$state/ukishima-wallpaper" \
-    "$state/ukishima-wallpaper-map" \
-    "$state/ukishima-wallpaper-bag" \
-    "$state/ukishima-wallpaper-fit" \
-    "$state/ukishima-wallpaper-still.png"; do
-    [ -f "$file" ] && [ ! -L "$file" ] && rm -f -- "$file"
+stop_ukishima() {
+  local proc pid exe arg i config_path
+  local -a argv app_pids=()
+  for proc in /proc/[0-9]*; do
+    pid=${proc##*/}
+    [[ "$pid" != "$$" && -r "$proc/cmdline" ]] || continue
+    exe=$(basename -- "$(readlink -- "$proc/exe" 2>/dev/null || true)")
+    [[ "$exe" == quickshell || "$exe" == qs ]] || continue
+    argv=()
+    mapfile -d '' -t argv < "$proc/cmdline" 2>/dev/null || continue
+    config_path=""
+    for ((i = 0; i < ${#argv[@]}; i++)); do
+      arg=${argv[i]}
+      case "$arg" in
+        --path | -p | --config | --config-path)
+          if (( i + 1 < ${#argv[@]} )); then
+            config_path=${argv[i + 1]}
+          fi
+          ;;
+        --path=* | --config=*)
+          config_path=${arg#*=}
+          ;;
+      esac
+    done
+    case "$config_path" in
+      "$root/lockscreen/shell.qml")
+        printf 'The Ukishima lockscreen is active (pid %s); finish unlocking before uninstalling. No files were removed.\n' "$pid" >&2
+        return 1
+        ;;
+      "$root" | "$root/shell.qml") app_pids+=("$pid") ;;
+      "$root"/*)
+        printf 'A Ukishima Quickshell process has an unrecognized config path (pid %s); no files were removed.\n' "$pid" >&2
+        return 1
+        ;;
+    esac
   done
 
-  # Generated stills for individual monitors. The name is Ukishima-owned and
-  # the entry must be a regular file, not a symlink to something else.
-  shopt -s nullglob
-  for still in "$state"/ukishima-wallpaper-still-*.png; do
-    [ -f "$still" ] && [ ! -L "$still" ] && rm -f -- "$still"
+  for pid in "${app_pids[@]}"; do
+    kill -TERM "$pid" 2>/dev/null || {
+      printf 'Could not stop the running Ukishima instance (pid %s); no files were removed.\n' "$pid" >&2
+      return 1
+    }
+    for _ in {1..30}; do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+      printf 'The Ukishima instance (pid %s) did not stop; no files were removed.\n' "$pid" >&2
+      return 1
+    fi
   done
-  shopt -u nullglob
+}
+
+if ! stop_ukishima; then
+  exit 1
 fi
+
+rm -rf -- "$root"
+if [ -e "$root" ] || [ -L "$root" ]; then
+  printf 'Could not remove Ukishima application files: %s\n' "$root" >&2
+  exit 1
+fi
+
+rm -rf -- "$state/ukishima" "$cache/ukishima"
+
+# Remove only known legacy files outside the Ukishima state directory. The
+# calendar file is the sole Ukishima-owned file in the shared legacy pill dir.
+# rm -f unlinks a symlink itself, not its target.
+shopt -s nullglob
+legacy_files=(
+  "$state/ukishima-wallpaper-dir" \
+  "$state/ukishima-wallpaper" \
+  "$state/ukishima-wallpaper-map" \
+  "$state/ukishima-wallpaper-bag" \
+  "$state/ukishima-wallpaper-fit" \
+  "$state/ukishima-wallpaper-still.png"
+  "$state/pill/events.json"
+  "$state"/ukishima-wallpaper-still-*.png
+)
+for file in "${legacy_files[@]}"; do
+  if [ -L "$file" ] || [ -f "$file" ]; then
+    rm -f -- "$file"
+  fi
+  if [ -e "$file" ] || [ -L "$file" ]; then
+    printf 'Could not remove Ukishima legacy state: %s\n' "$file" >&2
+    exit 1
+  fi
+done
+shopt -u nullglob
+
+for target in "$state/ukishima" "$cache/ukishima"; do
+  if [ -e "$target" ] || [ -L "$target" ]; then
+    printf 'Could not remove Ukishima data: %s\n' "$target" >&2
+    exit 1
+  fi
+done
 
 printf '\nUkishima uninstalled successfully.\n'
-if (( keep_data )); then
-  printf 'Settings and caches were preserved.\n'
-else
-  printf 'Ukishima settings, state and caches were removed.\n'
-fi
+printf 'Ukishima settings, state and caches were removed.\n'
 printf 'Your original wallpapers, applications and compositor configuration were not changed.\n'
 printf 'Remove any Ukishima startup commands or keybindings from your compositor config.\n'
