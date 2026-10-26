@@ -626,7 +626,7 @@ Item {
      * `down` and `memorySaver` are the whole policy; everything else follows.
      */
     function updateReclaim() {
-        if (Flags.memorySaver && root.down) {
+        if (Flags.memorySaver && root.down && !root.empty) {
             // Already dropped: leave it dropped, and do not re-arm the timer for a
             // down period the delegates are already absent for.
             if (!root.reclaimed) reclaimTimer.start();
@@ -635,6 +635,10 @@ Item {
             if (root.reclaimed) root.restoreContent();
         }
     }
+
+    // Empty docks have no delegates to reclaim; their model poll must stay
+    // alive so apps launched later can populate the dock after login.
+    onEmptyChanged: root.updateReclaim()
 
     /**
      * Drop the chip delegates. `itemSig` is invalidated first because it describes

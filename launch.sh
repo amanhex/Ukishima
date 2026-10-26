@@ -30,6 +30,20 @@ export QT_LOGGING_RULES="${QT_LOGGING_RULES:+$QT_LOGGING_RULES;}qt.qpa.wayland.t
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$DIR/scripts/wm.sh"
 
+# Keep Quickshell's existing diagnostics for issue reports. This is passive
+# output capture: no watcher or polling process is started.
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/ukishima"
+LOG_FILE="$STATE_DIR/ukishima.log"
+if mkdir -p "$STATE_DIR" 2>/dev/null; then
+  if [ -f "$LOG_FILE" ] && [ "$(wc -c < "$LOG_FILE" 2>/dev/null)" -ge 5242880 ] 2>/dev/null; then
+    mv -f -- "$LOG_FILE" "$LOG_FILE.1" 2>/dev/null || true
+  fi
+  if { : >> "$LOG_FILE"; } 2>/dev/null; then
+    exec >> "$LOG_FILE" 2>&1
+    printf '\n--- Ukishima launch %s (%s) ---\n' "$(date '+%Y-%m-%d %H:%M:%S %z')" "$UKISHIMA_WM"
+  fi
+fi
+
 if command -v quickshell >/dev/null 2>&1; then
   exec quickshell --path "$DIR" "$@"
 elif command -v qs >/dev/null 2>&1; then
