@@ -1,6 +1,6 @@
 name: Ukishima issue
 description: Report a bug, installation problem, or request a change
-title: ""
+title: "[Ukishima] "
 body:
   - type: markdown
     attributes:
@@ -74,7 +74,7 @@ body:
         private paths or other sensitive details before sharing.
     validations:
       required: false
-      accept: ".log,.txt,.zip,.gz,.tar.gz"
+      accept: ".log,.txt,.zip,.gz"
 
   - type: checkboxes
     id: checks
