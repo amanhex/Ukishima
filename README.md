@@ -27,7 +27,7 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 
 - Linux + Wayland, **Hyprland** or **Niri**
 - **Quickshell** 0.3.0+ 
-- Additional CLI tools — the installer checks them; see [Dependencies](DEPENDENCIES.md)
+- Additional CLI tools — the installer checks them; see [Dependencies](docs/DEPENDENCIES.md)
 
 ## Install
 
@@ -115,6 +115,10 @@ Ukishima includes a built-in updater.
 Open **Settings → Update**, click **Check for Updates**, and select **Update Ukishima** when a new version is available.
 
 Updates are applied safely without discarding local modifications. Modified or development checkouts can be updated manually.
+
+## Troubleshooting
+
+Quickshell output is saved locally to `$XDG_STATE_HOME/ukishima/ukishima.log` (by default `~/.local/state/ukishima/ukishima.log`), with one rotated copy. If you open an issue, you can attach the log after checking it for private paths or other sensitive details. Ukishima does not upload logs or poll for errors.
 
 ## Uninstall
 
