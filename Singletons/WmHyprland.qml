@@ -108,7 +108,22 @@ Singleton {
 
     function fullscreenOn(output) {
         const m = root.monitorSnap(output);
-        return !!(m && m.activeWorkspace && m.activeWorkspace.hasfullscreen);
+        if (!m || !m.activeWorkspace)
+            return false;
+        if (m.activeWorkspace.hasfullscreen)
+            return true;
+        const list = root.windows;
+        const wsName = root.activeWorkspaceName(output);
+        for (let i = 0; i < list.length; i++) {
+            const w = list[i];
+            if (!w || !w.fullscreen)
+                continue;
+            if (w.screens && w.screens.indexOf(output) >= 0)
+                return true;
+            if (wsName && w.workspace && w.workspace.name === wsName)
+                return true;
+        }
+        return false;
     }
 
     /** Workspace list per output, invalidated only when the set or order

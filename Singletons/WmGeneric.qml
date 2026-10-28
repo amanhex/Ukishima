@@ -229,9 +229,16 @@ Singleton {
 
     function fullscreenOn(output) {
         const list = root.windows;
+        const activeWs = root.activeWorkspaceName(output);
         for (let i = 0; i < list.length; i++) {
             const w = list[i];
-            if (w.fullscreen && w.screens.indexOf(output) >= 0)
+            if (!w.fullscreen || w.screens.indexOf(output) < 0)
+                continue;
+            if (w.active)
+                return true;
+            if (activeWs && w.workspace && w.workspace.name === activeWs)
+                return true;
+            if (!activeWs)
                 return true;
         }
         return false;
