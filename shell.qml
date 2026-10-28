@@ -456,6 +456,7 @@ ShellRoot {
                 if (root.peekMon === modelData.name) root.peekMon = "";
                 pill.pinned = false;
                 pill.expandLatch = false;
+                Notifs.clearPopups();
             }
 
             screen: modelData
