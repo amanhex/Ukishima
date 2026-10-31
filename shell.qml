@@ -250,7 +250,10 @@ ShellRoot {
         target: "ukishima"
         function mixer(mon: string): void { root.toggleSurface(mon, "mixer"); }
         function calendar(mon: string): void { root.toggleSurface(mon, "calendar"); }
-        function launcher(mon: string): void { root.toggleSurface(mon, "launcher"); }
+        function launcher(mon: string): void {
+            const m = (mon && mon.length > 0) ? mon : Wm.focusedScreenName();
+            root.toggleSurface(m, "launcher");
+        }
         function power(mon: string): void { root.toggleSurface(mon, "power"); }
         function notifications(mon: string): void { root.toggleSurface(mon, "link"); }
         function battery(mon: string): void { root.toggleSurface(mon, "battery"); }
@@ -868,7 +871,7 @@ ShellRoot {
              * pill's own stack (root.openSurface) and stays empty while the
              * dock's gear is open, which is exactly when typing has to land
              * here. Exclusive while the panel is open, None again on close. */
-            WlrLayershell.keyboardFocus: (dock.settingsOpen || dockWin.pickerHere) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: (dock.settingsOpen || dockWin.pickerHere || (dockWin.dockPanelAlive && dockWin.dockSurface === "dockLauncher")) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             WlrLayershell.namespace: "ukishima-dock"
 
             anchors { top: true; left: true; right: true; bottom: true }
@@ -1023,6 +1026,19 @@ ShellRoot {
             DockBar {
                 id: dock
 
+                onRequestDockLauncher: {
+                    if (dockWin.dockPanelAlive && dockWin.dockSurface === "dockLauncher") {
+                        dock.closeSettings()
+                        dockWin.dockPanelAlive = false
+                        dock.settingsOpen = false
+                        dockWin.dockSurface = "dockSettings"
+                    } else {
+                        dockWin.dockSurface = "dockLauncher"
+                        dockWin.dockPanelAlive = true
+                        dock.settingsOpen = false
+                    }
+                }
+
                 /**
                  * Above the settings panel, which sits at z 200.
                  *
@@ -1162,10 +1178,26 @@ ShellRoot {
                 }
             }
 
+            Component {
+                id: compDockLauncher
+                DockAppLauncher {
+                    s: dock.s
+                    pal: dock.dockPal
+                    open: dockWin.dockPanelAlive && dockWin.dockSurface === "dockLauncher"
+                    onRequestClose: {
+                        dock.closeSettings()
+                        dockWin.dockPanelAlive = false
+                        dock.settingsOpen = false
+                        dockWin.dockSurface = "dockSettings"
+                    }
+                }
+            }
+
+
             Loader {
                 id: dockPanel
-                active: dockWin.dockPanelAlive
-                visible: dockWin.dockPanelAlive
+                active: dockWin.dockPanelAlive && dockWin.dockSurface !== "dockLauncher"
+                visible: active
                 z: 200
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: dock.top
@@ -1183,6 +1215,16 @@ ShellRoot {
                     default: return compDockSettings;
                     }
                 }
+            }
+
+            Loader {
+                id: dockLauncherPanel
+                active: dockWin.dockPanelAlive && dockWin.dockSurface === "dockLauncher"
+                visible: active
+                z: 250
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                sourceComponent: compDockLauncher
             }
 
             /**
@@ -1257,14 +1299,13 @@ ShellRoot {
                 target: dock
                 function onSettingsOpenChanged() {
                     if (dock.settingsOpen) {
-                        /* Every open starts at the index; a sub-page is a
-                         * journey within one session, not a bookmark. */
                         dockWin.dockSurface = "dockSettings";
                         dockWin.dockPanelAlive = true;
                         dockCloseTimer.stop();
-                    } else if (dockWin.dockPanelAlive) {
-                        /* Keep the Loader alive for one fade/slide-out. */
+                    } else if (dockWin.dockPanelAlive && dockWin.dockSurface !== "dockLauncher") {
                         dockCloseTimer.restart();
+                    } else if (dockWin.dockPanelAlive && dockWin.dockSurface === "dockLauncher" && !dock.settingsOpen) {
+                        // don't auto-close launcher
                     }
                 }
             }

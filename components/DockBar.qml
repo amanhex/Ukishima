@@ -74,6 +74,14 @@ Item {
      */
     property bool settingsOpen: false
 
+    /**
+     * The launcher panel's open state, owned here beside `settingsOpen` so the
+     * shell can key its panel liveness and keyboard focus on BOTH. It is a peer of
+     * settings, not a page inside it: the shell draws the two from the same window
+     * but different Loaders, and the bar must force itself open while either is up.
+     */
+    property bool launcherOpen: false
+
     /** The gear's action, and the only way in or out of the panel. */
     function toggleSettings() {
         if (root.settingsOpen)
@@ -83,6 +91,7 @@ Item {
     }
 
     function openSettings() {
+        root.launcherOpen = false;
         root.settingsOpen = true;
     }
 
@@ -1177,9 +1186,9 @@ Item {
     Rectangle {
         id: slab
         radius: Math.min(20 * s, height / 2)
-        // The gear sits at the right end, so the slab grows by its slot and the
+        // The gear and launcher sit at the right end, so the slab grows by their slots and the
         // app chips centre in what is left.
-        width: chips.implicitWidth + gearSlot.width + 20 * s
+        width: chips.implicitWidth + launcherSlot.width + gearSlot.width + 20 * s
         height: root.dockH
         anchors.horizontalCenter: parent.horizontalCenter
         gradient: Gradient {
@@ -1213,15 +1222,15 @@ Item {
     }
 
     /**
-     * The app chips, centred in the slab minus the gear slot. Before the gear
-     * existed they centred on the slab; centring them on the slab still would
-     * shove every icon left by half the gear for no reason, so the wrap gives
-     * them the space they actually have.
+     * The app chips, centred in the slab minus the gear and launcher slots. Before
+     * the slots existed they centred on the slab; centring them on the slab still
+     * would shove every icon left for no reason, so the wrap gives them the space
+     * they actually have.
      */
     Item {
         id: chipsWrap
         anchors.left: parent.left
-        anchors.right: gearSlot.left
+        anchors.right: launcherSlot.left
         anchors.verticalCenter: parent.verticalCenter
         height: parent.height
 
@@ -1628,6 +1637,90 @@ Item {
     }
 
     /**
+     * App launcher trigger at the end of the dock (macOS-style).
+     */
+    Item {
+        id: launcherSlot
+        anchors.right: gearSlot.left
+        anchors.rightMargin: 6 * s
+        anchors.verticalCenter: parent.verticalCenter
+        width: root.dockH
+        height: root.dockH
+        readonly property bool hover: launcherArea.containsMouse
+
+        /** Divider, so the launcher reads as chrome rather than another app. */
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.left
+            anchors.rightMargin: 5 * s
+            width: 1
+            height: 24 * s
+            color: root.dockBorder
+        }
+
+        GlyphIcon {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.topMargin: root.titled ? 13 * s : (parent.height - 19 * s) / 2
+            width: 19 * s
+            height: 19 * s
+            name: "grid"
+            stroke: 1.8
+            color: launcherSlot.hover ? root.dockCream : root.dockCopy
+            Behavior on color { ColorAnimation { duration: Motion.dockFast } }
+        }
+
+        Text {
+            visible: root.titled
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.topMargin: 40 * s
+            width: parent.width - 6 * s
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+            maximumLineCount: 1
+            font.pixelSize: 10 * s
+            font.weight: Font.DemiBold
+            color: root.dockCopy
+            opacity: launcherSlot.hover ? 1 : 0.85
+            Behavior on opacity { ColorAnimation { duration: Motion.dockFast } }
+            text: "Apps"
+        }
+
+        MouseArea {
+            id: launcherArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                var dw = null
+                // try to access dockWin from shell context if possible
+                if (typeof dockWin !== "undefined") {
+                    if (dockWin.dockPanelAlive && dockWin.dockSurface === "dockLauncher") {
+                        root.closeSettings()
+                        dockWin.dockPanelAlive = false
+                        root.settingsOpen = false
+                        dockWin.dockSurface = "dockSettings"
+                    } else {
+                        root.settingsOpen = false
+                        dockWin.dockSurface = "dockLauncher"
+                        dockWin.dockPanelAlive = true
+                    }
+                    return
+                }
+                if (root.requestDockLauncher) root.requestDockLauncher()
+            }
+        }
+
+        Tooltip {
+            show: launcherSlot.hover
+            s: root.s
+            placement: "above"
+            title: "App launcher"
+        }
+    }
+
+    /**
      * The dock's settings trigger: a gear at the right end of the bar, behind a
      * divider so it plainly is not one of the app chips.
      *
@@ -1725,4 +1818,6 @@ Item {
      * panel would leave with the bar whenever the dock slid down.
      */
     readonly property real panelGap: 10 * s
+
+    signal requestDockLauncher()
 }

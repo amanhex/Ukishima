@@ -13,6 +13,7 @@ DockBehavior DockBehavior.qml
 DockAppearance DockAppearance.qml
 DockApps DockApps.qml
 DockMotion DockMotion.qml
+DockAppLauncher DockAppLauncher.qml
 FontColorSurface FontColorSurface.qml
 FontPicker FontPicker.qml
 GlassSurface GlassSurface.qml

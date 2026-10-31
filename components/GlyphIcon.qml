@@ -78,6 +78,10 @@ Item {
             "d": "M3 7V3h4 M17 3h4v4 M21 17v4h-4 M7 21H3v-4 M9 12h6",
             "fill": false
         },
+        "grid": {
+            "d": "M3 3h4v4H3z M10 3h4v4h-4z M17 3h4v4h-4z M3 10h4v4H3z M10 10h4v4h-4z M17 10h4v4h-4z M3 17h4v4H3z M10 17h4v4h-4z M17 17h4v4h-4z",
+            "fill": true
+        },
         "waves": {
             "d": "M2 8c2.5-3 5-3 7.5 0s5 3 7.5 0 M2 16c2.5-3 5-3 7.5 0s5 3 7.5 0",
             "fill": false
