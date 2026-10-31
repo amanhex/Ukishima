@@ -290,7 +290,10 @@ Singleton {
         }
     }
 
-    Component.onCompleted: root.adoptLive()
+    Component.onCompleted: {
+        root.adoptLive();
+        stateProc.running = true;
+    }
 
     Process {
         id: stateProc
@@ -358,6 +361,29 @@ Singleton {
                 root.queuedFit = "";
                 fitProc.command = ["bash", root.setScript, "fit", next];
                 fitProc.running = true;
+            }
+        }
+    }
+
+    function applyFps(fps) {
+        if (fpsProc.running) {
+            queuedFps = fps;
+            return;
+        }
+        fpsProc.command = ["bash", root.setScript, "fps", fps];
+        fpsProc.running = true;
+    }
+
+    property int queuedFps: 0
+
+    Process {
+        id: fpsProc
+        onExited: {
+            if (root.queuedFps > 0) {
+                var next = root.queuedFps;
+                root.queuedFps = 0;
+                fpsProc.command = ["bash", root.setScript, "fps", next];
+                fpsProc.running = true;
             }
         }
     }

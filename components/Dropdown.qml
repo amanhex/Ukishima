@@ -127,7 +127,7 @@ Item {
     }
 
     width: chip.width
-    height: chip.height
+    height: visible ? chip.height : 0
 
     Rectangle {
         id: chip

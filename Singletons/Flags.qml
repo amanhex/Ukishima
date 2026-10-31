@@ -25,6 +25,7 @@ Singleton {
     property alias paletteMode: adapter.paletteMode
     property alias wallpaperDir: adapter.wallpaperDir
     property alias wallpaperFit: adapter.wallpaperFit
+    property alias wallpaperFps: adapter.wallpaperFps
     property alias uiScale: adapter.uiScale
     //* The dock's own UI scale, independent of the pill's `uiScale`.
     property alias dockUiScale: adapter.dockUiScale
@@ -173,6 +174,8 @@ Singleton {
             property string wallpaperDir: ""
             //* Still/video wallpaper scaling: awww --resize "no" (center), "crop" (cover), "fit" (contain) or "stretch", driving the strip's Cover/Contain/Stretch/Center control.
             property string wallpaperFit: "crop"
+            //* Live wallpaper playback FPS: 15/24/30/60 fps for mpvpaper video wallpapers.
+            property int wallpaperFps: 60
             property real uiScale: 1
             property real dockUiScale: 1
             property bool reduceMotion: false

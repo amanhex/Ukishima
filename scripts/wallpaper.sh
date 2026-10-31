@@ -12,7 +12,7 @@ WALLPAPER_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/ukishima/wallpapers"
 mkdir -p "$WALLPAPER_CACHE"
 
 # Copy legacy wallpaper state once, leaving the originals and any newer files alone.
-for name in wallpaper-dir wallpaper wallpaper-map wallpaper-bag wallpaper-fit; do
+for name in wallpaper-dir wallpaper wallpaper-map wallpaper-bag wallpaper-fit wallpaper-fps; do
     legacy="$STATE_HOME/ukishima-$name"
     [ -f "$legacy" ] && cp -n -- "$legacy" "$STATE_DIR/$name"
 done
@@ -27,6 +27,8 @@ flags_file="$STATE_DIR/flags.json"
 WPDIR=$(jq -r '.wallpaperDir // ""' "$flags_file" 2>/dev/null || echo "")
 [ -n "$WPDIR" ] || WPDIR=$(cat "$STATE_DIR/wallpaper-dir" 2>/dev/null || true)
 FIT=$(jq -r '.wallpaperFit // "crop"' "$flags_file" 2>/dev/null || echo crop)
+FPS=$(jq -r '.wallpaperFps // 60' "$flags_file" 2>/dev/null || echo 60)
+FPS=${FPS:-60}
 case "$FIT" in no|crop|fit|stretch) ;; *) FIT=crop ;; esac
 if [ -z "$WPDIR" ]; then
     # No explicit folder set: adopt an existing collection in the usual spots.
@@ -48,6 +50,7 @@ MAP="$STATE_DIR/wallpaper-map"
 BAG="$STATE_DIR/wallpaper-bag"
 STILL="$WALLPAPER_CACHE/wallpaper-still.png"
 FIT_STATE="$STATE_DIR/wallpaper-fit"
+FPS_STATE="$STATE_DIR/wallpaper-fps"
 WLOG="$STATE_DIR/wallcolors.log"
 
 is_video() {
@@ -100,11 +103,12 @@ stop_mpv() {
 # here. Measured on this box: the same 4K60 file took 141 MB private with
 # hardware decode against 467 MB software.
 opts_for_fit() {
+    fps_opt="fps=$FPS"
     case "$FIT" in
-        no)      printf '%s' "no-audio loop-file=inf hwdec=auto video-unscaled=yes panscan=0" ;;
-        fit)     printf '%s' "no-audio loop-file=inf hwdec=auto panscan=0" ;;
-        stretch) printf '%s' "no-audio loop-file=inf hwdec=auto keepaspect=no panscan=0" ;;
-        *)       printf '%s' "no-audio loop-file=inf hwdec=auto panscan=1.0" ;;
+        no)      printf '%s' "no-audio loop-file=inf hwdec=auto video-unscaled=yes panscan=0 $fps_opt" ;;
+        fit)     printf '%s' "no-audio loop-file=inf hwdec=auto panscan=0 $fps_opt" ;;
+        stretch) printf '%s' "no-audio loop-file=inf hwdec=auto keepaspect=no panscan=0 $fps_opt" ;;
+        *)       printf '%s' "no-audio loop-file=inf hwdec=auto panscan=1.0 $fps_opt" ;;
     esac
 }
 
@@ -482,6 +486,12 @@ elif [ "$cmd" = "fit" ]; then
             && mv "$flags_file.tmp" "$flags_file" || true
     fi
     FIT="$mode"
+    silent_reapply
+    sync_videos
+    exit 0
+elif [ "$cmd" = "fps" ]; then
+    fps="${2:-60}"
+    FPS="$fps"
     silent_reapply
     sync_videos
     exit 0

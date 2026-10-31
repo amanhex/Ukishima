@@ -112,6 +112,16 @@ PillSurface {
     /** The chip/dropdown occupying the slot left of the wallhaven chip: the sort dropdown while browsing, else the kind filter. */
     readonly property Item whSlot: root.whSource ? whSortRow : filterRow
 
+    /**
+     * Whether the FPS dropdown should be visible (live wallpaper focused).
+     * True when focused local wallpaper is animated (video/gif).
+     */
+    readonly property bool fpsVisible: {
+        if (root.focusIndex < 0 || root.focusIndex >= root.localItems.length)
+            return false;
+        return root.isMotion(root.localItems[root.focusIndex].path);
+    }
+
     /** Inline folder edit in the header: true while the path field holds focus. */
     property bool editingDir: false
 
@@ -153,12 +163,13 @@ PillSurface {
      * a time, driven by the chip clicks; keyboard input is routed through
      * `menuMove`/`menuPick`/`menuClose` to whichever is open.
      */
-    readonly property bool menuOpen: filterRow.open || whSortRow.open || dFit.open
+    readonly property bool menuOpen: filterRow.open || whSortRow.open || dFps.open || dFit.open
 
     function toggleMenu(m) {
         var was = m.open;
         filterRow.open = false;
         whSortRow.open = false;
+        dFps.open = false;
         dFit.open = false;
         m.open = !was;
     }
@@ -166,6 +177,8 @@ PillSurface {
     function menuMove(dir) {
         if (dFit.open)
             dFit.moveSel(dir);
+        else if (dFps.open)
+            dFps.moveSel(dir);
         else if (whSortRow.open)
             whSortRow.moveSel(dir);
         else if (filterRow.open)
@@ -175,6 +188,8 @@ PillSurface {
     function menuPick() {
         if (dFit.open)
             dFit.pickSel();
+        else if (dFps.open)
+            dFps.pickSel();
         else if (whSortRow.open)
             whSortRow.pickSel();
         else if (filterRow.open)
@@ -184,6 +199,7 @@ PillSurface {
     function menuClose() {
         filterRow.open = false;
         whSortRow.open = false;
+        dFps.open = false;
         dFit.open = false;
     }
 
@@ -1068,11 +1084,46 @@ PillSurface {
             : "Click to browse wallhaven wallpapers"
         onClicked: root.toggleWallhaven()
     }
+
+    /**
+     * FPS dropdown for live wallpapers, shown when a video/gif is focused.
+     * With the waves glyph, it's visually distinct from the fit dropdown.
+     */
+    Dropdown {
+        id: dFps
+        anchors.top: parent.top
+        anchors.topMargin: 9 * root.s
+        anchors.right: refreshBtn.left
+        anchors.rightMargin: 8 * root.s
+        z: 55
+        s: root.s
+        glyph: "waves"
+        visible: root.fpsVisible
+        options: [
+            { label: "15 fps", value: 15 },
+            { label: "24 fps", value: 24 },
+            { label: "30 fps", value: 30 },
+            { label: "60 fps", value: 60 }
+        ]
+        value: Flags.wallpaperFps
+        title: "FPS: " + Flags.wallpaperFps
+        desc: "Playback cap for the live wallpaper — lower runs cooler"
+        onChipClicked: root.toggleMenu(dFps)
+        onPicked: (v) => {
+            Flags.wallpaperFps = v;
+            Walls.applyFps(v);
+        }
+    }
+
+    /**
+     * Fit dropdown: controls how wallpapers are resized. Anchors to FPS when visible,
+     * or to refreshBtn when FPS is hidden.
+     */
     Dropdown {
         id: dFit
         anchors.top: parent.top
         anchors.topMargin: 9 * root.s
-        anchors.right: refreshBtn.left
+        anchors.right: dFps.visible ? dFps.left : refreshBtn.left
         anchors.rightMargin: 8 * root.s
         z: 55
         s: root.s
