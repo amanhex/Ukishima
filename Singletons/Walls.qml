@@ -43,6 +43,7 @@ Singleton {
     property var entries: []
     readonly property int count: entries.length
     property string current: ""
+
     property bool pending: false
 
     /**
@@ -59,6 +60,16 @@ Singleton {
      * screen, which may have changed while they were closed.
      */
     signal refreshDone()
+
+    /**
+     * Synchronize current wallpaper from state file. Safe to call repeatedly;
+     * will not start duplicate state reads if one is already in progress.
+     */
+    function syncCurrent() {
+        if (!stateProc.running) {
+            stateProc.running = true;
+        }
+    }
 
     property string resolvedDir: ""
     readonly property string wpDir: Flags.wallpaperDir.length > 0 ? Flags.wallpaperDir
@@ -290,9 +301,24 @@ Singleton {
         }
     }
 
-    Component.onCompleted: {
-        root.adoptLive();
-        stateProc.running = true;
+    Component.onCompleted: root.adoptLive()
+
+    /**
+     * Initial state read: reads the current wallpaper from the state file
+     * at startup. Runs independently of the refresh pipeline (stateProc) so
+     * warm() is not blocked from triggering when the wallpaper surface opens.
+     */
+    Process {
+        id: initStateProc
+        running: true
+        command: ["sh", "-c", "cat \"$1\" 2>/dev/null || true", "_", root.stateFile]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var path = this.text.trim();
+                if (path.length > 0)
+                    root.current = path;
+            }
+        }
     }
 
     Process {

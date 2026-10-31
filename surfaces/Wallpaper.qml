@@ -46,6 +46,13 @@ PillSurface {
     property int focusIndex: 0
 
     /**
+     * Tracks whether initial synchronization to current wallpaper has completed.
+     * After this is true, subsequent refreshDone signals should not center the
+     * strip, allowing user scrolling to remain uninterrupted.
+     */
+    property bool initialSyncDone: false
+
+    /**
      * Search mode. While off the strip browses local files and bare keys are
      * watched for the first printable character; while on the filter field is
      * shown, holds focus and the strip narrows the local list to names matching
@@ -673,13 +680,16 @@ PillSurface {
         editingDir = false;
         query = "";
         searchField.text = "";
+        root.initialSyncDone = false;
         if (root.whSource) {
             focusIndex = 0;
             pos = 0;
             whTagSearch = false;
             refreshWallhaven();
+        } else if (localItems.length > 0) {
+            Walls.syncCurrent();
         } else {
-            centerOnCurrent();
+            // localItems empty - warm() will trigger full refresh pipeline
         }
         hintShown = false;
         hintDwell.restart();
@@ -729,8 +739,12 @@ PillSurface {
          * applying a wallpaper never yanks the browse strip away.
          */
         function onRefreshDone() {
-            if (root.active && !root.whSource && !(root.searching && root.query.length > 0))
-                root.centerOnCurrent();
+            if (root.active && !root.whSource && !(root.searching && root.query.length > 0)) {
+                if (!root.initialSyncDone) {
+                    root.initialSyncDone = true;
+                    root.centerOnCurrent();
+                }
+            }
         }
     }
 
