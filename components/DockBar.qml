@@ -1407,6 +1407,8 @@ Item {
                             root.dragMoved = false;
                             return;
                         }
+                        /* Any chip click is a click away from the launcher. */
+                        root.requestLauncherDismiss();
                         if (mouse.button === Qt.RightButton)
                             root.togglePin(root.items[index]);
                         else
@@ -1555,6 +1557,7 @@ Item {
                             if (i < 0) return;
                             var win = preview.wins[i];
                             root.previewOpen = false;
+                            root.requestLauncherDismiss();
                             Wm.focusWindow(win);
                         }
                     }
@@ -1820,4 +1823,8 @@ Item {
     readonly property real panelGap: 10 * s
 
     signal requestDockLauncher()
+
+    /** A chip was activated: the shell closes the launcher, so the menu never
+     * floats over the app it just opened. A no-op when it is not up. */
+    signal requestLauncherDismiss()
 }

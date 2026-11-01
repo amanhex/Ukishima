@@ -1039,6 +1039,13 @@ ShellRoot {
                     }
                 }
 
+                onRequestLauncherDismiss: {
+                    if (dockWin.dockPanelAlive && dockWin.dockSurface === "dockLauncher") {
+                        dockWin.dockPanelAlive = false
+                        dockWin.dockSurface = "dockSettings"
+                    }
+                }
+
                 /**
                  * Above the settings panel, which sits at z 200.
                  *
@@ -1240,7 +1247,17 @@ ShellRoot {
                 z: -1
                 anchors.fill: parent
                 visible: dockWin.dockPanelAlive
-                onClicked: dock.closeSettings()
+                onClicked: {
+                    /* The launcher is a peer of the settings panel, not a page
+                     * inside it, so `settingsOpen` says nothing about it: close
+                     * whichever of the two is actually up. */
+                    if (dockWin.dockSurface === "dockLauncher") {
+                        dockWin.dockPanelAlive = false;
+                        dockWin.dockSurface = "dockSettings";
+                    } else {
+                        dock.closeSettings();
+                    }
+                }
             }
 
             /**

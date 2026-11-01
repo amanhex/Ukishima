@@ -28,19 +28,19 @@ import "../components"
  * The card is paper, and things happen to the paper:
  *
  *  - the fill under the cursor is a single rectangle that *travels* between
- *    options (tile to tile, chip to chip), so the eye follows the highlight
- *    instead of re-reading the list;
+ *    options (tile to tile), so the eye follows the highlight instead of
+ *    re-reading the list;
  *  - a dot grid in the paper lights up around whatever is being pointed at —
  *    the pointer when it is over the card, the keyboard's line when it is not;
  *  - one pass of light crosses the paper as the card lands, so the card reads as
  *    placed down rather than faded in.
  *
- * Short lists — and in this shell nearly every list is two to four options — are
- * tiles in a single row, under a footer that names the keys, this being the one
- * surface in the shell driven entirely from the keyboard. One row rather than a
- * grid, so the reading order is the walk order and every arrow key means the
- * same thing. Options too long to tile become wrapping chips under the card's
- * width cap.
+ * Options are always tiles in a single row, under a footer that names the keys,
+ * this being the one surface in the shell driven entirely from the keyboard. One
+ * row rather than a grid, so the reading order is the walk order and every arrow
+ * key means the same thing. When the row outgrows the card's width cap it
+ * scrolls sideways instead of folding onto a second line, so the card keeps its
+ * height and the tiles keep their order.
  */
 Item {
     id: root
@@ -58,13 +58,9 @@ Item {
         if (active) {
             readyTimer.restart();
             sweepRun.restart();
+            tileStage.reveal();
         }
     }
-
-    /** Above this many options a single row of tiles would be too many narrow
-     * columns, so the chips, which wrap, read better. */
-    readonly property int tileLimit: 4
-    readonly property bool tiles: Selector.options.length <= root.tileLimit
 
     /** One row of tiles, never a grid: the walk order is then the reading order,
      * so all four arrow keys keep meaning the same thing. */
@@ -76,32 +72,10 @@ Item {
      * the row, so this is a floor, not the final width. */
     readonly property real tileW: Selector.options.length >= 4 ? 96 * root.s : 130 * root.s
 
-    /**
-     * Widths are read from the delegates' own `naturalW`, not from a
-     * positioner's `implicitWidth`. A positioner only refreshes that during a
-     * polish pass, so a picker that opens with its options in hand would measure
-     * zero and sit at its floor.
-     */
+    /** The row's natural measure, which the card reads to size itself. When
+     * that would clear the card's cap the row is laid out at this width and
+     * `tileFlick` scrolls; otherwise it stretches to the card. */
     readonly property real tileRowW: root.tileCols * root.tileW + (root.tileCols - 1) * root.tileGap
-
-    /** Bumped whenever the chips add, remove or resize, so the width sum below
-     * re-reads: `itemAt()` is not a tracked dependency. */
-    property int optionRev: 0
-
-    readonly property real chipsW: {
-        root.optionRev;
-        var n = chipRep.count;
-        if (n === 0)
-            return 0;
-        var gap = 8 * root.s;
-        var total = gap * (n - 1);
-        for (var i = 0; i < n; i++) {
-            var it = chipRep.itemAt(i);
-            if (it)
-                total += it.naturalW;
-        }
-        return total;
-    }
 
     Rectangle {
         anchors.fill: parent
@@ -129,7 +103,7 @@ Item {
             GradientStop { position: 0.0; color: Theme.cardTop }
             GradientStop { position: 1.0; color: Theme.cardBot }
         }
-        readonly property real optionsW: root.tiles ? root.tileRowW : root.chipsW
+        readonly property real optionsW: root.tileRowW
         readonly property real naturalW: Math.max(Math.max(header.visible ? header.implicitWidth : 0, optionsW),
                                                   hintRow.implicitWidth) + 2 * pad
 
@@ -157,12 +131,12 @@ Item {
 
         /** The line the keyboard sits on, as the card sees it. The sums are the
          * whole point: each term is a property read, so the light re-aims after
-         * a keyboard move. `mapToItem` would be shorter and silently wrong — it
-         * does its reading in C++, which the binding engine does not capture. */
+         * a keyboard move or a sideways scroll. `mapToItem` would be shorter and
+         * silently wrong — it does its reading in C++, which the binding engine
+         * does not capture. */
         function cursorCentre() {
-            const c = root.tiles ? tileCursor : chipCursor;
-            const stage = root.tiles ? tileStage : chipStage;
-            return Qt.point(col.x + stage.x + c.x + c.width / 2,
+            const c = tileCursor;
+            return Qt.point(col.x + tileStage.x + c.x - tileFlick.contentX + c.width / 2,
                             card.cursorTop() + card.cursorH() / 2);
         }
 
@@ -170,13 +144,11 @@ Item {
          * light in the paper rides this line, so it is asked for the same way
          * wherever it is needed. */
         function cursorTop() {
-            const c = root.tiles ? tileCursor : chipCursor;
-            const stage = root.tiles ? tileStage : chipStage;
-            return col.y + stage.y + c.y;
+            return col.y + tileStage.y + tileCursor.y;
         }
 
         function cursorH() {
-            return root.tiles ? tileCursor.height : chipCursor.height;
+            return tileCursor.height;
         }
 
         readonly property point light: (card.pointerIn && card.pointerSeen)
@@ -440,344 +412,326 @@ Item {
                 }
             }
 
-            /** A short list: a row of tiles, the applied one ticked. The fill
-             * lives in `tileCursor` behind them and morphs from tile to tile; a
-             * tile never fills itself, so two options can never both look
-             * chosen. */
+            /** One row of tiles, the applied one ticked. The fill lives in
+             * `tileCursor` behind them and morphs from tile to tile; a tile
+             * never fills itself, so two options can never both look chosen.
+             * A row wider than the card scrolls sideways rather than wrapping,
+             * so the card's height never depends on how long the list is. */
             Item {
                 id: tileStage
 
-                visible: root.tiles
                 width: parent.width
                 height: tileRow.height
 
-                Rectangle {
-                    id: tileCursor
-
-                    readonly property var target: (Selector.index >= 0 && Selector.index < tileRep.count)
-                                                  ? tileRep.itemAt(Selector.index) : null
-
-                    visible: tileCursor.target !== null
-                    x: tileCursor.target ? tileCursor.target.x : 0
-                    y: tileCursor.target ? tileCursor.target.y : 0
-                    width: tileCursor.target ? tileCursor.target.width : 0
-                    height: tileCursor.target ? tileCursor.target.height : 0
-                    radius: 13 * root.s
-                    color: "transparent"
-
-                    /** Lit from the top like the card it sits in, so the fill has
-                     * body instead of being a flat wash. */
-                    gradient: Gradient {
-                        orientation: Gradient.Vertical
-                        GradientStop { position: 0.0; color: Qt.alpha(Theme.vermLit, 0.20) }
-                        GradientStop { position: 1.0; color: Qt.alpha(Theme.vermLit, 0.09) }
+                /** Bring the keyboard's line back into view. The arrows can walk
+                 * past the card's edge, and a highlight nobody can see is the
+                 * same as no highlight. The walk is arithmetic rather than a
+                 * delegate lookup: when the row scrolls, every tile is exactly
+                 * `tileW` wide, so this is right even before the first polish. */
+                function reveal() {
+                    const max = Math.max(0, tileFlick.contentWidth - tileFlick.width);
+                    if (max <= 0) {
+                        tileFlick.contentX = 0;
+                        return;
                     }
-
-                    Behavior on x {
-                        enabled: card.ready
-                        NumberAnimation {
-                            duration: Motion.pillFast
-                            easing.type: Motion.pillEase
-                        }
-                    }
-                    Behavior on width {
-                        enabled: card.ready
-                        NumberAnimation {
-                            duration: Motion.pillFast
-                            easing.type: Motion.pillEase
-                        }
-                    }
+                    const x0 = Selector.index * (root.tileW + root.tileGap);
+                    const x1 = x0 + root.tileW;
+                    if (x0 < tileFlick.contentX || x1 > tileFlick.contentX + tileFlick.width)
+                        tileFlick.contentX = Math.max(0, Math.min(x0 + root.tileW / 2 - tileFlick.width / 2, max));
                 }
 
-                Row {
-                    id: tileRow
+                Connections {
+                    target: Selector
+                    function onIndexChanged() { if (root.active) tileStage.reveal(); }
+                }
 
-                    width: parent.width
-                    spacing: root.tileGap
+                Flickable {
+                    id: tileFlick
 
-                    Repeater {
-                        id: tileRep
+                    anchors.fill: parent
+                    contentWidth: tileRow.width
+                    contentHeight: height
+                    clip: true
+                    flickableDirection: Flickable.HorizontalFlick
+                    boundsBehavior: Flickable.StopAtBounds
 
-                        model: root.tiles ? Selector.options : []
+                    /** The card's final width can land a frame after the open,
+                     * so re-aim while the intro is still settling. */
+                    onWidthChanged: if (root.active && !card.ready) tileStage.reveal()
+                    onContentWidthChanged: if (root.active && !card.ready) tileStage.reveal()
 
-                        Rectangle {
-                            id: tile
+                    Rectangle {
+                        id: tileCursor
 
-                            required property var modelData
-                            required property int index
+                        readonly property var target: (Selector.index >= 0 && Selector.index < tileRep.count)
+                                                      ? tileRep.itemAt(Selector.index) : null
 
-                            readonly property bool current: String(Selector.value) === String(tile.modelData.value)
-                            readonly property bool lit: Selector.index === tile.index
-                            readonly property bool hasIcon: tile.modelData.icon !== undefined && String(tile.modelData.icon).length > 0
-                            readonly property color ink: tile.current ? Theme.vermLit
-                                                       : (tile.lit ? Theme.cream : Theme.subtle)
+                        visible: tileCursor.target !== null
+                        x: tileCursor.target ? tileCursor.target.x : 0
+                        y: tileCursor.target ? tileCursor.target.y : 0
+                        width: tileCursor.target ? tileCursor.target.width : 0
+                        height: tileCursor.target ? tileCursor.target.height : 0
+                        radius: 13 * root.s
+                        color: "transparent"
 
-                            width: (tileRow.width - root.tileGap * (root.tileCols - 1)) / root.tileCols
-                            height: card.tileH
-                            radius: 13 * root.s
-                            color: "transparent"
-                            border.width: 0
+                        /** Lit from the top like the card it sits in, so the fill has
+                         * body instead of being a flat wash. */
+                        gradient: Gradient {
+                            orientation: Gradient.Vertical
+                            GradientStop { position: 0.0; color: Qt.alpha(Theme.vermLit, 0.20) }
+                            GradientStop { position: 1.0; color: Qt.alpha(Theme.vermLit, 0.09) }
+                        }
 
-                            /** The glyph on a raised plate over the name — the
-                             * plate is what makes a tile read as a button and
-                             * not as an outlined box. An option with no glyph of
-                             * its own is just its name, set large and centred:
-                             * a bare "100%" then fills a panel instead of
-                             * floating in an empty one. */
-                            Item {
-                                id: tileBody
+                        Behavior on x {
+                            enabled: card.ready
+                            NumberAnimation {
+                                duration: Motion.pillFast
+                                easing.type: Motion.pillEase
+                            }
+                        }
+                        Behavior on width {
+                            enabled: card.ready
+                            NumberAnimation {
+                                duration: Motion.pillFast
+                                easing.type: Motion.pillEase
+                            }
+                        }
+                    }
 
-                                anchors.centerIn: parent
-                                width: tile.width - 18 * root.s
-                                height: (tile.hasIcon ? 46 * root.s + 11 * root.s : 0) + tileLabel.implicitHeight
+                    Row {
+                        id: tileRow
 
-                                Rectangle {
-                                    anchors.top: parent.top
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    visible: tile.hasIcon
-                                    width: 46 * root.s
-                                    height: width
-                                    radius: 14 * root.s
-                                    color: tile.lit ? Qt.alpha(Theme.cream, 0.10) : Theme.frameBg
-                                    border.width: 1
-                                    border.color: tile.lit ? Qt.alpha(Theme.vermLit, 0.30) : Theme.frameBorder
+                        width: Math.max(root.tileRowW, tileStage.width)
+                        spacing: root.tileGap
 
-                                    GlyphIcon {
-                                        anchors.centerIn: parent
-                                        width: 26 * root.s
+                        Repeater {
+                            id: tileRep
+
+                            model: Selector.options
+
+                            Rectangle {
+                                id: tile
+
+                                required property var modelData
+                                required property int index
+
+                                readonly property bool current: String(Selector.value) === String(tile.modelData.value)
+                                readonly property bool lit: Selector.index === tile.index
+                                readonly property bool hasIcon: tile.modelData.icon !== undefined && String(tile.modelData.icon).length > 0
+                                readonly property color ink: tile.current ? Theme.vermLit
+                                                           : (tile.lit ? Theme.cream : Theme.subtle)
+
+                                width: (tileRow.width - root.tileGap * (root.tileCols - 1)) / root.tileCols
+                                height: card.tileH
+                                radius: 13 * root.s
+                                color: "transparent"
+                                border.width: 0
+
+                                /** The glyph on a raised plate over the name — the
+                                 * plate is what makes a tile read as a button and
+                                 * not as an outlined box. An option with no glyph of
+                                 * its own is just its name, set large and centred:
+                                 * a bare "100%" then fills a panel instead of
+                                 * floating in an empty one. */
+                                Item {
+                                    id: tileBody
+
+                                    anchors.centerIn: parent
+                                    width: tile.width - 18 * root.s
+                                    height: (tile.hasIcon ? 46 * root.s + 11 * root.s : 0) + tileLabel.implicitHeight
+
+                                    Rectangle {
+                                        anchors.top: parent.top
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        visible: tile.hasIcon
+                                        width: 46 * root.s
                                         height: width
-                                        name: tile.hasIcon ? tile.modelData.icon : ""
+                                        radius: 14 * root.s
+                                        color: tile.lit ? Qt.alpha(Theme.cream, 0.10) : Theme.frameBg
+                                        border.width: 1
+                                        border.color: tile.lit ? Qt.alpha(Theme.vermLit, 0.30) : Theme.frameBorder
+
+                                        GlyphIcon {
+                                            anchors.centerIn: parent
+                                            width: 26 * root.s
+                                            height: width
+                                            name: tile.hasIcon ? tile.modelData.icon : ""
+                                            color: tile.ink
+                                            stroke: 1.6
+                                        }
+                                    }
+
+                                    Text {
+                                        id: tileLabel
+
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        horizontalAlignment: Text.AlignHCenter
+                                        elide: Text.ElideRight
+                                        text: tile.modelData.label
                                         color: tile.ink
-                                        stroke: 1.6
+                                        font.family: Theme.font
+                                        font.pixelSize: (tile.hasIcon ? 12.5 : 15) * root.s
+                                        font.weight: tile.current ? Font.Bold : (tile.lit ? Font.DemiBold : Font.Medium)
                                     }
                                 }
 
-                                Text {
-                                    id: tileLabel
-
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.bottom: parent.bottom
-                                    horizontalAlignment: Text.AlignHCenter
-                                    elide: Text.ElideRight
-                                    text: tile.modelData.label
-                                    color: tile.ink
-                                    font.family: Theme.font
-                                    font.pixelSize: (tile.hasIcon ? 12.5 : 15) * root.s
-                                    font.weight: tile.current ? Font.Bold : (tile.lit ? Font.DemiBold : Font.Medium)
-                                }
-                            }
-
-                            /** The tick keeps saying *value* while the fill says
-                             * *cursor*, which is the whole reason both can be
-                             * seen at once. */
-                            GlyphIcon {
-                                anchors.top: parent.top
-                                anchors.right: parent.right
-                                anchors.margins: 10 * root.s
-                                visible: tile.current
-                                width: 14 * root.s
-                                height: 14 * root.s
-                                name: "check"
-                                color: Theme.vermLit
-                                stroke: 2.2
-
-                                /** The tick arrives with the card, a beat after
-                                 * the tiles do. */
-                                scale: root.active ? 1 : 0.55
-                                Behavior on scale { NumberAnimation { duration: Motion.pillFast; easing.type: Easing.OutBack } }
-                            }
-
-                            MouseArea {
-                                id: tileHit
-
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: {
-                                    Selector.index = tile.index;
-                                    card.pointAt(tileHit);
-                                }
-                                onPositionChanged: card.pointAt(tileHit)
-                                onClicked: Selector.pick(tile.modelData.value)
-                            }
-
-                            /** A tiny floor shine along the top of the plate: does
-                             * nothing to selection logic, but sells the button
-                             * surface. */
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.left: tile.width < 120 * root.s ? parent.left : tileBody.left
-                                anchors.right: tile.width < 120 * root.s ? parent.right : tileBody.right
-                                anchors.topMargin: 2 * root.s
-                                height: 1
-                                radius: 0.5
-                                opacity: tile.lit ? 0.35 : 0.18
-                                gradient: Gradient {
-                                    orientation: Gradient.Horizontal
-                                    GradientStop { position: 0.0; color: "transparent" }
-                                    GradientStop { position: 0.5; color: Qt.alpha(Theme.cream, 0.18) }
-                                    GradientStop { position: 1.0; color: "transparent" }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                /** An aim mark riding three pixels outside the fill, so the
-                 * travelling highlight has an outline to land in. It reads the
-                 * fill's own animated geometry, so it travels with it. */
-                Rectangle {
-                    visible: tileCursor.target !== null
-                    x: tileCursor.x - 3 * root.s
-                    y: tileCursor.y - 3 * root.s
-                    width: tileCursor.width + 6 * root.s
-                    height: tileCursor.height + 6 * root.s
-                    radius: 16 * root.s
-                    color: "transparent"
-                    border.width: 1
-                    border.color: Qt.alpha(Theme.vermLit, 0.26)
-                }
-            }
-
-            /** A long list: chips wrapping under the card's width cap. The same
-             * travelling fill sits behind them and morphs from one chip to the
-             * next, and the same marks tell cursor and value apart. */
-            Item {
-                id: chipStage
-
-                visible: !root.tiles
-                width: parent.width
-                height: flow.height
-
-                Rectangle {
-                    id: chipCursor
-
-                    readonly property var target: (Selector.index >= 0 && Selector.index < chipRep.count)
-                                                  ? chipRep.itemAt(Selector.index) : null
-
-                    visible: chipCursor.target !== null
-                    x: chipCursor.target ? chipCursor.target.x : 0
-                    y: chipCursor.target ? chipCursor.target.y : 0
-                    width: chipCursor.target ? chipCursor.target.width : 0
-                    height: chipCursor.target ? chipCursor.target.height : 0
-                    radius: height / 2
-                    color: Qt.alpha(Theme.vermLit, 0.16)
-
-                    Behavior on x {
-                        enabled: card.ready
-                        NumberAnimation {
-                            duration: Motion.pillFast
-                            easing.type: Motion.pillEase
-                        }
-                    }
-                    Behavior on y {
-                        enabled: card.ready
-                        NumberAnimation {
-                            duration: Motion.pillFast
-                            easing.type: Motion.pillEase
-                        }
-                    }
-                    Behavior on width {
-                        enabled: card.ready
-                        NumberAnimation {
-                            duration: Motion.pillFast
-                            easing.type: Motion.pillEase
-                        }
-                    }
-                    Behavior on height {
-                        enabled: card.ready
-                        NumberAnimation {
-                            duration: Motion.pillFast
-                            easing.type: Motion.pillEase
-                        }
-                    }
-                }
-
-                Flow {
-                    id: flow
-
-                    width: parent.width
-                    spacing: 8 * root.s
-
-                    Repeater {
-                        id: chipRep
-
-                        model: root.tiles ? [] : Selector.options
-                        onItemAdded: root.optionRev++
-                        onItemRemoved: root.optionRev++
-
-                        Rectangle {
-                            id: chip
-
-                            required property var modelData
-                            required property int index
-
-                            readonly property bool current: String(Selector.value) === String(chip.modelData.value)
-                            readonly property bool lit: Selector.index === chip.index
-                            readonly property bool hasIcon: chip.modelData.icon !== undefined && String(chip.modelData.icon).length > 0
-                            readonly property color ink: chip.current ? Theme.vermLit : (chip.lit ? Theme.cream : Theme.subtle)
-                            readonly property real naturalW: chipRow.implicitWidth + 26 * root.s
-
-                            onNaturalWChanged: root.optionRev++
-                            width: chip.naturalW
-                            height: 32 * root.s
-                            radius: height / 2
-                            color: "transparent"
-                            border.width: 0
-
-                            Row {
-                                id: chipRow
-
-                                anchors.centerIn: parent
-                                spacing: 7 * root.s
-
+                                /** The tick keeps saying *value* while the fill says
+                                 * *cursor*, which is the whole reason both can be
+                                 * seen at once. */
                                 GlyphIcon {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    visible: chip.current
+                                    anchors.top: parent.top
+                                    anchors.right: parent.right
+                                    anchors.margins: 10 * root.s
+                                    visible: tile.current
                                     width: 14 * root.s
                                     height: 14 * root.s
                                     name: "check"
                                     color: Theme.vermLit
                                     stroke: 2.2
+
+                                    /** The tick arrives with the card, a beat after
+                                     * the tiles do. */
                                     scale: root.active ? 1 : 0.55
                                     Behavior on scale { NumberAnimation { duration: Motion.pillFast; easing.type: Easing.OutBack } }
                                 }
 
-                                GlyphIcon {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    visible: chip.hasIcon
-                                    width: 16 * root.s
-                                    height: 16 * root.s
-                                    name: chip.hasIcon ? chip.modelData.icon : ""
-                                    color: chip.ink
-                                    stroke: 1.7
+                                MouseArea {
+                                    id: tileHit
+
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onEntered: {
+                                        Selector.index = tile.index;
+                                        card.pointAt(tileHit);
+                                    }
+                                    onPositionChanged: card.pointAt(tileHit)
+                                    onClicked: Selector.pick(tile.modelData.value)
                                 }
 
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: chip.modelData.label
-                                    color: chip.ink
-                                    font.family: Theme.font
-                                    font.pixelSize: 12.5 * root.s
-                                    font.weight: chip.current ? Font.Bold : (chip.lit ? Font.DemiBold : Font.Medium)
+                                /** A tiny floor shine along the top of the plate: does
+                                 * nothing to selection logic, but sells the button
+                                 * surface. */
+                                Rectangle {
+                                    anchors.top: parent.top
+                                    anchors.left: tile.width < 120 * root.s ? parent.left : tileBody.left
+                                    anchors.right: tile.width < 120 * root.s ? parent.right : tileBody.right
+                                    anchors.topMargin: 2 * root.s
+                                    height: 1
+                                    radius: 0.5
+                                    opacity: tile.lit ? 0.35 : 0.18
+                                    gradient: Gradient {
+                                        orientation: Gradient.Horizontal
+                                        GradientStop { position: 0.0; color: "transparent" }
+                                        GradientStop { position: 0.5; color: Qt.alpha(Theme.cream, 0.18) }
+                                        GradientStop { position: 1.0; color: "transparent" }
+                                    }
                                 }
-                            }
-
-                            MouseArea {
-                                id: chipHit
-
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: {
-                                    Selector.index = chip.index;
-                                    card.pointAt(chipHit);
-                                }
-                                onPositionChanged: card.pointAt(chipHit)
-                                onClicked: Selector.pick(chip.modelData.value)
                             }
                         }
+                    }
+
+                    /** An aim mark riding three pixels outside the fill, so the
+                     * travelling highlight has an outline to land in. It reads the
+                     * fill's own animated geometry, so it travels with it. */
+                    Rectangle {
+                        visible: tileCursor.target !== null
+                        x: tileCursor.x - 3 * root.s
+                        y: tileCursor.y - 3 * root.s
+                        width: tileCursor.width + 6 * root.s
+                        height: tileCursor.height + 6 * root.s
+                        radius: 16 * root.s
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Qt.alpha(Theme.vermLit, 0.26)
+                    }
+                }
+
+                /** Wheel-to-row bridge on the layer-shell overlay, where the
+                 * native handler is unreliable — the same bridge the vertical
+                 * scrollers use. Sits above the tiles and takes no buttons, so
+                 * hover and clicks still reach them. */
+                WheelScroller {
+                    anchors.fill: parent
+                    s: root.s
+                    flick: tileFlick
+                    horizontal: true
+                }
+
+                readonly property real scrollMax: Math.max(0, tileFlick.contentWidth - tileFlick.width)
+                readonly property bool moreLeft: tileFlick.contentX > 0.5
+                readonly property bool moreRight: tileFlick.contentX < scrollMax - 0.5
+
+                /** Page the row and carry the keyboard's line with it, so Enter
+                 * still picks what the eye is on. */
+                function page(dir) {
+                    const n = Selector.options.length;
+                    if (n === 0)
+                        return;
+                    const step = Math.max(1, Math.floor((tileFlick.width + root.tileGap) / (root.tileW + root.tileGap)));
+                    Selector.index = Math.max(0, Math.min(n - 1, Selector.index + dir * step));
+                    reveal();
+                }
+
+                /** The row has more either side: say so with a chevron that is
+                 * also the pointer's next page, since a row that scrolls under a
+                 * card gives no other hint that it does. */
+                Rectangle {
+                    visible: tileStage.moreLeft
+                    x: -9 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24 * root.s
+                    height: width
+                    radius: width / 2
+                    color: Theme.frameBg
+                    border.width: 1
+                    border.color: Theme.frameBorder
+
+                    GlyphIcon {
+                        anchors.centerIn: parent
+                        width: 13 * root.s
+                        height: width
+                        name: "chevron-left"
+                        color: Theme.creamMenu
+                        stroke: 2
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: tileStage.page(-1)
+                    }
+                }
+
+                Rectangle {
+                    visible: tileStage.moreRight
+                    anchors.right: parent.right
+                    anchors.rightMargin: -9 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24 * root.s
+                    height: width
+                    radius: width / 2
+                    color: Theme.frameBg
+                    border.width: 1
+                    border.color: Theme.frameBorder
+
+                    GlyphIcon {
+                        anchors.centerIn: parent
+                        width: 13 * root.s
+                        height: width
+                        name: "chevron-right"
+                        color: Theme.creamMenu
+                        stroke: 2
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: tileStage.page(1)
                     }
                 }
             }
