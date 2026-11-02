@@ -5,20 +5,22 @@ import ".."
 import "../../Singletons"
 
 /**
- * Chaldea "Title": typography leads. The track name is the surface, with a
- * small sleeve thumbnail and the transport stacked at the right edge, a ruler
- * seek under it, and the live status line at the foot. `host` is Media.
+ * Chaldea "Title": typography leads. A small wordmark rule and source picker
+ * sit at the head, the track and artist take the full left half, the cover
+ * holds the right corner, and the transport and live reads share the foot.
+ * Keeping the cover and the transport on opposite ends is what stops the card
+ * from crowding. `host` is Media.
  */
 Item {
     id: titleStyle
 
     property var host: null
     readonly property real s: titleStyle.host ? titleStyle.host.s : 1
-    readonly property real pad: 14 * titleStyle.s
-    readonly property color line: "#34302f"
-    readonly property color red: "#cc1515"
-    readonly property color ink: "#e8e8e8"
-    readonly property color dim: "#a09b96"
+    readonly property real pad: 16 * titleStyle.s
+    readonly property color line: Theme.border
+    readonly property color red: Theme.accent
+    readonly property color ink: Theme.cream
+    readonly property color dim: Theme.subtle
 
     Item {
         id: header
@@ -76,25 +78,53 @@ Item {
     Item {
         id: body
         anchors.top: hairline.bottom
-        anchors.topMargin: 3 * titleStyle.s
+        anchors.topMargin: 5 * titleStyle.s
         anchors.left: parent.left
         anchors.leftMargin: titleStyle.pad
         anchors.right: parent.right
         anchors.rightMargin: titleStyle.pad
-        height: 56 * titleStyle.s
+        anchors.bottom: seek.top
+        anchors.bottomMargin: 7 * titleStyle.s
+
+        MediaArt {
+            id: art
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            width: 58 * titleStyle.s
+            height: 58 * titleStyle.s
+            host: titleStyle.host
+            lineColor: Theme.faint
+        }
+
+        Rectangle {
+            anchors.right: art.right
+            anchors.top: art.top
+            width: 18 * titleStyle.s
+            height: 2 * titleStyle.s
+            color: titleStyle.red
+        }
 
         Column {
             anchors.left: parent.left
             anchors.right: art.left
-            anchors.rightMargin: 8 * titleStyle.s
+            anchors.rightMargin: 24 * titleStyle.s
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 2 * titleStyle.s
+            spacing: 3 * titleStyle.s
+
+            Text {
+                text: "TRK " + (titleStyle.host ? titleStyle.host.trackNo : "--")
+                    + " // " + (titleStyle.host ? titleStyle.host.status : "IDLE")
+                color: titleStyle.red
+                font.family: Theme.fontMono
+                font.pixelSize: 8 * titleStyle.s
+                font.letterSpacing: 0.6
+            }
 
             Marquee {
                 width: parent.width
                 text: titleStyle.host ? titleStyle.host.title : ""
                 color: titleStyle.ink
-                pixelSize: 22 * titleStyle.s
+                pixelSize: 16 * titleStyle.s
                 weight: Font.DemiBold
                 fontFamily: Theme.fontMono
                 active: titleStyle.host ? titleStyle.host.active : false
@@ -110,45 +140,17 @@ Item {
                 visible: text.length > 0
             }
         }
-
-        MediaArt {
-            id: art
-            anchors.right: chips.left
-            anchors.rightMargin: 8 * titleStyle.s
-            anchors.verticalCenter: parent.verticalCenter
-            width: 48 * titleStyle.s
-            height: 48 * titleStyle.s
-            host: titleStyle.host
-        }
-
-        Rectangle {
-            anchors.right: art.right
-            anchors.top: art.top
-            width: 16 * titleStyle.s
-            height: 2 * titleStyle.s
-            color: titleStyle.red
-        }
-
-        MediaTransport {
-            id: chips
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            host: titleStyle.host
-            vertical: true
-            compact: true
-        }
     }
 
     MediaSeek {
         id: seek
-        anchors.top: body.bottom
-        anchors.topMargin: 3 * titleStyle.s
+        anchors.bottom: foot.top
+        anchors.bottomMargin: 10 * titleStyle.s
         anchors.left: parent.left
         anchors.leftMargin: titleStyle.pad
         anchors.right: parent.right
         anchors.rightMargin: titleStyle.pad
         host: titleStyle.host
-        ruler: true
     }
 
     Item {
@@ -159,23 +161,20 @@ Item {
         anchors.leftMargin: titleStyle.pad
         anchors.right: parent.right
         anchors.rightMargin: titleStyle.pad
-        height: 12 * titleStyle.s
+        height: 18 * titleStyle.s
 
-        MediaStatus {
-            width: parent.width
+        MediaTransport {
+            anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             host: titleStyle.host
             compact: true
         }
 
-        Text {
+        MediaStatus {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: "SIDE A"
-            color: "#68605a"
-            font.family: Theme.fontMono
-            font.pixelSize: 8 * titleStyle.s
-            font.letterSpacing: 1
+            host: titleStyle.host
+            compact: true
         }
     }
 }

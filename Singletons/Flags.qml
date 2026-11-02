@@ -102,6 +102,7 @@ Singleton {
     property alias memorySaver: adapter.memorySaver
     property alias unloadSec: adapter.unloadSec
     property alias styleMedia: adapter.styleMedia
+    property alias styleMixer: adapter.styleMixer
 
     //* Right-click walk: the bar opens the collapsed pill, the media surface
     //* and the timer as its three fixed stops, then these two, wrapping back to
@@ -243,6 +244,7 @@ Singleton {
             property int nightLightOnMin: 1260
             property int nightLightOffMin: 450
             property string styleMedia: "default"
+            property string styleMixer: "default"
             //* Drop closed surfaces after their own idle tier instead of holding them in RAM all session.
             property bool memorySaver: true
             //* Wallpaper-tier idle in seconds when memorySaver is on; the other tiers scale off it.

@@ -15,10 +15,10 @@ Item {
     property var host: null
     readonly property real s: matrix.host ? matrix.host.s : 1
     readonly property real pad: 14 * matrix.s
-    readonly property color line: "#34302f"
-    readonly property color red: "#cc1515"
-    readonly property color ink: "#e8e8e8"
-    readonly property color dim: "#a09b96"
+    readonly property color line: Theme.border
+    readonly property color red: Theme.accent
+    readonly property color ink: Theme.cream
+    readonly property color dim: Theme.subtle
 
     Text {
         id: head
@@ -65,15 +65,17 @@ Item {
         anchors.leftMargin: matrix.pad
         anchors.right: parent.right
         anchors.rightMargin: matrix.pad
-        height: 66 * matrix.s
+        anchors.bottom: bottom.top
+        anchors.bottomMargin: 4 * matrix.s
 
         MediaArt {
             id: art
+            anchors.verticalCenter: parent.verticalCenter
             width: 66 * matrix.s
             height: 66 * matrix.s
             host: matrix.host
             matrix: true
-            lineColor: "#4a403c"
+            lineColor: Qt.alpha(Theme.cream, 0.22)
         }
 
         Text {
@@ -81,7 +83,7 @@ Item {
             anchors.bottom: art.bottom
             anchors.bottomMargin: 2 * matrix.s
             text: "GLYPH / " + (matrix.host ? matrix.host.trackNo : "--")
-            color: "#a09b96"
+            color: Theme.subtle
             font.family: Theme.fontMono
             font.pixelSize: 7 * matrix.s
         }
@@ -134,7 +136,7 @@ Item {
             Text {
                 width: parent.width
                 text: matrix.host ? matrix.host.album : ""
-                color: "#68605a"
+                color: Theme.faint
                 elide: Text.ElideRight
                 font.family: Theme.fontMono
                 font.pixelSize: 8.5 * matrix.s

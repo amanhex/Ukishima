@@ -17,10 +17,10 @@ Item {
     readonly property real s: ledger.host ? ledger.host.s : 1
     readonly property real pad: 14 * ledger.s
     readonly property real leftW: 176 * ledger.s
-    readonly property color line: "#34302f"
-    readonly property color red: "#cc1515"
-    readonly property color ink: "#e8e8e8"
-    readonly property color dim: "#a09b96"
+    readonly property color line: Theme.border
+    readonly property color red: Theme.accent
+    readonly property color ink: Theme.cream
+    readonly property color dim: Theme.subtle
 
     Rectangle {
         id: divider
@@ -41,45 +41,54 @@ Item {
         anchors.bottomMargin: ledger.pad
         width: ledger.leftW
 
-        MediaArt {
-            id: art
-            width: 84 * ledger.s
-            height: 84 * ledger.s
-            host: ledger.host
-        }
-
-        Column {
-            anchors.left: art.right
-            anchors.leftMargin: 9 * ledger.s
+        Item {
+            id: record
+            anchors.top: parent.top
+            anchors.bottom: footRule.top
+            anchors.left: parent.left
             anchors.right: parent.right
-            anchors.rightMargin: 4 * ledger.s
-            anchors.verticalCenter: art.verticalCenter
-            spacing: 3 * ledger.s
 
-            Text {
-                text: "NOW SELECTED"
-                color: "#68605a"
-                font.family: Theme.fontMono
-                font.pixelSize: 7.5 * ledger.s
-                font.letterSpacing: 0.5
+            MediaArt {
+                id: art
+                anchors.verticalCenter: parent.verticalCenter
+                width: 84 * ledger.s
+                height: 84 * ledger.s
+                host: ledger.host
             }
 
-            Text {
-                width: parent.width
-                text: ledger.host ? (ledger.host.album.length > 0 ? ledger.host.album : ledger.host.title) : ""
-                color: ledger.ink
-                elide: Text.ElideRight
-                font.family: Theme.fontMono
-                font.pixelSize: 10 * ledger.s
-            }
+            Column {
+                anchors.left: art.right
+                anchors.leftMargin: 9 * ledger.s
+                anchors.right: parent.right
+                anchors.rightMargin: 4 * ledger.s
+                anchors.verticalCenter: art.verticalCenter
+                spacing: 3 * ledger.s
 
-            Text {
-                width: parent.width
-                text: ledger.host ? ledger.host.artist : ""
-                color: ledger.dim
-                elide: Text.ElideRight
-                font.family: Theme.fontMono
-                font.pixelSize: 9 * ledger.s
+                Text {
+                    text: "NOW SELECTED"
+                    color: Theme.faint
+                    font.family: Theme.fontMono
+                    font.pixelSize: 7.5 * ledger.s
+                    font.letterSpacing: 0.5
+                }
+
+                Text {
+                    width: parent.width
+                    text: ledger.host ? (ledger.host.album.length > 0 ? ledger.host.album : ledger.host.title) : ""
+                    color: ledger.ink
+                    elide: Text.ElideRight
+                    font.family: Theme.fontMono
+                    font.pixelSize: 10 * ledger.s
+                }
+
+                Text {
+                    width: parent.width
+                    text: ledger.host ? ledger.host.artist : ""
+                    color: ledger.dim
+                    elide: Text.ElideRight
+                    font.family: Theme.fontMono
+                    font.pixelSize: 9 * ledger.s
+                }
             }
         }
 
@@ -114,7 +123,7 @@ Item {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 text: "TRK " + (ledger.host ? ledger.host.trackNo : "--")
-                color: "#68605a"
+                color: Theme.faint
                 font.family: Theme.fontMono
                 font.pixelSize: 7.5 * ledger.s
             }
@@ -129,7 +138,7 @@ Item {
         anchors.rightMargin: ledger.pad
         anchors.top: parent.top
         anchors.topMargin: ledger.pad
-        spacing: 9 * ledger.s
+        spacing: 16 * ledger.s
 
         Marquee {
             width: parent.width

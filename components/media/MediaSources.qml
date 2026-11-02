@@ -37,7 +37,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: !src.canPick
             text: "SOURCE // " + (src.host ? src.host.serviceLabel : "")
-            color: "#9a948e"
+            color: Theme.dim
             elide: Text.ElideRight
             font.family: Theme.fontMono
             font.pixelSize: 8.5 * src.s
@@ -50,9 +50,9 @@ Item {
             visible: src.canPick
             height: 15 * src.s
             width: Math.min(parent.width, chipRow.implicitWidth + 14 * src.s)
-            color: chipHover.hovered ? "#1a1a1a" : "#0a0a0a"
+            color: chipHover.hovered ? Theme.cardTop : Theme.cardBot
             border.width: 1
-            border.color: "#cc1515"
+            border.color: Theme.accent
 
             Row {
                 id: chipRow
@@ -69,7 +69,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: Math.min(implicitWidth, 54 * src.s)
                     text: src.host ? src.host.serviceLabel : ""
-                    color: "#e8e8e8"
+                    color: Theme.cream
                     elide: Text.ElideRight
                     font.family: Theme.fontMono
                     font.pixelSize: 8.5 * src.s
@@ -79,7 +79,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "▾"
-                    color: "#cc1515"
+                    color: Theme.accent
                     font.family: Theme.fontMono
                     font.pixelSize: 8 * src.s
                 }
@@ -131,9 +131,9 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     height: 18 * src.s
                     width: bubInner.implicitWidth + 12 * src.s
-                    color: bub.isActive ? "#1c0808" : "#0a0a0a"
+                    color: bub.isActive ? Qt.alpha(Theme.accent, 0.10) : Theme.cardBot
                     border.width: 1
-                    border.color: bub.isActive ? "#cc1515" : "#4a403c"
+                    border.color: bub.isActive ? Theme.accent : Qt.alpha(Theme.cream, 0.22)
 
                     Row {
                         id: bubInner
@@ -148,7 +148,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: Players.labelOf(bub.modelData)
-                            color: bub.isActive ? "#e8e8e8" : "#a09b96"
+                            color: bub.isActive ? Theme.cream : Theme.subtle
                             font.family: Theme.fontMono
                             font.pixelSize: 8.5 * src.s
                         }
@@ -170,14 +170,14 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 16 * src.s
                 height: 16 * src.s
-                color: closeArea.containsMouse ? "#1a1a1a" : "transparent"
+                color: closeArea.containsMouse ? Theme.cardTop : "transparent"
                 border.width: 1
-                border.color: "#4a403c"
+                border.color: Qt.alpha(Theme.cream, 0.22)
 
                 Text {
                     anchors.centerIn: parent
                     text: "×"
-                    color: "#a09b96"
+                    color: Theme.subtle
                     font.family: Theme.fontMono
                     font.pixelSize: 9 * src.s
                 }
@@ -207,7 +207,7 @@ Item {
         width: 9 * src.s
         height: 9 * src.s
         radius: width / 2
-        color: "#101010"
+        color: Theme.tileBg
 
         Image {
             anchors.fill: parent

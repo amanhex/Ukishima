@@ -1090,13 +1090,13 @@ PillSurface {
         visible: root.chaldeaStyle
         z: 20
 
-        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: "#cc1515" }
-        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: "#cc1515" }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: "#cc1515" }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: "#cc1515" }
-        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: "#cc1515" }
-        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: "#cc1515" }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: "#cc1515" }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: "#cc1515" }
+        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.accent }
+        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.accent }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.accent }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.accent }
+        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.accent }
+        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.accent }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.accent }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.accent }
     }
 }

@@ -16,10 +16,10 @@ Item {
     property var host: null
     readonly property real s: rail.host ? rail.host.s : 1
     readonly property real pad: 14 * rail.s
-    readonly property color line: "#34302f"
-    readonly property color red: "#cc1515"
-    readonly property color ink: "#e8e8e8"
-    readonly property color dim: "#a09b96"
+    readonly property color line: Theme.border
+    readonly property color red: Theme.accent
+    readonly property color ink: Theme.cream
+    readonly property color dim: Theme.subtle
 
     Text {
         id: head
@@ -66,10 +66,12 @@ Item {
         anchors.leftMargin: rail.pad
         anchors.right: parent.right
         anchors.rightMargin: rail.pad
-        height: 74 * rail.s
+        anchors.bottom: bottom.top
+        anchors.bottomMargin: 8 * rail.s
 
         MediaArt {
             id: art
+            anchors.verticalCenter: parent.verticalCenter
             width: 74 * rail.s
             height: 74 * rail.s
             host: rail.host
@@ -122,8 +124,8 @@ Item {
 
     Item {
         id: bottom
-        anchors.top: body.bottom
-        anchors.topMargin: 10 * rail.s
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: rail.pad
         anchors.left: parent.left
         anchors.leftMargin: rail.pad
         anchors.right: parent.right

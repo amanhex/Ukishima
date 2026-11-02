@@ -15,7 +15,8 @@ SettingsSurface {
     implicitHeight: content.implicitHeight
 
     rows: [
-        { item: mediaStyleRow, kind: "seg", vals: ["default", "rail", "sleeve", "ledger", "matrix", "title"], get: function () { return Flags.styleMedia; }, set: function (v) { Flags.styleMedia = v; } }
+        { item: mediaStyleRow, kind: "seg", vals: ["default", "rail", "sleeve", "ledger", "matrix", "title"], get: function () { return Flags.styleMedia; }, set: function (v) { Flags.styleMedia = v; } },
+        { item: mixerStyleRow, kind: "seg", vals: ["default", "comb", "slats", "stipple", "weave"], get: function () { return Flags.styleMixer; }, set: function (v) { Flags.styleMixer = v; } }
     ]
 
     Column {
@@ -39,7 +40,6 @@ SettingsSurface {
             surface: root
             glyph: "媒"
             name: "Media Player"
-            last: true
 
             Dropdown {
                 id: mediaStyleDrop
@@ -56,6 +56,31 @@ SettingsSurface {
                 onChipClicked: mediaStyleDrop.open = !mediaStyleDrop.open
                 onPicked: (v) => {
                     Flags.styleMedia = v
+                }
+            }
+        }
+
+        SettingsRow {
+            id: mixerStyleRow
+            surface: root
+            glyph: "調"
+            name: "Mixer"
+            last: true
+
+            Dropdown {
+                id: mixerStyleDrop
+                s: root.s
+                options: [
+                    { label: "Default", value: "default" },
+                    { label: "Comb", value: "comb" },
+                    { label: "Slats", value: "slats" },
+                    { label: "Stipple", value: "stipple" },
+                    { label: "Weave", value: "weave" }
+                ]
+                value: Flags.styleMixer
+                onChipClicked: mixerStyleDrop.open = !mixerStyleDrop.open
+                onPicked: (v) => {
+                    Flags.styleMixer = v
                 }
             }
         }

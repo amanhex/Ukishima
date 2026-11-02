@@ -17,14 +17,14 @@ Item {
     id: art
 
     property var host: null
-    property color lineColor: "#34302f"
+    property color lineColor: Theme.border
     property bool matrix: false
     readonly property real s: art.host ? art.host.s : 1
     readonly property bool ready: art.host ? art.host.everReady : false
 
     ClippingRectangle {
         anchors.fill: parent
-        color: "#101010"
+        color: Theme.tileBg
         border.width: 1
         border.color: art.lineColor
 
@@ -65,7 +65,7 @@ Item {
                     required property int index
                     width: 2 * art.s
                     height: 5 * art.s
-                    color: "#cc1515"
+                    color: Theme.accent
 
                     SequentialAnimation on height {
                         running: eq.visible
@@ -82,7 +82,7 @@ Item {
             width: Math.min(18 * art.s, parent.width * 0.4)
             height: width
             name: "music"
-            color: "#54443c"
+            color: Theme.iconDim
             visible: !(art.host && art.host.playing)
         }
     }
@@ -118,16 +118,16 @@ Item {
             const ctx = getContext("2d");
             ctx.reset();
             const size = Math.max(1, Math.floor(Math.min(width, height)));
-            ctx.fillStyle = "#090909";
+            ctx.fillStyle = Theme.hexOf(Theme.cardBot);
             ctx.fillRect(0, 0, width, height);
 
             const src = glyphs.loadedSource;
             if (size < 4 || !src || !isImageLoaded(src) || isImageError(src)) {
                 ctx.textAlign = "center";
-                ctx.fillStyle = "#54443c";
+                ctx.fillStyle = Theme.hexOf(Theme.iconDim);
                 ctx.font = Math.max(9, size * 0.3) + "px monospace";
                 ctx.fillText(art.host ? art.host.trackNo : "--", size / 2, size * 0.55);
-                ctx.fillStyle = "#7a6f68";
+                ctx.fillStyle = Theme.hexOf(Theme.faint);
                 ctx.font = Math.max(5, size * 0.08) + "px monospace";
                 ctx.fillText("NO COVER ART", size / 2, size * 0.7);
                 return;
@@ -135,7 +135,7 @@ Item {
 
             ctx.drawImage(src, 0, 0, size, size);
             const pixels = ctx.getImageData(0, 0, size, size);
-            ctx.fillStyle = "#090909";
+            ctx.fillStyle = Theme.hexOf(Theme.cardBot);
             ctx.fillRect(0, 0, width, height);
             ctx.font = Math.max(3, (size / 32) * 0.9) + "px monospace";
             ctx.textAlign = "center";
@@ -151,7 +151,7 @@ Item {
                     const b = pixels.data[p + 2];
                     const tone = Math.min(1, Math.max(0, ((r * 0.3 + g * 0.59 + b * 0.11) / 255 - 0.025) / 0.47));
                     const k = Math.min(8, Math.floor(Math.pow(tone, 0.65) * 8));
-                    ctx.fillStyle = (r > g * 1.45 && r > 65) ? "#e13a2c" : Qt.rgba(0.91, 0.91, 0.88, 0.22 + Math.sqrt(tone) * 0.72);
+                    ctx.fillStyle = (r > g * 1.45 && r > 65) ? Theme.hexOf(Theme.vermLit) : Theme.rgba(Theme.cream, 0.22 + Math.sqrt(tone) * 0.72);
                     ctx.fillText(glyphSet[k], x, y);
                 }
             }

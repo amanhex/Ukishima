@@ -15,10 +15,10 @@ Item {
     property var host: null
     readonly property real s: sleeve.host ? sleeve.host.s : 1
     readonly property real pad: 14 * sleeve.s
-    readonly property color line: "#34302f"
-    readonly property color red: "#cc1515"
-    readonly property color ink: "#e8e8e8"
-    readonly property color dim: "#a09b96"
+    readonly property color line: Theme.border
+    readonly property color red: Theme.accent
+    readonly property color ink: Theme.cream
+    readonly property color dim: Theme.subtle
 
     /** Spine. */
     Rectangle {
@@ -86,22 +86,24 @@ Item {
         Item {
             id: body
             anchors.top: header.bottom
-            anchors.topMargin: 4 * sleeve.s
+            anchors.topMargin: 10 * sleeve.s
             anchors.left: parent.left
             anchors.right: parent.right
-            height: 64 * sleeve.s
+            anchors.bottom: seek.top
+            anchors.bottomMargin: 10 * sleeve.s
 
             MediaArt {
                 id: art
+                anchors.verticalCenter: parent.verticalCenter
                 width: 64 * sleeve.s
                 height: 64 * sleeve.s
                 host: sleeve.host
-                lineColor: "#69605b"
+                lineColor: Theme.faint
             }
 
             Rectangle {
                 x: art.width - 22 * sleeve.s
-                y: 0
+                y: art.y
                 width: 22 * sleeve.s
                 height: 3 * sleeve.s
                 color: sleeve.red
@@ -145,8 +147,8 @@ Item {
 
         MediaSeek {
             id: seek
-            anchors.top: body.bottom
-            anchors.topMargin: 4 * sleeve.s
+            anchors.bottom: bottom.top
+            anchors.bottomMargin: 10 * sleeve.s
             anchors.left: parent.left
             anchors.right: parent.right
             host: sleeve.host
@@ -154,11 +156,10 @@ Item {
 
         Item {
             id: bottom
-            anchors.top: seek.bottom
-            anchors.topMargin: 4 * sleeve.s
+            anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.bottom: parent.bottom
+            height: 18 * sleeve.s
 
             MediaTransport {
                 id: chips

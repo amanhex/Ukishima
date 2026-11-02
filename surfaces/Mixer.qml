@@ -14,6 +14,16 @@ import "../components"
 PillSurface {
     id: root
 
+    /**
+     * Mixer fader style, chosen on the Surface Styles page: "default" is the
+     * filament fader; the rest borrow the Chaldea slider tracks — "comb",
+     * "slats", "stipple", "weave".
+     */
+    readonly property string style: ["comb", "slats", "stipple", "weave"].indexOf(Flags.styleMixer) >= 0 ? Flags.styleMixer : "default"
+    readonly property bool styled: root.style !== "default"
+    /** Slats and weave lay the channels out as horizontal rows. */
+    readonly property bool horizontalStyle: root.style === "slats" || root.style === "weave"
+
     mTop: 13
     mLeft: 14
     mRight: 14
@@ -111,7 +121,9 @@ PillSurface {
      */
     readonly property int hoverIndex: surfaceHovered && width > 0 && faders.length > 0
         && hoverTracker.point.position.y >= faderRow.y
-        ? Math.max(0, Math.min(faders.length - 1, Math.floor(hoverTracker.point.position.x / (width / faders.length))))
+        ? Math.max(0, Math.min(faders.length - 1, Math.floor(root.horizontalStyle
+            ? (hoverTracker.point.position.y - faderRow.y) / Math.max(1, faderRow.height) * faders.length
+            : hoverTracker.point.position.x / (width / faders.length))))
         : -1
     onHoverIndexChanged: if (hoverIndex >= 0 && !keyLatch.running) focusIndex = hoverIndex
 
@@ -205,19 +217,19 @@ PillSurface {
         property string tipDesc: ""
         signal toggled()
 
-        width: 26 * root.s
-        height: 26 * root.s
-        radius: 8 * root.s
-        color: chip.on ? Theme.frameBg : "transparent"
+        width: (root.styled ? 22 : 26) * root.s
+        height: (root.styled ? 22 : 26) * root.s
+        radius: root.styled ? 0 : 8 * root.s
+        color: chip.on ? (root.styled ? Qt.alpha(Theme.accent, 0.18) : Theme.frameBg) : "transparent"
         border.width: 1
-        border.color: chip.on ? Theme.frameBorder : Theme.border
+        border.color: chip.on ? (root.styled ? Theme.accent : Theme.frameBorder) : (root.styled ? Qt.alpha(Theme.cream, 0.22) : Theme.border)
 
         GlyphIcon {
             anchors.centerIn: parent
-            width: 15 * root.s
-            height: 15 * root.s
+            width: (root.styled ? 12 : 15) * root.s
+            height: (root.styled ? 12 : 15) * root.s
             name: chip.glyph
-            color: chip.on ? Theme.vermLit : Theme.iconDim
+            color: root.styled ? (chip.on ? Theme.accent : Theme.subtle) : (chip.on ? Theme.vermLit : Theme.iconDim)
             stroke: 1.7
         }
         HoverHandler {
@@ -250,21 +262,24 @@ PillSurface {
         property string tip: ""
         signal toggled()
 
-        width: 26 * root.s
-        height: 26 * root.s
-        radius: 8 * root.s
-        color: dchip.open ? Qt.alpha(Theme.onGlow, 0.14)
-            : (dchipHover.hovered ? Theme.frameBg : "transparent")
+        width: (root.styled ? 22 : 26) * root.s
+        height: (root.styled ? 22 : 26) * root.s
+        radius: root.styled ? 0 : 8 * root.s
+        color: root.styled
+            ? (dchip.open ? Qt.alpha(Theme.accent, 0.18) : (dchipHover.hovered ? Theme.cardTop : "transparent"))
+            : (dchip.open ? Qt.alpha(Theme.onGlow, 0.14) : (dchipHover.hovered ? Theme.frameBg : "transparent"))
         border.width: 1
-        border.color: dchip.open ? Qt.alpha(Theme.onGlow, 0.5) : Theme.border
+        border.color: root.styled
+            ? (dchip.open ? Theme.accent : Qt.alpha(Theme.cream, 0.22))
+            : (dchip.open ? Qt.alpha(Theme.onGlow, 0.5) : Theme.border)
         Behavior on color { ColorAnimation { duration: Motion.fast } }
 
         GlyphIcon {
             anchors.centerIn: parent
-            width: 15 * root.s
-            height: 15 * root.s
+            width: (root.styled ? 12 : 15) * root.s
+            height: (root.styled ? 12 : 15) * root.s
             name: dchip.glyph
-            color: dchip.open ? Theme.vermLit : Theme.iconDim
+            color: root.styled ? (dchip.open ? Theme.accent : Theme.subtle) : (dchip.open ? Theme.vermLit : Theme.iconDim)
             stroke: 1.7
         }
         HoverHandler {
@@ -284,6 +299,10 @@ PillSurface {
         }
     }
 
+    /**
+     * Header: wordmark on the left, device and toggle chips on the right. Each
+     * design names itself here; the fader field below carries its identity.
+     */
     Item {
         id: header
         z: 5
@@ -296,24 +315,26 @@ PillSurface {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8 * root.s
+
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: Flags.showGlyphs
+                visible: Flags.showGlyphs || root.styled
                 text: "調"
-                color: Theme.cream
+                color: root.styled ? Theme.accent : Theme.cream
                 font.family: Theme.fontJp
                 font.weight: Theme.fontJpWeight
-                font.pixelSize: 16 * root.s
+                font.pixelSize: (root.styled ? 13 : 16) * root.s
             }
+
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "MIXER"
-                color: Theme.subtle
-                font.family: Theme.font
-                font.pixelSize: 10 * root.s
-                font.weight: Font.DemiBold
+                text: root.styled ? "MIX // " + root.style.toUpperCase() : "MIXER"
+                color: root.styled ? Theme.subtle : Theme.subtle
+                font.family: root.styled ? Theme.fontMono : Theme.font
+                font.pixelSize: (root.styled ? 9 : 10) * root.s
+                font.weight: root.styled ? Font.Normal : Font.DemiBold
                 font.capitalization: Font.AllUppercase
-                font.letterSpacing: 1.6 * root.s
+                font.letterSpacing: (root.styled ? 1 : 1.6) * root.s
             }
         }
 
@@ -365,7 +386,7 @@ PillSurface {
         anchors.left: parent.left
         anchors.right: parent.right
         height: 1
-        color: Theme.hair
+        color: root.styled ? Theme.border : Theme.hair
     }
 
     /**
@@ -417,13 +438,14 @@ PillSurface {
             anchors.right: parent.right
             height: Math.min(menu.model.length * 24 * root.s + 4 * root.s, 150 * root.s)
             clip: true
-            radius: 9 * root.s
+            radius: root.styled ? 0 : 9 * root.s
+            color: Theme.cardBot
             gradient: Gradient {
-                GradientStop { position: 0.0; color: Theme.cardTop }
+                GradientStop { position: 0.0; color: root.styled ? Theme.tileBg : Theme.cardTop }
                 GradientStop { position: 1.0; color: Theme.cardBot }
             }
             border.width: 1
-            border.color: Theme.frameBorder
+            border.color: root.styled ? Theme.border : Theme.frameBorder
 
             ListView {
                 anchors.fill: parent
@@ -439,9 +461,10 @@ PillSurface {
 
                     width: ListView.view.width
                     height: 24 * root.s
-                    radius: 7 * root.s
-                    color: devRowHover.hovered ? Theme.frameBg
-                        : (devRow.current ? Qt.alpha(Theme.onGlow, 0.16) : "transparent")
+                    radius: root.styled ? 0 : 7 * root.s
+                    color: root.styled
+                        ? (devRowHover.hovered ? Theme.cardTop : (devRow.current ? Qt.alpha(Theme.accent, 0.16) : "transparent"))
+                        : (devRowHover.hovered ? Theme.frameBg : (devRow.current ? Qt.alpha(Theme.onGlow, 0.16) : "transparent"))
 
                     HoverHandler { id: devRowHover }
 
@@ -453,10 +476,12 @@ PillSurface {
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.deviceLabel(devRow.modelData)
                         elide: Text.ElideRight
-                        color: devRow.current ? Theme.cream : Theme.subtle
-                        font.family: Theme.font
-                        font.pixelSize: 10.5 * root.s
-                        font.weight: devRow.current ? Font.Bold : Font.Medium
+                        color: root.styled
+                            ? (devRow.current ? Theme.cream : Theme.subtle)
+                            : (devRow.current ? Theme.cream : Theme.subtle)
+                        font.family: root.styled ? Theme.fontMono : Theme.font
+                        font.pixelSize: (root.styled ? 9 : 10.5) * root.s
+                        font.weight: root.styled ? Font.Normal : (devRow.current ? Font.Bold : Font.Medium)
                     }
 
                     MouseArea {
@@ -486,16 +511,94 @@ PillSurface {
         onPick: (node) => Pipewire.preferredDefaultAudioSource = node
     }
 
-    Row {
+    /**
+     * Per-design fader field, drawn behind the faders. Comb gets chart rules,
+     * stipple dotted column separators; the horizontal designs get full-width
+     * rows — slats a rule per channel, weave alternating bands — plus a red
+     * focus bar on the active row.
+     */
+    Item {
+        id: field
+        visible: root.styled
+        anchors.top: divider.bottom
+        anchors.topMargin: 10 * root.s
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 142 * root.s
+
+        readonly property real colW: width / Math.max(1, root.faderCount)
+        readonly property real rowH: height / Math.max(1, root.faderCount)
+
+        // comb: the header divider is the field's only rule, so the top and the
+        // foot stay open rather than framing the faders twice.
+
+        // stipple: dotted column separators
+        Repeater {
+            model: root.style === "stipple" ? Math.max(0, root.faderCount - 1) : 0
+
+            Item {
+                required property int index
+                x: (index + 1) * field.colW - 1 * root.s
+                width: 2 * root.s
+                height: field.height
+                clip: true
+
+                Repeater {
+                    model: Math.ceil(field.height / (6 * root.s))
+                    Rectangle {
+                        y: index * 6 * root.s
+                        width: 2 * root.s
+                        height: 2 * root.s
+                        radius: 1 * root.s
+                        color: Qt.alpha(Theme.cream, 0.22)
+                    }
+                }
+            }
+        }
+
+        // slats / weave: channel rows
+        Repeater {
+            model: root.horizontalStyle ? root.faderCount : 0
+
+            Item {
+                required property int index
+                y: index * field.rowH
+                width: field.width
+                height: field.rowH
+
+                Rectangle {
+                    anchors.fill: parent
+                    visible: root.style === "weave" && index % 2 === 1
+                    color: Qt.alpha(Theme.cream, 0.03)
+                }
+
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 1
+                    color: Theme.hair
+                }
+
+                Rectangle {
+                    visible: index === root.focusIndex
+                    width: 3 * root.s
+                    height: parent.height
+                    color: Theme.accent
+                }
+            }
+        }
+    }
+
+    Item {
         id: faderRow
         anchors.top: divider.bottom
         anchors.topMargin: 10 * root.s
         anchors.left: parent.left
         anchors.right: parent.right
         height: 142 * root.s
-        spacing: 0
 
         readonly property real colW: width / Math.max(1, root.faderCount)
+        readonly property real rowH: height / Math.max(1, root.faderCount)
 
         Repeater {
             id: brRep
@@ -510,8 +613,15 @@ PillSurface {
                 property int pct: 75
                 property real pendingPct: -1
 
-                width: faderRow.colW
+                x: root.horizontalStyle ? 0 : index * faderRow.colW
+                y: root.horizontalStyle ? index * faderRow.rowH : 0
+                width: root.horizontalStyle ? faderRow.width : faderRow.colW
                 s: root.s
+                pattern: root.styled ? root.style : ""
+                horizontal: root.horizontalStyle
+                mirror: root.style === "weave"
+                readoutAbove: root.style === "stipple"
+                bigReadout: root.style === "stipple"
                 icon: "sun"
                 subLabel: modelData.label
                 subPersistent: true
@@ -552,11 +662,19 @@ PillSurface {
             id: blLoader
             active: Devices.backlightPresent
             visible: active
-            width: active ? faderRow.colW : 0
+            x: root.horizontalStyle ? 0 : brRep.count * faderRow.colW
+            y: root.horizontalStyle ? brRep.count * faderRow.rowH : 0
+            width: active ? (root.horizontalStyle ? faderRow.width : faderRow.colW) : 0
 
             sourceComponent: VFader {
-                width: faderRow.colW
+                width: root.horizontalStyle ? faderRow.width : faderRow.colW
+                height: root.horizontalStyle ? faderRow.rowH : implicitHeight
                 s: root.s
+                horizontal: root.horizontalStyle
+                mirror: root.style === "weave"
+                readoutAbove: root.style === "stipple"
+                bigReadout: root.style === "stipple"
+                pattern: root.styled ? root.style : ""
                 icon: "sun"
                 subLabel: "Built-in"
                 subPersistent: true
@@ -570,11 +688,19 @@ PillSurface {
 
         VFader {
             id: vibFader
-            width: faderRow.colW
+            x: root.horizontalStyle ? 0 : (root.faderCount - 3) * faderRow.colW
+            y: root.horizontalStyle ? (root.faderCount - 3) * faderRow.rowH : 0
+            width: root.horizontalStyle ? faderRow.width : faderRow.colW
+            height: root.horizontalStyle ? faderRow.rowH : implicitHeight
             s: root.s
+            pattern: root.styled ? root.style : ""
+            horizontal: root.horizontalStyle
+            mirror: root.style === "weave"
+            readoutAbove: root.style === "stipple"
+            bigReadout: root.style === "stipple"
             icon: "monitor"
             subLabel: "Vibrance"
-            subPersistent: false
+            subPersistent: true
             focused: root.focusIndex === root.faderCount - 3
             value: Devices.vibrance / 100
             valueLabel: Devices.vibrance + "%"
@@ -583,11 +709,19 @@ PillSurface {
         }
         VFader {
             id: volFader
-            width: faderRow.colW
+            x: root.horizontalStyle ? 0 : (root.faderCount - 2) * faderRow.colW
+            y: root.horizontalStyle ? (root.faderCount - 2) * faderRow.rowH : 0
+            width: root.horizontalStyle ? faderRow.width : faderRow.colW
+            height: root.horizontalStyle ? faderRow.rowH : implicitHeight
             s: root.s
+            pattern: root.styled ? root.style : ""
+            horizontal: root.horizontalStyle
+            mirror: root.style === "weave"
+            readoutAbove: root.style === "stipple"
+            bigReadout: root.style === "stipple"
             icon: (root.sink && root.sink.audio && root.sink.audio.muted) ? "speaker-off" : "speaker"
             subLabel: "Volume"
-            subPersistent: false
+            subPersistent: true
             focused: root.focusIndex === root.faderCount - 2
             value: root.sink && root.sink.audio ? root.sink.audio.volume : 0
             valueLabel: Math.round((root.sink && root.sink.audio ? root.sink.audio.volume : 0) * 100) + "%"
@@ -596,11 +730,19 @@ PillSurface {
         }
         VFader {
             id: micFader
-            width: faderRow.colW
+            x: root.horizontalStyle ? 0 : (root.faderCount - 1) * faderRow.colW
+            y: root.horizontalStyle ? (root.faderCount - 1) * faderRow.rowH : 0
+            width: root.horizontalStyle ? faderRow.width : faderRow.colW
+            height: root.horizontalStyle ? faderRow.rowH : implicitHeight
             s: root.s
+            pattern: root.styled ? root.style : ""
+            horizontal: root.horizontalStyle
+            mirror: root.style === "weave"
+            readoutAbove: root.style === "stipple"
+            bigReadout: root.style === "stipple"
             icon: (root.source && root.source.audio && root.source.audio.muted) ? "mic-off" : "mic"
             subLabel: "Microphone"
-            subPersistent: false
+            subPersistent: true
             focused: root.focusIndex === root.faderCount - 1
             value: root.source && root.source.audio ? root.source.audio.volume : 0
             valueLabel: (root.source && root.source.audio && root.source.audio.muted)
@@ -608,9 +750,11 @@ PillSurface {
                 : (Math.round((root.source && root.source.audio ? root.source.audio.volume : 0) * 100) + "%")
             muted: root.source && root.source.audio ? root.source.audio.muted : false
             onMoved: (v) => { if (root.source && root.source.audio) root.source.audio.volume = v; }
+            onIconClicked: { if (root.source && root.source.audio) root.source.audio.muted = !root.source.audio.muted; }
 
             MouseArea {
                 id: micMute
+                visible: !root.horizontalStyle
                 anchors.bottom: parent.bottom
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 24 * root.s
@@ -619,6 +763,31 @@ PillSurface {
                 onClicked: { if (root.source && root.source.audio) root.source.audio.muted = !root.source.audio.muted; }
             }
         }
+    }
+
+    /**
+     * Chaldea chassis ticks, 10*s in from the card edge. This item sits inside
+     * the PillSurface margins, so the offsets cancel those insets to line up
+     * with the media card's ticks.
+     */
+    Item {
+        anchors.fill: parent
+        visible: root.styled
+        z: 20
+
+        readonly property real xl: (10 - root.mLeft) * root.s
+        readonly property real yt: (10 - root.mTop) * root.s
+        readonly property real xr: (10 - root.mRight) * root.s
+        readonly property real yb: (10 - root.mBottom) * root.s
+
+        Rectangle { x: parent.xl; y: parent.yt; width: 4 * root.s; height: 1; color: Theme.accent }
+        Rectangle { x: parent.xl; y: parent.yt; width: 1; height: 4 * root.s; color: Theme.accent }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; y: parent.yt; width: 4 * root.s; height: 1; color: Theme.accent }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; y: parent.yt; width: 1; height: 4 * root.s; color: Theme.accent }
+        Rectangle { x: parent.xl; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 4 * root.s; height: 1; color: Theme.accent }
+        Rectangle { x: parent.xl; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 1; height: 4 * root.s; color: Theme.accent }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 4 * root.s; height: 1; color: Theme.accent }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 1; height: 4 * root.s; color: Theme.accent }
     }
 
     MouseArea {

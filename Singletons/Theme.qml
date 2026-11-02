@@ -80,6 +80,16 @@ Singleton {
     }
 
     /**
+     * CSS `rgba()` string for Canvas fills/strokes. A QML colour serializes to
+     * #aarrggbb, which Canvas misreads, so the patterned tracks take this
+     * string form and inherit the accent/text overrides like every other token.
+     */
+    function rgba(c, a) {
+        function ch(x) { return Math.round(Math.max(0, Math.min(1, x)) * 255); }
+        return "rgba(" + ch(c.r) + "," + ch(c.g) + "," + ch(c.b) + "," + a + ")";
+    }
+
+    /**
      * The same conversion, uppercased, for the places that show a hex to the
      * user or write one into a flag: the accent, theme and font-colour editors
      * all display one and all store it uppercased.

@@ -361,7 +361,7 @@ Item {
     readonly property real powerH: 150 * s
     readonly property bool chaldeaMedia: ["rail", "sleeve", "ledger", "matrix", "title"].indexOf(Flags.styleMedia) >= 0
     readonly property real mediaW: (pill.chaldeaMedia ? 520 : 470) * s
-    readonly property real mediaH: (pill.chaldeaMedia ? 152 : 132) * s
+    readonly property real mediaH: (pill.chaldeaMedia ? 168 : 132) * s
     readonly property real batteryW: 316 * s
     readonly property real wifiW: 272 * s
     readonly property real btW: 286 * s

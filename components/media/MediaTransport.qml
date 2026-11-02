@@ -35,9 +35,9 @@ GridLayout {
 
         implicitWidth: Math.max((transport.compact ? 22 : 28) * transport.s, chipLabel.implicitWidth + 10 * transport.s)
         implicitHeight: (transport.compact ? 15 : 18) * transport.s
-        color: chip.active ? "#cc1515" : (chip.hovered ? "#161616" : "#0a0a0a")
+        color: chip.active ? Theme.accent : (chip.hovered ? Theme.cardTop : Theme.cardBot)
         border.width: 1
-        border.color: chip.primary ? "#cc1515" : "#4a403c"
+        border.color: chip.primary ? Theme.accent : Qt.alpha(Theme.cream, 0.22)
         opacity: chip.can ? 1 : 0.35
 
         Behavior on color { ColorAnimation { duration: Motion.fast } }
@@ -46,7 +46,7 @@ GridLayout {
             id: chipLabel
             anchors.centerIn: parent
             text: chip.label
-            color: "#e8e8e8"
+            color: Theme.cream
             font.family: Flags.showGlyphs && chip.label.length === 1 ? Theme.fontJp : Theme.fontMono
             font.pixelSize: (transport.compact ? 8 : 9) * transport.s
             font.weight: chip.active ? Font.Bold : Font.Normal

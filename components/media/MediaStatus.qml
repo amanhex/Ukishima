@@ -34,7 +34,7 @@ Item {
             width: 11 * status.s
             height: 11 * status.s
             name: "wifi"
-            color: "#8b8580"
+            color: Theme.faint
         }
 
         Text {
@@ -42,7 +42,7 @@ Item {
             text: status.host && status.host.netOk
                 ? "↓ " + status.host.fmtNet(status.host.netDown) + "  ↑ " + status.host.fmtNet(status.host.netUp)
                 : "OFFLINE"
-            color: status.host && status.host.netOk ? "#bdb7b0" : "#8b8580"
+            color: status.host && status.host.netOk ? Theme.subtle : Theme.faint
             font.family: Theme.fontMono
             font.pixelSize: 10 * status.s
             font.features: { "tnum": 1 }
@@ -61,14 +61,14 @@ Item {
             width: 11 * status.s
             height: 11 * status.s
             name: status.host && status.host.btName.length > 0 ? status.host.btGlyph : "bluetooth"
-            color: status.host && status.host.btName.length > 0 ? "#bdb7b0" : "#8b8580"
+            color: status.host && status.host.btName.length > 0 ? Theme.subtle : Theme.faint
         }
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
             width: Math.min(implicitWidth, (status.compact ? 62 : 88) * status.s)
             text: status.host && status.host.btName.length > 0 ? status.host.btName : "BT"
-            color: status.host && status.host.btName.length > 0 ? "#bdb7b0" : "#8b8580"
+            color: status.host && status.host.btName.length > 0 ? Theme.subtle : Theme.faint
             elide: Text.ElideRight
             font.family: Theme.fontMono
             font.pixelSize: 10 * status.s
@@ -78,7 +78,7 @@ Item {
             visible: status.host && status.host.btBat >= 0
             anchors.verticalCenter: parent.verticalCenter
             text: status.host ? status.host.btBat + "%" : ""
-            color: status.host ? status.host.btBatColor : "#a09b96"
+            color: status.host ? status.host.btBatColor : Theme.subtle
             font.family: Theme.fontMono
             font.pixelSize: 10 * status.s
             font.features: { "tnum": 1 }
@@ -96,7 +96,7 @@ Item {
             id: expandLabel
             anchors.centerIn: parent
             text: "EXPAND"
-            color: expandArea.containsMouse ? "#cc1515" : "#9a948e"
+            color: expandArea.containsMouse ? Theme.accent : Theme.dim
             font.family: Theme.fontMono
             font.pixelSize: 10 * status.s
             font.letterSpacing: 0.5

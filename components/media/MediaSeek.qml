@@ -41,7 +41,7 @@ Item {
                 required property int index
                 width: 1
                 height: (index % 5 === 0 ? 5 : 3) * seek.s
-                color: "#68605a"
+                color: Theme.faint
             }
         }
     }
@@ -60,7 +60,7 @@ Item {
             text: Fmt.fmtDuration(seek.host
                 ? (seek.host.dragging ? seek.host.dragFrac * seek.host.lengthSec : seek.host.positionSec)
                 : 0)
-            color: "#a09b96"
+            color: Theme.subtle
             font.family: Theme.fontMono
             font.pixelSize: 8.5 * seek.s
             font.features: { "tnum": 1 }
@@ -77,10 +77,10 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                color: loopArea.containsMouse ? "#1a1a1a" : "transparent"
+                color: loopArea.containsMouse ? Theme.cardTop : "transparent"
                 border.width: 1
                 border.color: seek.host && !seek.host.loopNone
-                    ? (seek.host.loopNone ? "transparent" : "#cc1515")
+                    ? (seek.host.loopNone ? "transparent" : Theme.accent)
                     : "transparent"
             }
 
@@ -88,7 +88,7 @@ Item {
                 visible: Flags.showGlyphs
                 anchors.centerIn: parent
                 text: "循"
-                color: seek.host && seek.host.loopNone ? "#68605a" : "#cc1515"
+                color: seek.host && seek.host.loopNone ? Theme.faint : Theme.accent
                 font.family: Theme.fontJp
                 font.pixelSize: 10 * seek.s
             }
@@ -99,7 +99,7 @@ Item {
                 width: 10 * seek.s
                 height: 10 * seek.s
                 name: "refresh"
-                color: seek.host && seek.host.loopNone ? "#68605a" : "#cc1515"
+                color: seek.host && seek.host.loopNone ? Theme.faint : Theme.accent
             }
 
             Rectangle {
@@ -110,7 +110,7 @@ Item {
                 anchors.rightMargin: -1 * seek.s
                 width: 3 * seek.s
                 height: 3 * seek.s
-                color: "#cc1515"
+                color: Theme.accent
             }
 
             MouseArea {
@@ -130,7 +130,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: seek.host && seek.host.live ? "LIVE"
                 : (seek.host && seek.host.lengthSec > 0 ? Fmt.fmtDuration(seek.host.lengthSec) : "--:--")
-            color: "#a09b96"
+            color: Theme.subtle
             font.family: Theme.fontMono
             font.pixelSize: 8.5 * seek.s
             font.features: { "tnum": 1 }
@@ -153,14 +153,14 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width
                 height: 2 * seek.s
-                color: "#403a36"
+                color: Qt.alpha(Theme.cream, 0.18)
             }
 
             Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width * parent.progress
                 height: 2 * seek.s
-                color: "#cc1515"
+                color: Theme.accent
             }
 
             Rectangle {
@@ -168,7 +168,7 @@ Item {
                 x: Math.max(0, Math.min(parent.width - width, (parent.width - width) * parent.progress))
                 width: 2 * seek.s
                 height: 9 * seek.s
-                color: seek.canSeek ? "#e8e8e8" : "#68605a"
+                color: seek.canSeek ? Theme.cream : Theme.faint
             }
 
             MouseArea {
