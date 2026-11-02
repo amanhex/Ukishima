@@ -148,7 +148,8 @@ Item {
     readonly property bool lockSettingsOpen: surface === "locksettings"
     readonly property bool updateOpen: surface === "update"
     readonly property bool profileOpen: surface === "profile"
-    readonly property bool settingsLike: appearanceOpen || appcatOpen || displayOpen || modulesOpen || themeOpen || accentOpen || glassOpen || fontColorOpen || interfaceOpen || rightClickOpen || fontpickerOpen || lockSettingsOpen || updateOpen || profileOpen
+    readonly property bool surfacestylesOpen: surface === "surfacestyles"
+    readonly property bool settingsLike: appearanceOpen || appcatOpen || displayOpen || modulesOpen || themeOpen || accentOpen || glassOpen || fontColorOpen || interfaceOpen || rightClickOpen || fontpickerOpen || lockSettingsOpen || updateOpen || profileOpen || surfacestylesOpen
     readonly property bool hasMedia: Players.list.length > 0
 
     readonly property var netDevices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
@@ -358,8 +359,9 @@ Item {
     readonly property real wallpaperH: 172 * s
     readonly property real powerW: 330 * s
     readonly property real powerH: 150 * s
-    readonly property real mediaW: 470 * s
-    readonly property real mediaH: 132 * s
+    readonly property bool chaldeaMedia: ["rail", "sleeve", "ledger", "matrix", "title"].indexOf(Flags.styleMedia) >= 0
+    readonly property real mediaW: (pill.chaldeaMedia ? 520 : 470) * s
+    readonly property real mediaH: (pill.chaldeaMedia ? 152 : 132) * s
     readonly property real batteryW: 316 * s
     readonly property real wifiW: 272 * s
     readonly property real btW: 286 * s
@@ -433,6 +435,7 @@ Item {
         sysmon:    { size: () => Qt.size(sysmonW, surfaceItem("sysmon").implicitHeight + 33 * s), ame: () => surfaceItem("sysmon") },
         appearance: { size: () => Qt.size(settingsW, surfaceItem("appearance").implicitHeight + 29 * s), ame: () => surfaceItem("appearance") },
         appcat:     { size: () => Qt.size(settingsW, surfaceItem("appcat").implicitHeight + 29 * s), ame: () => surfaceItem("appcat") },
+        surfacestyles: { size: () => Qt.size(settingsW, surfaceItem("surfacestyles").implicitHeight + 29 * s), ame: () => surfaceItem("surfacestyles") },
         display:    { size: () => Qt.size(settingsW, surfaceItem("display").implicitHeight + 29 * s), ame: () => surfaceItem("display") },
         modules:    { size: () => Qt.size(settingsW, surfaceItem("modules").implicitHeight + 29 * s), ame: () => surfaceItem("modules") },
         theme:      { size: () => Qt.size(settingsW, surfaceItem("theme").implicitHeight + 29 * s), ame: () => surfaceItem("theme") },
@@ -485,7 +488,8 @@ Item {
         fontpicker: () => ldFontpicker,
         update:     () => ldUpdate,
         profile:   () => ldProfile,
-        locksettings: () => ldLock
+        locksettings: () => ldLock,
+        surfacestyles: () => ldStyles
     })
 
     /**
@@ -676,6 +680,8 @@ Item {
             return ldFontpicker.item;
         if (pill.profileOpen)
             return ldProfile.item;
+        if (pill.surfacestylesOpen)
+            return ldStyles.item;
         return null;
     }
 
@@ -3208,6 +3214,19 @@ sourceComponent: Media {
         sourceComponent: FontPicker {
             s: pill.s * pill.settingsScale
             open: pill.fontpickerOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+            onRequestSurface: (name) => pill.requestSurface(name)
+        }
+    }
+
+    Loader {
+        id: ldStyles
+        active: false
+        anchors.fill: parent
+        sourceComponent: SurfaceStyles {
+            s: pill.s * pill.settingsScale
+            open: pill.surfacestylesOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
             onRequestSurface: (name) => pill.requestSurface(name)

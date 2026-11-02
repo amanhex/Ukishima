@@ -169,7 +169,7 @@ Singleton {
      * the usual suspects to the generic `monospace` family, which Qt always
      * resolves, so this is never empty.
      */
-    readonly property var monoFamilies: ["JetBrains Mono", "Iosevka", "Berkeley Mono", "Fira Code", "Cascadia Code", "DejaVu Sans Mono"]
+    readonly property var monoFamilies: ["JetBrains Mono", "JetBrainsMono NF", "JetBrainsMono Nerd Font", "Iosevka", "Berkeley Mono", "Fira Code", "Cascadia Code", "DejaVu Sans Mono"]
     readonly property string fontMono: {
         for (let i = 0; i < monoFamilies.length; i++) {
             if (fontFamilies.indexOf(monoFamilies[i]) >= 0)

@@ -40,3 +40,4 @@ WeatherSurface WeatherSurface.qml
 WifiSurface WifiSurface.qml
 Scratchpad Scratchpad.qml
 StopSelector StopSelector.qml
+SurfaceStyles SurfaceStyles.qml

@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Widgets
 import "../Singletons"
 import "../components"
+import "../components/media"
 import "../lib/format.js" as Fmt
 
 /**
@@ -22,6 +23,34 @@ import "../lib/format.js" as Fmt
  */
 PillSurface {
     id: root
+
+    /**
+     * Surface design, chosen on the Surface Styles page: "default" is the
+     * pill's own card; the rest are Chaldea-inspired layouts — "rail",
+     * "sleeve", "ledger", "matrix", "title".
+     */
+    readonly property string style: {
+        var v = Flags.styleMedia;
+        return ["rail", "sleeve", "ledger", "matrix", "title"].indexOf(v) >= 0 ? v : "default";
+    }
+    readonly property bool chaldeaStyle: root.style !== "default"
+
+    /** xesam track number for the Chaldea readouts, zero-padded or "--". */
+    readonly property string trackNo: {
+        if (!root.hasPlayer || !root.player.metadata)
+            return "--";
+        var n = Number(root.player.metadata["xesam:trackNumber"]);
+        if (!isFinite(n) || n <= 0)
+            return "--";
+        return n < 10 ? "0" + n : String(n);
+    }
+
+    /** Playback state word for the Chaldea headers. */
+    readonly property string status: !root.hasPlayer
+        ? "IDLE"
+        : root.playing
+            ? "PLAYING"
+            : (root.player.playbackState === MprisPlaybackState.Stopped ? "STOPPED" : "PAUSED");
 
     /** Squared top corners when the pill is in strip mode; 0 = rounded everywhere. */
     property real topFlat: 0
@@ -426,6 +455,7 @@ PillSurface {
         anchors.verticalCenter: parent.verticalCenter
         width: root.artSize
         height: root.artSize
+        visible: !root.chaldeaStyle
 
         ClippingRectangle {
             anchors.fill: parent
@@ -507,6 +537,7 @@ PillSurface {
         anchors.verticalCenter: parent.verticalCenter
         width: root.railW
         height: infoCol.height
+        visible: !root.chaldeaStyle
 
         Column {
             id: infoCol
@@ -576,6 +607,7 @@ PillSurface {
         anchors.leftMargin: root.textX
         width: root.textColW
         spacing: 3 * root.s
+        visible: !root.chaldeaStyle
 
         /** Source line: plain service, or the glowing picker bubble when several players run. */
         Item {
@@ -1029,5 +1061,42 @@ PillSurface {
                 onActivated: if (root.player) root.player.next()
             }
         }
+    }
+
+    /** ------------------------------------------------------------------
+     * Chaldea surface styles: one design component, selected on the
+     * Surface Styles page. The pill's own card above stays the "default".
+     * ------------------------------------------------------------------ */
+    Loader {
+        anchors.fill: parent
+        active: root.chaldeaStyle
+        sourceComponent: root.style === "rail" ? railDesign
+            : root.style === "sleeve" ? sleeveDesign
+            : root.style === "ledger" ? ledgerDesign
+            : root.style === "matrix" ? matrixDesign
+            : root.style === "title" ? titleDesign
+            : null
+    }
+
+    Component { id: railDesign; MediaRail { host: root } }
+    Component { id: sleeveDesign; MediaSleeve { host: root } }
+    Component { id: ledgerDesign; MediaLedger { host: root } }
+    Component { id: matrixDesign; MediaMatrix { host: root } }
+    Component { id: titleDesign; MediaTitle { host: root } }
+
+    /** Chaldea chassis ticks: four red alignment marks inset from the corners. */
+    Item {
+        anchors.fill: parent
+        visible: root.chaldeaStyle
+        z: 20
+
+        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: "#cc1515" }
+        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: "#cc1515" }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: "#cc1515" }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: "#cc1515" }
+        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: "#cc1515" }
+        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: "#cc1515" }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: "#cc1515" }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: "#cc1515" }
     }
 }

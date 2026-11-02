@@ -14,6 +14,7 @@ Item {
     property color color: Theme.cream
     property real pixelSize: 14
     property int weight: Font.Normal
+    property string fontFamily: Theme.font
     property bool active: true
 
     property real scrollX: 0
@@ -30,7 +31,7 @@ Item {
         text: root.text
         color: root.color
         renderType: Text.NativeRendering
-        font.family: Theme.font
+        font.family: root.fontFamily
         font.pixelSize: root.pixelSize
         font.weight: root.weight
         elide: root.overflowing ? Text.ElideNone : Text.ElideRight
