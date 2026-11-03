@@ -24,10 +24,11 @@ PillSurface {
     /** Slats and weave lay the channels out as horizontal rows. */
     readonly property bool horizontalStyle: root.style === "slats" || root.style === "weave"
 
-    mTop: 13
-    mLeft: 14
-    mRight: 14
-    mBottom: 12
+    /** Chaldea designs sit on a flat 16*s inset, matching the media and sysmon layouts. */
+    mTop: root.styled ? 16 : 13
+    mLeft: root.styled ? 16 : 14
+    mRight: root.styled ? 16 : 14
+    mBottom: root.styled ? 16 : 12
 
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var source: Pipewire.defaultAudioSource
@@ -220,16 +221,16 @@ PillSurface {
         width: (root.styled ? 22 : 26) * root.s
         height: (root.styled ? 22 : 26) * root.s
         radius: root.styled ? 0 : 8 * root.s
-        color: chip.on ? (root.styled ? Qt.alpha(Theme.accent, 0.18) : Theme.frameBg) : "transparent"
+        color: chip.on ? (root.styled ? Qt.alpha(Theme.vermLit, 0.18) : Theme.frameBg) : "transparent"
         border.width: 1
-        border.color: chip.on ? (root.styled ? Theme.accent : Theme.frameBorder) : (root.styled ? Qt.alpha(Theme.cream, 0.22) : Theme.border)
+        border.color: chip.on ? (root.styled ? Theme.vermLit : Theme.frameBorder) : (root.styled ? Qt.alpha(Theme.cream, 0.22) : Theme.border)
 
         GlyphIcon {
             anchors.centerIn: parent
             width: (root.styled ? 12 : 15) * root.s
             height: (root.styled ? 12 : 15) * root.s
             name: chip.glyph
-            color: root.styled ? (chip.on ? Theme.accent : Theme.subtle) : (chip.on ? Theme.vermLit : Theme.iconDim)
+            color: root.styled ? (chip.on ? Theme.vermLit : Theme.subtle) : (chip.on ? Theme.vermLit : Theme.iconDim)
             stroke: 1.7
         }
         HoverHandler {
@@ -266,11 +267,11 @@ PillSurface {
         height: (root.styled ? 22 : 26) * root.s
         radius: root.styled ? 0 : 8 * root.s
         color: root.styled
-            ? (dchip.open ? Qt.alpha(Theme.accent, 0.18) : (dchipHover.hovered ? Theme.cardTop : "transparent"))
+            ? (dchip.open ? Qt.alpha(Theme.vermLit, 0.18) : (dchipHover.hovered ? Theme.cardTop : "transparent"))
             : (dchip.open ? Qt.alpha(Theme.onGlow, 0.14) : (dchipHover.hovered ? Theme.frameBg : "transparent"))
         border.width: 1
         border.color: root.styled
-            ? (dchip.open ? Theme.accent : Qt.alpha(Theme.cream, 0.22))
+            ? (dchip.open ? Theme.vermLit : Qt.alpha(Theme.cream, 0.22))
             : (dchip.open ? Qt.alpha(Theme.onGlow, 0.5) : Theme.border)
         Behavior on color { ColorAnimation { duration: Motion.fast } }
 
@@ -279,7 +280,7 @@ PillSurface {
             width: (root.styled ? 12 : 15) * root.s
             height: (root.styled ? 12 : 15) * root.s
             name: dchip.glyph
-            color: root.styled ? (dchip.open ? Theme.accent : Theme.subtle) : (dchip.open ? Theme.vermLit : Theme.iconDim)
+            color: root.styled ? (dchip.open ? Theme.vermLit : Theme.subtle) : (dchip.open ? Theme.vermLit : Theme.iconDim)
             stroke: 1.7
         }
         HoverHandler {
@@ -320,7 +321,7 @@ PillSurface {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: Flags.showGlyphs || root.styled
                 text: "調"
-                color: root.styled ? Theme.accent : Theme.cream
+                color: root.styled ? Theme.vermLit : Theme.cream
                 font.family: Theme.fontJp
                 font.weight: Theme.fontJpWeight
                 font.pixelSize: (root.styled ? 13 : 16) * root.s
@@ -463,7 +464,7 @@ PillSurface {
                     height: 24 * root.s
                     radius: root.styled ? 0 : 7 * root.s
                     color: root.styled
-                        ? (devRowHover.hovered ? Theme.cardTop : (devRow.current ? Qt.alpha(Theme.accent, 0.16) : "transparent"))
+                        ? (devRowHover.hovered ? Theme.cardTop : (devRow.current ? Qt.alpha(Theme.vermLit, 0.16) : "transparent"))
                         : (devRowHover.hovered ? Theme.frameBg : (devRow.current ? Qt.alpha(Theme.onGlow, 0.16) : "transparent"))
 
                     HoverHandler { id: devRowHover }
@@ -583,7 +584,7 @@ PillSurface {
                     visible: index === root.focusIndex
                     width: 3 * root.s
                     height: parent.height
-                    color: Theme.accent
+                    color: Theme.vermLit
                 }
             }
         }
@@ -780,14 +781,14 @@ PillSurface {
         readonly property real xr: (10 - root.mRight) * root.s
         readonly property real yb: (10 - root.mBottom) * root.s
 
-        Rectangle { x: parent.xl; y: parent.yt; width: 4 * root.s; height: 1; color: Theme.accent }
-        Rectangle { x: parent.xl; y: parent.yt; width: 1; height: 4 * root.s; color: Theme.accent }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; y: parent.yt; width: 4 * root.s; height: 1; color: Theme.accent }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; y: parent.yt; width: 1; height: 4 * root.s; color: Theme.accent }
-        Rectangle { x: parent.xl; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 4 * root.s; height: 1; color: Theme.accent }
-        Rectangle { x: parent.xl; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 1; height: 4 * root.s; color: Theme.accent }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 4 * root.s; height: 1; color: Theme.accent }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 1; height: 4 * root.s; color: Theme.accent }
+        Rectangle { x: parent.xl; y: parent.yt; width: 4 * root.s; height: 1; color: Theme.vermLit }
+        Rectangle { x: parent.xl; y: parent.yt; width: 1; height: 4 * root.s; color: Theme.vermLit }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; y: parent.yt; width: 4 * root.s; height: 1; color: Theme.vermLit }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; y: parent.yt; width: 1; height: 4 * root.s; color: Theme.vermLit }
+        Rectangle { x: parent.xl; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 4 * root.s; height: 1; color: Theme.vermLit }
+        Rectangle { x: parent.xl; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 1; height: 4 * root.s; color: Theme.vermLit }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 4 * root.s; height: 1; color: Theme.vermLit }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: parent.xr; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.yb; width: 1; height: 4 * root.s; color: Theme.vermLit }
     }
 
     MouseArea {

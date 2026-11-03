@@ -17,6 +17,13 @@ export MALLOC_CONF="background_thread:true,retain:false,dirty_decay_ms:100,muzzy
 # matters). No input breaks, so the whole category goes. Appended so it wins
 # over pre-set rules.
 export QT_LOGGING_RULES="${QT_LOGGING_RULES:+$QT_LOGGING_RULES;}qt.qpa.wayland.textinput=false"
+# qt.qpa.wayland.input logs "Unexpected GestureStarted while already active"
+# when the compositor begins a touchpad gesture (pinch/swipe/hold) while Qt
+# still has one booked active — a begin arriving without the matching end, so
+# Qt drops the duplicate and no input breaks. Same deal as the text-input line
+# above: pure QPA bookkeeping, nothing our QML can prevent, so the category is
+# muted too. Re-enable when actually debugging pointer or gesture input.
+export QT_LOGGING_RULES="${QT_LOGGING_RULES:+$QT_LOGGING_RULES;}qt.qpa.wayland.input=false"
 # QtMultimedia's FFmpeg log silencing and the QT_FFMPEG_*_HW_DEVICE_TYPES=vaapi
 # exports that used to live here are gone: they existed only to quiet the strip's
 # video preview, and nothing in the shell touches QtMultimedia any more (it is

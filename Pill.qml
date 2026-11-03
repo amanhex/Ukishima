@@ -347,7 +347,8 @@ Item {
     readonly property real hoverPad: 20 * s
     readonly property real hoverW: hoverRow.implicitWidth + 2 * hoverPad
     readonly property real hoverH: 58 * s
-    readonly property real mixerH: 214 * s
+    /** Chaldea mixer layouts carry a flat 16*s inset, so their card gets 8*s more height at the foot. */
+    readonly property real mixerH: (["comb", "slats", "stipple", "weave"].indexOf(Flags.styleMixer) >= 0 ? 222 : 214) * s
     readonly property real launcherW: 360 * s
     readonly property real launcherH: 332 * s
     readonly property real clipboardW: 360 * s

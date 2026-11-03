@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell.Io
 import "../Singletons"
 import "../components"
+import "../components/sysmon"
 
 /**
  * 系 SYSTEM surface: a flat washi card of live machine vitals fed by the Sysmon
@@ -20,12 +21,23 @@ import "../components"
 PillSurface {
     id: root
 
-    mTop: 14
+    mTop: root.chaldeaStyle ? 16 : 14
     mLeft: 16
     mRight: 16
     mBottom: 16
 
-    implicitHeight: content.implicitHeight
+    implicitHeight: root.chaldeaStyle ? designLoader.height : content.implicitHeight
+
+    /**
+     * Surface design, chosen on the Surface Styles page: "default" is the
+     * pill's own dials; the rest are Chaldea-inspired layouts — "rail",
+     * "ledger", "matrix", "title".
+     */
+    readonly property string style: {
+        var v = Flags.styleSysmon;
+        return ["rail", "ledger", "matrix", "title"].indexOf(v) >= 0 ? v : "default";
+    }
+    readonly property bool chaldeaStyle: root.style !== "default"
 
     readonly property var dialKeys: Sysmon.hasGpu ? ["cpu", "gpu", "mem"] : ["cpu", "mem"]
     readonly property var cellKeys: Sysmon.hasVram ? ["net", "disk", "swap", "vram"] : ["net", "disk", "swap"]
@@ -168,6 +180,8 @@ PillSurface {
     readonly property point soulPoint: {
         void root.width;
         void root.height;
+        if (root.chaldeaStyle && designLoader.item && designLoader.item.soulPoint)
+            return designLoader.item.mapToItem(root, designLoader.item.soulPoint.x, designLoader.item.soulPoint.y);
         if (Flags.showGlyphs)
             return kanji.mapToItem(root, kanji.width / 2, -3 * root.s);
         return sysLabel.mapToItem(root, -8 * root.s, sysLabel.height / 2);
@@ -298,6 +312,7 @@ PillSurface {
         anchors.top: parent.top
         anchors.left: parent.left
         width: parent.width
+        visible: !root.chaldeaStyle
         spacing: 0
 
         Item {
@@ -615,4 +630,27 @@ PillSurface {
             }
         }
     }
+
+    /** ------------------------------------------------------------------
+     * Chaldea surface styles: one design component, selected on the
+     * Surface Styles page. The pill's own dials above stay the "default".
+     * ------------------------------------------------------------------ */
+    Loader {
+        id: designLoader
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: item ? item.implicitHeight : 0
+        active: root.chaldeaStyle
+        sourceComponent: root.style === "rail" ? railDesign
+            : root.style === "ledger" ? ledgerDesign
+            : root.style === "matrix" ? matrixDesign
+            : root.style === "title" ? titleDesign
+            : null
+    }
+
+    Component { id: railDesign; SysmonRail { host: root } }
+    Component { id: ledgerDesign; SysmonLedger { host: root } }
+    Component { id: matrixDesign; SysmonMatrix { host: root } }
+    Component { id: titleDesign; SysmonTitle { host: root } }
 }

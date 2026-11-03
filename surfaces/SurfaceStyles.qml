@@ -16,7 +16,8 @@ SettingsSurface {
 
     rows: [
         { item: mediaStyleRow, kind: "seg", vals: ["default", "rail", "sleeve", "ledger", "matrix", "title"], get: function () { return Flags.styleMedia; }, set: function (v) { Flags.styleMedia = v; } },
-        { item: mixerStyleRow, kind: "seg", vals: ["default", "comb", "slats", "stipple", "weave"], get: function () { return Flags.styleMixer; }, set: function (v) { Flags.styleMixer = v; } }
+        { item: mixerStyleRow, kind: "seg", vals: ["default", "comb", "slats", "stipple", "weave"], get: function () { return Flags.styleMixer; }, set: function (v) { Flags.styleMixer = v; } },
+        { item: sysmonStyleRow, kind: "seg", vals: ["default", "rail", "ledger", "matrix", "title"], get: function () { return Flags.styleSysmon; }, set: function (v) { Flags.styleSysmon = v; } }
     ]
 
     Column {
@@ -65,7 +66,6 @@ SettingsSurface {
             surface: root
             glyph: "調"
             name: "Mixer"
-            last: true
 
             Dropdown {
                 id: mixerStyleDrop
@@ -81,6 +81,31 @@ SettingsSurface {
                 onChipClicked: mixerStyleDrop.open = !mixerStyleDrop.open
                 onPicked: (v) => {
                     Flags.styleMixer = v
+                }
+            }
+        }
+
+        SettingsRow {
+            id: sysmonStyleRow
+            surface: root
+            glyph: "系"
+            name: "System Monitor"
+            last: true
+
+            Dropdown {
+                id: sysmonStyleDrop
+                s: root.s
+                options: [
+                    { label: "Default", value: "default" },
+                    { label: "Rail", value: "rail" },
+                    { label: "Ledger", value: "ledger" },
+                    { label: "Matrix", value: "matrix" },
+                    { label: "Title", value: "title" }
+                ]
+                value: Flags.styleSysmon
+                onChipClicked: sysmonStyleDrop.open = !sysmonStyleDrop.open
+                onPicked: (v) => {
+                    Flags.styleSysmon = v
                 }
             }
         }

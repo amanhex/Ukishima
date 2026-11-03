@@ -80,7 +80,7 @@ Item {
                 color: loopArea.containsMouse ? Theme.cardTop : "transparent"
                 border.width: 1
                 border.color: seek.host && !seek.host.loopNone
-                    ? (seek.host.loopNone ? "transparent" : Theme.accent)
+                    ? (seek.host.loopNone ? "transparent" : Theme.vermLit)
                     : "transparent"
             }
 
@@ -88,7 +88,7 @@ Item {
                 visible: Flags.showGlyphs
                 anchors.centerIn: parent
                 text: "循"
-                color: seek.host && seek.host.loopNone ? Theme.faint : Theme.accent
+                color: seek.host && seek.host.loopNone ? Theme.faint : Theme.vermLit
                 font.family: Theme.fontJp
                 font.pixelSize: 10 * seek.s
             }
@@ -99,7 +99,7 @@ Item {
                 width: 10 * seek.s
                 height: 10 * seek.s
                 name: "refresh"
-                color: seek.host && seek.host.loopNone ? Theme.faint : Theme.accent
+                color: seek.host && seek.host.loopNone ? Theme.faint : Theme.vermLit
             }
 
             Rectangle {
@@ -110,7 +110,7 @@ Item {
                 anchors.rightMargin: -1 * seek.s
                 width: 3 * seek.s
                 height: 3 * seek.s
-                color: Theme.accent
+                color: Theme.vermLit
             }
 
             MouseArea {
@@ -160,7 +160,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width * parent.progress
                 height: 2 * seek.s
-                color: Theme.accent
+                color: Theme.vermLit
             }
 
             Rectangle {

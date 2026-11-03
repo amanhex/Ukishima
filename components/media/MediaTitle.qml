@@ -18,7 +18,7 @@ Item {
     readonly property real s: titleStyle.host ? titleStyle.host.s : 1
     readonly property real pad: 16 * titleStyle.s
     readonly property color line: Theme.border
-    readonly property color red: Theme.accent
+    readonly property color red: Theme.vermLit
     readonly property color ink: Theme.cream
     readonly property color dim: Theme.subtle
 

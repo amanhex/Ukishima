@@ -475,7 +475,11 @@ PillSurface {
                 anchors.fill: parent
                 source: root.coverSource
                 sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
-                fillMode: Image.PreserveAspectCrop
+                /** Whole cover when close to square; only extreme art is cropped. */
+                readonly property real coverAspect: (implicitWidth > 0 && implicitHeight > 0)
+                    ? implicitWidth / implicitHeight : 1
+                fillMode: (coverAspect > 2 || coverAspect < 0.5)
+                    ? Image.PreserveAspectCrop : Image.PreserveAspectFit
                 asynchronous: true
                 retainWhileLoading: true
                 cache: String(source).indexOf("file:") !== 0
@@ -1090,13 +1094,13 @@ PillSurface {
         visible: root.chaldeaStyle
         z: 20
 
-        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.accent }
-        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.accent }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.accent }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.accent }
-        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.accent }
-        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.accent }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.accent }
-        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.accent }
+        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.vermLit }
+        Rectangle { x: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.vermLit }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.vermLit }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; y: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.vermLit }
+        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.vermLit }
+        Rectangle { x: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.vermLit }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 4 * root.s; height: 1; color: Theme.vermLit }
+        Rectangle { anchors.right: parent.right; anchors.rightMargin: 10 * root.s; anchors.bottom: parent.bottom; anchors.bottomMargin: 10 * root.s; width: 1; height: 4 * root.s; color: Theme.vermLit }
     }
 }

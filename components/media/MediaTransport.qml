@@ -35,9 +35,9 @@ GridLayout {
 
         implicitWidth: Math.max((transport.compact ? 22 : 28) * transport.s, chipLabel.implicitWidth + 10 * transport.s)
         implicitHeight: (transport.compact ? 15 : 18) * transport.s
-        color: chip.active ? Theme.accent : (chip.hovered ? Theme.cardTop : Theme.cardBot)
+        color: chip.active ? Theme.vermLit : (chip.hovered ? Theme.cardTop : Theme.cardBot)
         border.width: 1
-        border.color: chip.primary ? Theme.accent : Qt.alpha(Theme.cream, 0.22)
+        border.color: chip.primary ? Theme.vermLit : Qt.alpha(Theme.cream, 0.22)
         opacity: chip.can ? 1 : 0.35
 
         Behavior on color { ColorAnimation { duration: Motion.fast } }

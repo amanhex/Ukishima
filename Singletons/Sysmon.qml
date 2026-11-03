@@ -49,6 +49,54 @@ Singleton {
     property int diskPct: 0
     property string uptime: ""
 
+    /**
+     * Which dials and stat cells this machine should show. Exposed here so the
+     * default surface and every Chaldea-style design read the same list, and a
+     * GPU-less machine drops the same items in all of them.
+     */
+    readonly property var dialKeys: hasGpu ? ["cpu", "gpu", "mem"] : ["cpu", "mem"]
+    readonly property var cellKeys: hasVram ? ["net", "disk", "swap", "vram"] : ["net", "disk", "swap"]
+
+    /** Dial formatting shared by the designs (CPU/GPU percent, memory GB). */
+    function dialValue(key) {
+        return key === "cpu" ? cpu : key === "gpu" ? gpu : memPct;
+    }
+    function dialBig(key) {
+        return key === "mem" ? memUsedGb.toFixed(1) : "" + dialValue(key);
+    }
+    function dialUnit(key) {
+        return key === "mem" ? "" : "%";
+    }
+    function dialSub(key) {
+        if (key === "cpu")
+            return cpuTemp >= 0 ? cpuTemp + "°" : "";
+        if (key === "gpu")
+            return gpuTemp >= 0 ? gpuTemp + "°" : "";
+        return "/ " + memTotalGb.toFixed(0) + " GB";
+    }
+
+    /** Stat-cell formatting shared by the designs. */
+    function statLabel(key) {
+        return key === "net" ? "Net · MB/s"
+            : key === "disk" ? "Disk · %"
+            : key === "swap" ? "Swap · GB"
+            : "VRAM · GB";
+    }
+    function statValue(key) {
+        return key === "disk" ? "" + diskPct
+            : key === "swap" ? swapUsedGb.toFixed(1)
+            : vramUsedGb.toFixed(1) + " / " + vramTotalGb.toFixed(0);
+    }
+    /** Percentage for a stat's bar, or -1 when the source has no usable total. */
+    function statPct(key) {
+        if (key === "disk")
+            return diskPct;
+        if (key === "vram")
+            return hasVram && vramTotalGb > 0 ? Math.round(100 * vramUsedGb / vramTotalGb) : -1;
+        return -1;
+    }
+
+
     property string tempPath: ""
 
     property real prevCpuTotal: 0

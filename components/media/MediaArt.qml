@@ -22,6 +22,18 @@ Item {
     readonly property real s: art.host ? art.host.s : 1
     readonly property bool ready: art.host ? art.host.everReady : false
 
+    /**
+     * Cover fit: show the whole image with letterboxing while its aspect stays
+     * reasonably close to the square frame (anything up to 2:1 either way).
+     * Only art far outside that — banners, tall posters — is cropped to fill,
+     * because fitting it would leave the frame mostly empty. Tune the 2 / 0.5
+     * pair if the banding ever feels too tight or too loose.
+     */
+    readonly property real coverAspect: (cover.implicitWidth > 0 && cover.implicitHeight > 0)
+        ? cover.implicitWidth / cover.implicitHeight : 1
+    readonly property int coverFillMode: (coverAspect > 2 || coverAspect < 0.5)
+        ? Image.PreserveAspectCrop : Image.PreserveAspectFit
+
     ClippingRectangle {
         anchors.fill: parent
         color: Theme.tileBg
@@ -29,11 +41,12 @@ Item {
         border.color: art.lineColor
 
         Image {
+            id: cover
             anchors.fill: parent
             visible: !art.matrix
             source: art.host ? art.host.coverSource : ""
             sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
-            fillMode: Image.PreserveAspectCrop
+            fillMode: art.coverFillMode
             asynchronous: true
             retainWhileLoading: true
             cache: String(source).indexOf("file:") !== 0
@@ -65,7 +78,7 @@ Item {
                     required property int index
                     width: 2 * art.s
                     height: 5 * art.s
-                    color: Theme.accent
+                    color: Theme.vermLit
 
                     SequentialAnimation on height {
                         running: eq.visible

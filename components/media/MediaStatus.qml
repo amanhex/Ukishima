@@ -96,7 +96,7 @@ Item {
             id: expandLabel
             anchors.centerIn: parent
             text: "EXPAND"
-            color: expandArea.containsMouse ? Theme.accent : Theme.dim
+            color: expandArea.containsMouse ? Theme.vermLit : Theme.dim
             font.family: Theme.fontMono
             font.pixelSize: 10 * status.s
             font.letterSpacing: 0.5

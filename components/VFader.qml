@@ -171,30 +171,30 @@ Item {
                     }
 
                     if (root.pattern === "comb") {
-                        ctx.fillStyle = Theme.rgba(Theme.accent, 0.45);
+                        ctx.fillStyle = Theme.rgba(Theme.vermLit, 0.45);
                         for (let y = 0; y < fillTop; y += 7 * root.s)
                             ctx.fillRect(0, y, w, 2 * root.s);
-                        ctx.fillStyle = Theme.hexOf(Theme.accent);
+                        ctx.fillStyle = Theme.hexOf(Theme.vermLit);
                         ctx.fillRect(0, fillTop, w, h - fillTop);
                     } else if (root.pattern === "slats") {
                         slats(Theme.rgba(Theme.cream, 0.30), 2 * root.s);
                         ctx.save();
                         ctx.beginPath(); ctx.rect(0, fillTop, w, h - fillTop); ctx.clip();
                         ctx.fillStyle = Theme.hexOf(Theme.cardBot); ctx.fillRect(0, fillTop, w, h - fillTop);
-                        slats(Theme.hexOf(Theme.accent), 4 * root.s);
+                        slats(Theme.hexOf(Theme.vermLit), 4 * root.s);
                         ctx.restore();
                     } else if (root.pattern === "stipple") {
-                        ctx.fillStyle = Theme.rgba(Theme.accent, 0.5);
+                        ctx.fillStyle = Theme.rgba(Theme.vermLit, 0.5);
                         for (let x = 2 * root.s; x < w; x += 5 * root.s)
                             for (let y = 2 * root.s; y < fillTop; y += 5 * root.s) {
                                 ctx.beginPath();
                                 ctx.arc(x, y, 1 * root.s, 0, 7);
                                 ctx.fill();
                             }
-                        ctx.fillStyle = Theme.hexOf(Theme.accent);
+                        ctx.fillStyle = Theme.hexOf(Theme.vermLit);
                         ctx.fillRect(0, fillTop, w, h - fillTop);
                     } else {
-                        ctx.strokeStyle = Theme.rgba(Theme.accent, 0.6);
+                        ctx.strokeStyle = Theme.rgba(Theme.vermLit, 0.6);
                         ctx.lineWidth = 0.7 * root.s;
                         ctx.beginPath();
                         for (let x = 2.5 * root.s; x < w; x += 5 * root.s) {
@@ -204,7 +204,7 @@ Item {
                             ctx.moveTo(0, y); ctx.lineTo(w, y);
                         }
                         ctx.stroke();
-                        ctx.fillStyle = Theme.hexOf(Theme.accent);
+                        ctx.fillStyle = Theme.hexOf(Theme.vermLit);
                         ctx.fillRect(0, fillTop, w, h - fillTop);
                     }
                 }
@@ -415,10 +415,10 @@ Item {
                         ctx.save();
                         ctx.beginPath(); ctx.rect(0, 0, fillX, h); ctx.clip();
                         ctx.fillStyle = Theme.hexOf(Theme.cardBot); ctx.fillRect(0, 0, fillX, h);
-                        slats(Theme.hexOf(Theme.accent), 4 * root.s);
+                        slats(Theme.hexOf(Theme.vermLit), 4 * root.s);
                         ctx.restore();
                     } else {
-                        ctx.strokeStyle = Theme.rgba(Theme.accent, 0.6);
+                        ctx.strokeStyle = Theme.rgba(Theme.vermLit, 0.6);
                         ctx.lineWidth = 0.7 * root.s;
                         ctx.beginPath();
                         for (let x = 2.5 * root.s; x < w; x += 5 * root.s) {
@@ -428,7 +428,7 @@ Item {
                             ctx.moveTo(0, y); ctx.lineTo(w, y);
                         }
                         ctx.stroke();
-                        ctx.fillStyle = Theme.hexOf(Theme.accent);
+                        ctx.fillStyle = Theme.hexOf(Theme.vermLit);
                         ctx.fillRect(0, 0, fillX, h);
                     }
                 }

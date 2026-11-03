@@ -52,7 +52,7 @@ Item {
             width: Math.min(parent.width, chipRow.implicitWidth + 14 * src.s)
             color: chipHover.hovered ? Theme.cardTop : Theme.cardBot
             border.width: 1
-            border.color: Theme.accent
+            border.color: Theme.vermLit
 
             Row {
                 id: chipRow
@@ -79,7 +79,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "▾"
-                    color: Theme.accent
+                    color: Theme.vermLit
                     font.family: Theme.fontMono
                     font.pixelSize: 8 * src.s
                 }
@@ -131,9 +131,9 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     height: 18 * src.s
                     width: bubInner.implicitWidth + 12 * src.s
-                    color: bub.isActive ? Qt.alpha(Theme.accent, 0.10) : Theme.cardBot
+                    color: bub.isActive ? Qt.alpha(Theme.vermLit, 0.10) : Theme.cardBot
                     border.width: 1
-                    border.color: bub.isActive ? Theme.accent : Qt.alpha(Theme.cream, 0.22)
+                    border.color: bub.isActive ? Theme.vermLit : Qt.alpha(Theme.cream, 0.22)
 
                     Row {
                         id: bubInner
