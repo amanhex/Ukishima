@@ -104,6 +104,7 @@ Singleton {
     property alias styleMedia: adapter.styleMedia
     property alias styleMixer: adapter.styleMixer
     property alias styleSysmon: adapter.styleSysmon
+    property alias styleScratch: adapter.styleScratch
 
     //* Right-click walk: the bar opens the collapsed pill, the media surface
     //* and the timer as its three fixed stops, then these two, wrapping back to
@@ -247,6 +248,7 @@ Singleton {
             property string styleMedia: "default"
             property string styleMixer: "default"
             property string styleSysmon: "default"
+            property string styleScratch: "default"
             //* Drop closed surfaces after their own idle tier instead of holding them in RAM all session.
             property bool memorySaver: true
             //* Wallpaper-tier idle in seconds when memorySaver is on; the other tiers scale off it.

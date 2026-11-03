@@ -17,7 +17,8 @@ SettingsSurface {
     rows: [
         { item: mediaStyleRow, kind: "seg", vals: ["default", "rail", "sleeve", "ledger", "matrix", "title"], get: function () { return Flags.styleMedia; }, set: function (v) { Flags.styleMedia = v; } },
         { item: mixerStyleRow, kind: "seg", vals: ["default", "comb", "slats", "stipple", "weave"], get: function () { return Flags.styleMixer; }, set: function (v) { Flags.styleMixer = v; } },
-        { item: sysmonStyleRow, kind: "seg", vals: ["default", "rail", "ledger", "matrix", "title"], get: function () { return Flags.styleSysmon; }, set: function (v) { Flags.styleSysmon = v; } }
+        { item: sysmonStyleRow, kind: "seg", vals: ["default", "rail", "ledger", "matrix", "title"], get: function () { return Flags.styleSysmon; }, set: function (v) { Flags.styleSysmon = v; } },
+        { item: scratchStyleRow, kind: "seg", vals: ["default", "cassette", "index", "console", "ash"], get: function () { return Flags.styleScratch; }, set: function (v) { Flags.styleScratch = v; } }
     ]
 
     Column {
@@ -90,7 +91,6 @@ SettingsSurface {
             surface: root
             glyph: "系"
             name: "System Monitor"
-            last: true
 
             Dropdown {
                 id: sysmonStyleDrop
@@ -106,6 +106,31 @@ SettingsSurface {
                 onChipClicked: sysmonStyleDrop.open = !sysmonStyleDrop.open
                 onPicked: (v) => {
                     Flags.styleSysmon = v
+                }
+            }
+        }
+
+        SettingsRow {
+            id: scratchStyleRow
+            surface: root
+            glyph: "記"
+            name: "Scratchpad"
+            last: true
+
+            Dropdown {
+                id: scratchStyleDrop
+                s: root.s
+                options: [
+                    { label: "Default", value: "default" },
+                    { label: "Cassette", value: "cassette" },
+                    { label: "Index", value: "index" },
+                    { label: "Console", value: "console" },
+                    { label: "Ash", value: "ash" }
+                ]
+                value: Flags.styleScratch
+                onChipClicked: scratchStyleDrop.open = !scratchStyleDrop.open
+                onPicked: (v) => {
+                    Flags.styleScratch = v
                 }
             }
         }

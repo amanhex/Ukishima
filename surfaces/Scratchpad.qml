@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import "../Singletons"
 import "../components"
+import "../components/scratch"
 
 /**
  * Scratchpad surface: a shelf of plain-text notes drawn as one of the pill's
@@ -48,6 +49,18 @@ PillSurface {
     mLeft: 15
     mRight: 15
     mBottom: 14
+
+    /**
+     * Deck design, chosen on the Surface Styles page: "default" is the card
+     * grid; "cassette", "index", "console" and "ash" are Chaldea-inspired
+     * browsers. The note editor is shared, so every design keeps renaming,
+     * autosave, pinning and delete exactly as the default page does.
+     */
+    readonly property string style: {
+        var v = Flags.styleScratch;
+        return ["cassette", "index", "console", "ash"].indexOf(v) >= 0 ? v : "default";
+    }
+    readonly property bool chaldeaStyle: root.style !== "default"
 
     /** "deck" is the card grid, "note" is one note full-surface. */
     property string page: "deck"
@@ -155,7 +168,7 @@ PillSurface {
         root.commitTitle();
         root.leave();
         root.page = "deck";
-        deckGrid.forceActiveFocus();
+        root.focusDeck();
     }
 
     /**
@@ -191,7 +204,8 @@ PillSurface {
             //* Bare id, not `root.deckGrid`: `deckGrid` lives inside the deck
             //* FocusScope, and under `pragma ComponentBehavior: Bound` it is not
             //* reachable as a property of the root.
-            deckGrid.locateCurrent();
+            if (!root.chaldeaStyle)
+                deckGrid.locateCurrent();
         }
     }
 
@@ -200,9 +214,9 @@ PillSurface {
     FocusScope {
         id: deck
         anchors.fill: parent
-        focus: root.page === "deck"
-        visible: root.page === "deck"
-        enabled: root.page === "deck"
+        focus: root.page === "deck" && !root.chaldeaStyle
+        visible: root.page === "deck" && !root.chaldeaStyle
+        enabled: root.page === "deck" && !root.chaldeaStyle
 
         Keys.onEscapePressed: root.requestClose()
 
@@ -234,7 +248,7 @@ PillSurface {
          */
         readonly property var cards: [{ fresh: true }].concat(Scratch.notes)
 
-        Component.onCompleted: deckGrid.forceActiveFocus()
+        Component.onCompleted: if (!root.chaldeaStyle) deckGrid.forceActiveFocus()
 
         /**
          * Read-only counterpart to the sibling surfaces' search band: the 記 glyph,
@@ -603,6 +617,25 @@ PillSurface {
                 Scratch.remove(note.slug);
         }
     }
+
+    /** Chaldea deck designs: one browser, selected on the Surface Styles page. */
+    Loader {
+        id: designLoader
+        anchors.fill: parent
+        active: root.chaldeaStyle
+        visible: root.page === "deck"
+        enabled: visible
+        sourceComponent: root.style === "cassette" ? cassetteDeck
+            : root.style === "index" ? indexDeck
+            : root.style === "console" ? consoleDeck
+            : root.style === "ash" ? ashDeck
+            : null
+    }
+
+    Component { id: cassetteDeck; ScratchCassette { host: root } }
+    Component { id: indexDeck; ScratchIndex { host: root } }
+    Component { id: consoleDeck; ScratchConsole { host: root } }
+    Component { id: ashDeck; ScratchAsh { host: root } }
 
     // ---------------------------------------------------------------- note ---
 
@@ -1100,6 +1133,35 @@ PillSurface {
 
     // -------------------------------------------------------------- wiring ---
 
+    function focusDeck() {
+        if (root.chaldeaStyle) {
+            if (designLoader.item) {
+                if (designLoader.item.locateCurrent)
+                    designLoader.item.locateCurrent();
+                if (designLoader.item.focusList)
+                    designLoader.item.focusList();
+            }
+            return;
+        }
+        deckGrid.forceActiveFocus();
+    }
+
+    /**
+     * Open a note from a deck design. Mirrors the grid's own open path: commit
+     * the pending title, select, flip to the note page, then put the caret in
+     * the body.
+     */
+    function openNote(slug) {
+        root.commitTitle();
+        if (!slug) {
+            root.openCreate();
+            return;
+        }
+        Scratch.select(slug);
+        root.page = "note";
+        root.focusBody();
+    }
+
     /**
      * Leave the note. With a note open this is Escape's first stop: back to the
      * deck rather than out of the pad, so a mistyped Escape cannot throw away the
@@ -1113,7 +1175,7 @@ PillSurface {
         root.commitTitle();
         root.leave();
         root.page = "deck";
-        deckGrid.forceActiveFocus();
+        root.focusDeck();
     }
 
     /**
@@ -1136,7 +1198,7 @@ PillSurface {
             root.bornSlug = "";
         root.titleDraft = "";
         root.page = "deck";
-        deckGrid.forceActiveFocus();
+        root.focusDeck();
     }
 
     function commitTitle() {
@@ -1187,7 +1249,6 @@ PillSurface {
         root.page = "note";
         root.naming = true;
         root.titleDraft = "";
-        titleInput.text = "";
         titleInput.forceActiveFocus();
     }
 
@@ -1216,7 +1277,7 @@ PillSurface {
         root.naming = false;
         root.titleDraft = "";
         root.page = "deck";
-        deckGrid.forceActiveFocus();
+        root.focusDeck();
     }
 
     Shortcut {
