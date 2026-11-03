@@ -5,13 +5,16 @@ import "../Singletons"
 import "../components"
 
 /**
- * 枠 SURFACE STYLES: list of surfaces and their available UI variants.
- * Users can choose different visual styles for each surface from here.
+ * 枠 SURFACE STYLES: the per-surface variant pickers, reached from the
+ * APPEARANCE page. Each row picks the visual style of one surface — the resting
+ * pill face, the media player, the mixer, the system monitor, the scratchpad and
+ * the session lock — and writes it straight to `Flags`. Folds back to APPEARANCE
+ * on the back chevron or an empty click.
  */
 SettingsSurface {
     id: root
 
-    backSurface: "appearance"
+    backSurface: "appcat"
     implicitHeight: content.implicitHeight
 
     rows: [
@@ -44,7 +47,6 @@ SettingsSurface {
             surface: root
             glyph: "時"
             name: "Pill display"
-            sub: "Resting pill face"
 
             Dropdown {
                 id: pillDrop
@@ -165,7 +167,6 @@ SettingsSurface {
             surface: root
             glyph: "錠"
             name: "Lock Screen"
-            sub: "Session lock layout"
             last: true
 
             Dropdown {

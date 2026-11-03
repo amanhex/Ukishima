@@ -9,7 +9,8 @@ import "../components"
  * 相 APPEARANCE sub-index: the appearance category inside Settings. Four tiles
  * carry the pill's look — THEME (light, dark, dynamic or manual), ACCENT (the
  * warm-colour override), GLASS (pill material and copy contrast) and FONT COLOUR
- * (the text-family override). Reached from the Settings index and folds back to
+ * (the text-family override) — plus a SURFACE STYLES tile that opens the
+ * per-surface variant pickers. Reached from the Settings index and folds back to
  * it on the back chevron or an empty click; picking a tile morphs into that
  * surface.
  */
@@ -23,7 +24,8 @@ SettingsSurface {
         { item: themeTile, kind: "nav", surface: "theme" },
         { item: accentTile, kind: "nav", surface: "accent" },
         { item: glassTile, kind: "nav", surface: "glass" },
-        { item: fontColorTile, kind: "nav", surface: "fontcolor" }
+        { item: fontColorTile, kind: "nav", surface: "fontcolor" },
+        { item: stylesTile, kind: "nav", surface: "surfacestyles" }
     ]
 
     Column {
@@ -95,13 +97,29 @@ SettingsSurface {
             glyph: "字"
             name: "Font colour"
             sub: "Recolour the text family"
-            last: true
 
             GlyphIcon {
                 width: 16 * root.s
                 height: 16 * root.s
                 name: "chevron-right"
                 color: root.focusRowItem === fontColorTile ? Theme.cream : Theme.iconDim
+                stroke: 1.9
+            }
+        }
+
+        SettingsRow {
+            id: stylesTile
+            surface: root
+            glyph: "枠"
+            name: "Surface Styles"
+            sub: "Pill face, players, lock layout"
+            last: true
+
+            GlyphIcon {
+                width: 16 * root.s
+                height: 16 * root.s
+                name: "chevron-right"
+                color: root.focusRowItem === stylesTile ? Theme.cream : Theme.iconDim
                 stroke: 1.9
             }
         }
