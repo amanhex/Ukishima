@@ -40,7 +40,12 @@ LOG="$STATE_DIR/lock.log"
 SHOT="$CACHE_DIR/lock-shot.jpg"
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 . "$SCRIPT_DIR/wm.sh"
-LOCK_QML="$SCRIPT_DIR/../lockscreen/shell.qml"
+# Lock designs (lockscreen/designs/) are part of the same config folder and are
+# imported relatively by LockSurface.qml ("designs" from there, ".." from each
+# design). Running the repository's lockscreen in place means there is no
+# second copy, bundle or fetch step to keep in sync.
+LOCK_DIR="$SCRIPT_DIR/../lockscreen"
+LOCK_QML="$LOCK_DIR/shell.qml"
 mkdir -p "$CACHE_DIR" "$STATE_DIR" 2>/dev/null
 if [ -f "$CACHE_DIR/lock.log" ] && [ ! -e "$LOG" ]; then
     cp -n -- "$CACHE_DIR/lock.log" "$LOG" 2>/dev/null || true

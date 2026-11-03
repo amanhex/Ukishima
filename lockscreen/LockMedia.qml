@@ -20,6 +20,53 @@ import Quickshell.Widgets
 Rectangle {
     id: root
 
+    //* Card chrome follows the lock design that hosts it. "default" is the
+    //* original glass pill used by the default lock; every design passes its
+    //* own name so the card stops looking like a foreign widget on the new
+    //* layouts. The MPRIS transport and sizing stay identical in every variant.
+    property string variant: "default"
+    property var host: null
+    readonly property bool isSharpCapture: root.host ? (root.host.background === "capture" && root.host.blurMax <= 16) : false
+
+    readonly property bool styled: root.variant !== "default"
+    readonly property color ink: root.styled ? "#e4e2dc" : "#ffffff"
+    readonly property color softInk: root.styled ? Qt.rgba(0.894, 0.886, 0.863, 0.55) : Qt.rgba(1, 1, 1, 0.7)
+    readonly property color dimInk: root.styled ? Qt.rgba(0.894, 0.886, 0.863, 0.55) : Qt.rgba(1, 1, 1, 0.55)
+    readonly property color accent: root.styled ? "#d1161c" : "#ffffff"
+    readonly property color glyphGround: root.styled ? "#090909" : "#14181a"
+    readonly property color artGround: root.styled ? Qt.rgba(0.894, 0.886, 0.863, 0.06) : Qt.rgba(1, 1, 1, 0.10)
+    readonly property color hoverGround: root.styled ? Qt.rgba(0.894, 0.886, 0.863, 0.10) : Qt.rgba(1, 1, 1, 0.16)
+    readonly property color cardFill: {
+        switch (root.variant) {
+        case "editorial":
+            return "transparent";
+        case "folio":
+            return Qt.rgba(0.894, 0.886, 0.863, 0.12);
+        case "phase":
+            return Qt.rgba(0.894, 0.886, 0.863, 0.10);
+        case "relay":
+        case "reactive":
+            return Qt.rgba(0.894, 0.886, 0.863, 0.10);
+        case "spine":
+            return Qt.rgba(0.894, 0.886, 0.863, 0.10);
+        default:
+            return Qt.rgba(1, 1, 1, 0.14);
+        }
+    }
+    readonly property int cardRadius: root.styled ? 0 : 19
+    readonly property color cardBorder: root.isSharpCapture ? "transparent" : (root.variant === "editorial" ? "transparent" : (root.styled ? Qt.rgba(0.894, 0.886, 0.863, 0.18) : Qt.rgba(1, 1, 1, 0.18)))
+    readonly property string cardFont: root.styled && root.variant !== "folio" ? "JetBrainsMono NF" : "Adwaita Sans"
+    readonly property string titleFont: root.variant === "folio" ? "Noto Serif" : root.cardFont
+    readonly property bool technicalRule: root.variant === "editorial" || root.variant === "spine" || root.variant === "folio"
+    readonly property bool uppercase: root.styled && root.variant !== "folio"
+
+    Rectangle {
+        anchors.fill: parent
+        visible: root.isSharpCapture
+        color: Qt.rgba(0, 0, 0, 0.4)
+        z: -1
+    }
+
     //* The player to show: one that is playing wins, else the first with a
     //* title, so an idle titleless player (a stopped browser tab) never
     //* summons the card. Picked by object like Players.qml does on the pill
@@ -43,6 +90,9 @@ Rectangle {
     readonly property bool canPrev: hasPlayer && player.canGoPrevious
     readonly property bool canNext: hasPlayer && player.canGoNext
     readonly property bool canToggle: hasPlayer && player.canTogglePlaying
+
+    // Visibility: show when host allows media AND there's a titled player
+    visible: root.host ? (root.host.showMedia && root.hasPlayer) : false
 
     //* The picture in the art slot: the track's own art when the player
     //* sends it, else the player's app icon, else nothing and the music
@@ -128,13 +178,12 @@ Rectangle {
         return "";
     }
 
-    visible: hasPlayer
     implicitWidth: 382
     implicitHeight: 64
-    radius: 19
-    color: Qt.rgba(1, 1, 1, 0.14)
-    border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.18)
+    radius: root.cardRadius
+    color: root.cardFill
+    border.width: root.variant === "editorial" ? 0 : 1
+    border.color: root.cardBorder
 
     /** One baked GlyphIcon vector: the path lives in a 24-unit square and
      *  scales to the item, filled for the transport set, stroked for the
@@ -184,9 +233,13 @@ Rectangle {
 
         Rectangle {
             anchors.fill: parent
-            radius: width / 2
+            radius: root.styled ? 0 : width / 2
             visible: btn.seal || mouse.containsMouse
-            color: btn.seal ? (mouse.containsMouse ? "#ffffff" : Qt.rgba(1, 1, 1, 0.92)) : Qt.rgba(1, 1, 1, 0.16)
+            color: btn.seal
+                ? (root.styled
+                    ? (mouse.containsMouse ? "#e23a3f" : root.accent)
+                    : (mouse.containsMouse ? "#ffffff" : Qt.rgba(1, 1, 1, 0.92)))
+                : (mouse.containsMouse ? root.hoverGround : "transparent")
 
             Behavior on color {
                 ColorAnimation {
@@ -201,8 +254,9 @@ Rectangle {
             height: 24
             d: btn.d
             //* Same inversion as LockSurface's enter circle: dark glyph on
-            //* the bright white seal, light glyph on glass.
-            tint: btn.seal ? "#14181a" : "#ffffff"
+            //* the bright seal, light glyph on glass. The styled seals are
+            //* red, so their glyphs keep the same dark ground.
+            tint: btn.seal ? root.glyphGround : root.ink
         }
 
         MouseArea {
@@ -220,6 +274,19 @@ Rectangle {
         Accessible.pressed: mouse.pressed
     }
 
+    //* Chrome mark for the styled cards: a red spine on the technical
+    //* layouts, a red rule on the print/index ones. The default card keeps
+    //* its plain glass border and draws none of this.
+    Rectangle {
+        visible: root.styled
+        width: root.technicalRule ? parent.width : 2
+        height: root.technicalRule ? 1 : parent.height
+        x: 0
+        y: root.variant === "folio" ? parent.height - height : 0
+        color: root.accent
+        opacity: 0.9
+    }
+
     Row {
         anchors.left: parent.left
         anchors.leftMargin: 14
@@ -235,8 +302,8 @@ Rectangle {
 
             ClippingRectangle {
                 anchors.fill: parent
-                radius: 10
-                color: Qt.rgba(1, 1, 1, 0.10)
+                radius: root.styled ? (root.variant === "folio" ? 2 : 0) : 10
+                color: root.artGround
 
                 Image {
                     id: cover
@@ -255,7 +322,7 @@ Rectangle {
                 width: 20
                 height: 20
                 d: "M9 18V5l12-2v13 M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0z M21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"
-                tint: Qt.rgba(1, 1, 1, 0.55)
+                tint: root.dimInk
                 filled: false
                 visible: cover.status !== Image.Ready
             }
@@ -271,24 +338,32 @@ Rectangle {
 
                 Text {
                     width: 170
-                    text: root.hasPlayer ? root.player.trackTitle : ""
-                    color: "#ffffff"
+                    text: root.hasPlayer
+                        ? (root.uppercase ? String(root.player.trackTitle).toUpperCase() : root.player.trackTitle)
+                        : ""
+                    color: root.ink
                     elide: Text.ElideRight
                     maximumLineCount: 1
-                    font.family: "Adwaita Sans"
+                    font.family: root.titleFont
                     font.pointSize: 11
                     font.weight: Font.Medium
+                    font.letterSpacing: root.styled ? 0.6 : 0
                 }
 
                 Text {
                     width: 170
-                    text: root.hasPlayer ? (root.player.trackArtists || root.player.trackArtist) : ""
-                    color: "#ffffff"
-                    opacity: 0.7
+                    text: {
+                        if (!root.hasPlayer)
+                            return "";
+                        const artist = root.player.trackArtists || root.player.trackArtist || "";
+                        return root.uppercase ? String(artist).toUpperCase() : artist;
+                    }
+                    color: root.softInk
                     elide: Text.ElideRight
                     maximumLineCount: 1
-                    font.family: "Adwaita Sans"
+                    font.family: root.cardFont
                     font.pointSize: 9
+                    font.letterSpacing: root.styled ? 0.5 : 0
                 }
             }
         }

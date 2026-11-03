@@ -8,6 +8,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
+import "designs"
 
 Rectangle {
     id: root
@@ -58,15 +59,36 @@ Rectangle {
     //* the legacy current_wallpaper.jpg only when that state file is missing.
     property string currentWallpaper: ""
     readonly property string wallpaperSource: currentWallpaper.length > 0 ? currentWallpaper : wallpaperFallback
-    //* A video file cannot be painted by an Image, and the shell's wallpaper
-    //* dir scan happily writes one (.mp4/.webm/.mkv/.mov) into the state file
-    //* — locking on a video wallpaper used to land this layer on status=Error
-    //* and paint nothing but the base colour. lock.sh grim-captures the desktop
-    //* on every lock regardless of mode, and that capture IS the video's
-    //* current frame, so it takes over. If the capture is missing too, the
-    //* Image errors and the base colour shows, same as any other absent
-    //* backdrop.
+    //* The wallpaper the shell stores may be a video, which no Image can paint;
+    //* the backdrop resolution below (videoBackdropCandidates) handles that.
     readonly property bool wallpaperIsVideo: /\.(mp4|webm|mkv|mov)$/i.test(wallpaperSource)
+
+    //* wallpaper.sh already extracts a still frame of a video wallpaper:
+    //* palette_update() runs on every wallpaper change and, for a video, writes
+    //* make_still()'s first frame to ukishima/wallpapers/wallpaper-still.png
+    //* (per-output variants are wallpaper-still-<output>.png, written by
+    //* apply_visual for a per-output set). That still is a clean, decodable
+    //* picture of the wallpaper itself, so the "wallpaper" backdrop must prefer
+    //* it over lock.sh's grim capture. The capture is the whole desktop — every
+    //* open window included — so using it made "wallpaper" look identical to
+    //* "capture" whenever the wallpaper was a video, and a failed capture fell
+    //* through to the base colour. The capture stays only as a last resort.
+    readonly property string wallpaperCache: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/ukishima/wallpapers"
+    readonly property string screenName: lockSurface && lockSurface.screen ? lockSurface.screen.name : ""
+    //* Ordered backdrops to try for a video wallpaper: the shared still, this
+    //* output's still, then the grim capture. wallpaperShot walks the list on
+    //* Image.Error, so a missing still degrades instead of showing black. For a
+    //* still image the list is just the one wallpaper file.
+    readonly property var videoBackdropCandidates: {
+        if (!wallpaperIsVideo)
+            return ["file://" + wallpaperSource];
+        var base = wallpaperCache + "/wallpaper-still";
+        var list = ["file://" + base + ".png"];
+        if (screenName.length > 0)
+            list.push("file://" + base + "-" + screenName + ".png");
+        list.push("file://" + lockShot);
+        return list;
+    }
 
     //* lock.sh redirects the lock's stderr into its own log
     //* (${XDG_STATE_HOME:-$HOME/.local/state}/ukishima/lock.log), so one
@@ -78,7 +100,7 @@ Rectangle {
         console.log("[lock] wallpaper " + how + ": mode=" + background
             + " state=" + stateWallpaper
             + " current=" + (currentWallpaper || "<empty>")
-            + " using=" + (wallpaperIsVideo ? lockShot + " (capture, video wallpaper)" : wallpaperSource)
+            + " using=" + (wallpaperIsVideo ? root.videoBackdropCandidates[0] + " (video still)" : wallpaperSource)
             + " fallbackUsed=" + (currentWallpaper.length === 0));
         root.reportCapture(how);
     }
@@ -136,6 +158,24 @@ Rectangle {
     //* "capture" grim-captures the desktop at lock time, "wallpaper" uses the
     //* live wallpaper, "solid" paints the opaque backdrop colour.
     property string background: "capture"
+    //* Lock layout, chosen on the pill's SURFACE STYLES page. "default" is the
+    //* original furniture below; every other value loads a design from
+    //* lockscreen/designs/ over the same backdrop, auth and flag handling.
+    property string styleLock: "default"
+
+    //* The designs carry far more small mono type, thin rules and glyph tiles
+    //* than the default furniture (one huge clock and a pill). Over a sharp
+    //* desktop capture — blur Off or Low — that fine detail disappears into
+    //* whatever is behind it, which the default lock's 92px clock never did.
+    //* So while a design is up in capture mode the shared veil strengthens as
+    //* the blur weakens, and legibility stops depending on the user picking a
+    //* heavy blur. Zero for the default lock and for wallpaper/solid, and it
+    //* rides `held` on the way out so the unlock handover does not dark-flash.
+    readonly property real designVeil: {
+        if (styleLock === "default" || background !== "capture")
+            return 0;
+        return 0.34 * Math.max(0, Math.min(1, (48 - blurMax) / 48));
+    }
 
     //* Bound directly to the capture lock.sh took BEFORE this process was
     //* spawned, so the file is already complete and decodable by the time the
@@ -192,6 +232,9 @@ Rectangle {
 
             if (shared && ["capture", "wallpaper", "solid"].indexOf(shared.lockBackground) >= 0)
                 root.background = shared.lockBackground;
+
+            if (shared && ["default", "relay", "folio", "editorial", "phase", "spine", "reactive"].indexOf(shared.styleLock) >= 0)
+                root.styleLock = shared.styleLock;
         } catch (e) {
         }
         //* Now that reduceMotion is known, the entrance can start.
@@ -217,6 +260,7 @@ Rectangle {
             root.blurMax = 64;
             root.background = "capture";
             root.avatarPath = "";
+            root.styleLock = "default";
         }
     }
 
@@ -234,11 +278,15 @@ Rectangle {
             // which left currentWallpaper empty and silently fell back to the
             // legacy path. Matches sharedFlags.text() above, which works.
             root.currentWallpaper = text().trim();
+            if (wallpaperShot)
+                wallpaperShot.candidate = 0;
             root.reportWallpaper("loaded");
         }
         onFileChanged: reload()
         onLoadFailed: {
             root.currentWallpaper = "";
+            if (wallpaperShot)
+                wallpaperShot.candidate = 0;
             root.reportWallpaper("load-failed");
         }
     }
@@ -583,7 +631,15 @@ Rectangle {
             //* produced nothing.
             visible: root.background === "wallpaper"
                 || (root.background === "capture" && grimShot.status !== Image.Ready && !bgShot.hasContent)
-            source: "file://" + (root.wallpaperIsVideo ? root.lockShot : root.wallpaperSource)
+            //* Walk videoBackdropCandidates on failure: shared video still, then
+            //* this output's, then the grim capture. `candidate` is reset when
+            //* the wallpaper state is (re)read.
+            property int candidate: 0
+            source: root.videoBackdropCandidates[Math.min(wallpaperShot.candidate, root.videoBackdropCandidates.length - 1)]
+            onStatusChanged: {
+                if (status === Image.Error && candidate < root.videoBackdropCandidates.length - 1)
+                    candidate++;
+            }
             fillMode: Image.PreserveAspectCrop
             //* Decode at screen resolution, never at the file's native size.
             //* A 5842x3286 wallpaper is 19.2 megapixels of RGBA — 77MB of
@@ -607,6 +663,16 @@ Rectangle {
             anchors.fill: parent
             color: "#000000"
             opacity: 0.3
+        }
+
+        // Extra legibility veil for the finer-grained lock designs on a sharp
+        // capture; see designVeil. Invisible for the default lock, for
+        // wallpaper/solid, and once the blur is heavy again.
+        Rectangle {
+            anchors.fill: parent
+            color: "#000000"
+            opacity: root.designVeil * root.held
+            visible: opacity > 0
         }
 
         // subtle top/bottom vignette so status icons + pill read like reference
@@ -644,6 +710,7 @@ Rectangle {
     ColumnLayout {
         id: clockCol
 
+        visible: root.styleLock === "default"
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: parent.height * 0.13
@@ -723,7 +790,7 @@ Rectangle {
         opacity: root.stage(120 / root.entranceMs, 320 / root.entranceMs, 1) * root.held
         // The component decides whether it has anything to show; showBattery
         // (LOCK surface) is the user's master switch on top of that.
-        visible: root.showBattery && present
+        visible: root.styleLock === "default" && root.showBattery && present
         shimmerOn: root.batteryShimmerOn
     }
 
@@ -738,7 +805,7 @@ Rectangle {
         opacity: root.stage(120 / root.entranceMs, 320 / root.entranceMs, 0.9) * root.held
         // Same arrangement as the battery: its own presence check, gated by the
         // showWifi flag.
-        visible: root.showWifi && wifiDev !== null
+        visible: root.styleLock === "default" && root.showWifi && wifiDev !== null
     }
 
     // per-keystroke password dot
@@ -841,6 +908,7 @@ Rectangle {
     ColumnLayout {
         id: authCol
 
+        visible: root.styleLock === "default"
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 72
@@ -1318,6 +1386,7 @@ Rectangle {
     LockMedia {
         id: lockMedia
 
+        host: root
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: clockCol.bottom
         anchors.topMargin: 28
@@ -1325,12 +1394,36 @@ Rectangle {
         // on unlock. clockCol.bottom is the layout edge, so the clock's drift
         // transform never drags the card along with it.
         opacity: root.stage(120 / root.entranceMs, 320 / root.entranceMs, 1) * root.held
-        // Same arrangement as the corners: the card's own presence check
-        // (hasPlayer, its binding inside LockMedia) and the showMedia flag
-        // from the LOCK settings on top of that — this instance-level binding
-        // replaces the internal one, so both halves live here.
-        visible: root.showMedia && hasPlayer
+        // Visible only for default style; designs provide their own media card
+        visible: root.styleLock === "default"
     }
+
+    // ── Selected design ──
+    //
+    // Everything above stays the untouched default; a non-default style loads
+    // its layout here. The designs share this surface's key handler, PAM
+    // context, flags and backdrop, and each places its own live media card,
+    // wifi and battery so no functionality is lost when the skin changes.
+    Loader {
+        id: designLoader
+
+        anchors.fill: parent
+        active: root.styleLock !== "default"
+        sourceComponent: root.styleLock === "relay" ? relayLock
+            : root.styleLock === "folio" ? folioLock
+            : root.styleLock === "editorial" ? editorialLock
+            : root.styleLock === "phase" ? phaseLock
+            : root.styleLock === "spine" ? spineLock
+            : root.styleLock === "reactive" ? reactiveLock
+            : null
+    }
+
+    Component { id: relayLock; LockRelay { host: root } }
+    Component { id: folioLock; LockFolio { host: root } }
+    Component { id: editorialLock; LockEditorial { host: root } }
+    Component { id: phaseLock; LockPhase { host: root } }
+    Component { id: spineLock; LockSpine { host: root } }
+    Component { id: reactiveLock; LockReactive { host: root } }
 
     // keep focus on the key handler (Hyprland unfocuses on wake — Noctalia
     // workaround). root is what owns Keys.onPressed now, so this has to

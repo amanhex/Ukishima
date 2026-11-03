@@ -23,8 +23,7 @@ SettingsSurface {
         { item: themeTile, kind: "nav", surface: "theme" },
         { item: accentTile, kind: "nav", surface: "accent" },
         { item: glassTile, kind: "nav", surface: "glass" },
-        { item: fontColorTile, kind: "nav", surface: "fontcolor" },
-        { item: stylesTile, kind: "nav", surface: "surfacestyles" }
+        { item: fontColorTile, kind: "nav", surface: "fontcolor" }
     ]
 
     Column {
@@ -103,23 +102,6 @@ SettingsSurface {
                 height: 16 * root.s
                 name: "chevron-right"
                 color: root.focusRowItem === fontColorTile ? Theme.cream : Theme.iconDim
-                stroke: 1.9
-            }
-        }
-
-        SettingsRow {
-            id: stylesTile
-            surface: root
-            glyph: "枠"
-            name: "Surface Styles"
-            sub: "Choose UI styles for surfaces"
-            last: true
-
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === stylesTile ? Theme.cream : Theme.iconDim
                 stroke: 1.9
             }
         }

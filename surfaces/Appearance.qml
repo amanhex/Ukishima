@@ -6,13 +6,14 @@ import "../Singletons"
 import "../components"
 
 /**
- * 相 SETTINGS index: the door into the settings, split into six category tiles —
- * DISPLAY (pill layout, clock, glyphs), APPEARANCE (theme, accent, glass and
- * font colour — opens its own sub-index), FONT (the family picker), INTERFACE
- * (scale, motion, auto-hide), DOCK (the bottom app dock) and UPDATE (pull
- * latest). Picking a tile morphs the pill into that category's surface; the
- * back chevron on each returns here, and an empty click or the cog closes.
- * Reached from the pill's hover row and folds back into it on a dismiss.
+ * 相 SETTINGS index: the door into the settings, split into seven category tiles —
+ * DISPLAY (clock, glyphs), APPEARANCE (theme, accent, glass and font colour —
+ * opens its own sub-index), SURFACE STYLES (the pill face and every surface
+ * variant), FONT (the family picker), INTERFACE (scale, motion, auto-hide),
+ * LOCK (the session lock) and UPDATE (pull latest). Picking a tile morphs the
+ * pill into that category's surface; the back chevron on each returns here, and
+ * an empty click or the cog closes. Reached from the pill's hover row and folds
+ * back into it on a dismiss.
  */
 SettingsSurface {
     id: root
@@ -23,6 +24,7 @@ SettingsSurface {
     rows: [
         { item: dispTile, kind: "nav", surface: "display" },
         { item: appearTile, kind: "nav", surface: "appcat" },
+        { item: stylesTile, kind: "nav", surface: "surfacestyles" },
         { item: fontTile, kind: "nav", surface: "fontpicker" },
         { item: ifaceTile, kind: "nav", surface: "interface" },
         { item: lockTile, kind: "nav", surface: "locksettings" },
@@ -49,7 +51,7 @@ Item { width: 1; height: 10 * root.s }
             surface: root
             glyph: "時"
             name: "Display"
-            sub: "Pill layout · time · glyphs"
+            sub: "Time · glyphs · modules"
 
             GlyphIcon {
                 width: 16 * root.s
@@ -72,6 +74,22 @@ Item { width: 1; height: 10 * root.s }
                 height: 16 * root.s
                 name: "chevron-right"
                 color: root.focusRowItem === appearTile ? Theme.cream : Theme.iconDim
+                stroke: 1.9
+            }
+        }
+
+        SettingsRow {
+            id: stylesTile
+            surface: root
+            glyph: "枠"
+            name: "Surface Styles"
+            sub: "Pill face, players, lock layout"
+
+            GlyphIcon {
+                width: 16 * root.s
+                height: 16 * root.s
+                name: "chevron-right"
+                color: root.focusRowItem === stylesTile ? Theme.cream : Theme.iconDim
                 stroke: 1.9
             }
         }
@@ -113,7 +131,7 @@ Item { width: 1; height: 10 * root.s }
             surface: root
             glyph: "錠"
             name: "Lock screen"
-            sub: "Session lock background, blur, indicators"
+            sub: "Method, backdrop, indicators"
 
             GlyphIcon {
                 width: 16 * root.s

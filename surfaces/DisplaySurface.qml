@@ -6,11 +6,11 @@ import "../Singletons"
 import "../components"
 
 /**
- * 時 DISPLAY sub-surface: how the pill itself looks and what the clock shows —
- * the resting display mode, the 12/24h format, running seconds, the Japanese
- * header glyphs and the music visualizer — plus the bottom dock's on/off switch.
- * Reached from the Appearance index and folds back to it on the back chevron or
- * an empty click.
+ * 時 DISPLAY sub-surface: what the clock shows — the 12/24h format, running
+ * seconds, the Japanese header glyphs and the music visualizer — plus the bottom
+ * dock's on/off switch. The resting pill face itself (minimal, classic, system,
+ * strip) is a surface style now, chosen on SURFACE STYLES. Reached from the
+ * Settings index and folds back to it on the back chevron or an empty click.
  *
  * The expanded pill's module switches keep their own 器 PILL MODULES
  * sub-surface, linked from the `modulesTile` row below, so they do not bury
@@ -27,7 +27,6 @@ SettingsSurface {
     implicitHeight: content.implicitHeight
 
     rows: [
-        { item: mainRow, kind: "seg", vals: ["minimal", "classic", "system", "strip"], get: function () { return Flags.mainDisplay; }, set: function (v) { Flags.mainDisplay = v; } },
         { item: expandRow, kind: "seg", vals: ["media", "pill"], get: function () { return Flags.expandTo; }, set: function (v) { Flags.expandTo = v; } },
         { item: timeRow, kind: "seg", vals: [false, true], get: function () { return Flags.time12h; }, set: function (v) { Flags.time12h = v; } },
         { item: secRow, kind: "toggle", get: function () { return Flags.clockSeconds; }, set: function (v) { Flags.clockSeconds = v; } },
@@ -53,26 +52,11 @@ SettingsSurface {
 
 Item { width: 1; height: 10 * root.s }
         SettingsRow {
-            id: mainRow
-            surface: root
-            name: "Display"
-            icon: "clock"
-
-            Dropdown {
-                id: mainDrop
-                s: root.s
-                options: [{ label: "Minimal", value: "minimal" }, { label: "Classic", value: "classic" }, { label: "System", value: "system" }, { label: "Strip", value: "strip" }]
-                value: Flags.mainDisplay
-                onChipClicked: mainDrop.open = !mainDrop.open
-                onPicked: (v) => Flags.mainDisplay = v
-            }
-        }
-
-        SettingsRow {
             id: expandRow
             surface: root
-            name: "Media expand"
+            name: "Expand"
             icon: "layers"
+            sub: "What the media card opens into"
 
             Dropdown {
                 id: expandDrop
