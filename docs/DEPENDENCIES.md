@@ -1,6 +1,6 @@
 # Dependencies
 
-Arch names, unless noted. Ukishima runs on **Hyprland** and **niri**.
+Package names are Arch's; install advice uses your distribution's package manager. Ukishima runs on **Hyprland** and **niri**.
 
 ## Required
 
@@ -9,17 +9,17 @@ Install these or the shell starts but breaks in places.
 | Tool | Package | Used for |
 | --- | --- | --- |
 | `quickshell` | `quickshell` | the shell runtime itself — nothing starts without it |
-| Hyprland: `hyprctl`; niri: `niri` | Hyprland: `hyprland`; niri: `niri` | compositor IPC for the active compositor |
-| `notify-send` | `libnotify` | desktop notifications for the pill and for these dependency reports |
+| Hyprland: `hyprctl`; niri: `niri` | Hyprland: `hyprland`; niri: `niri` | IPC for the active compositor |
+| `notify-send` | `libnotify` | desktop notifications for timers, events, recordings and night light |
 | `jq` | `jq` | JSON parsing in the helper scripts, and for reading the manifest |
 | `xdg-open` | `xdg-utils` | opening files and links, including the dependency report page |
-| `upower` | `upower` | battery status and charge reporting |
+| `upower` | `upower` | the UPower daemon behind battery status and charge reporting |
 | `bluetoothctl` | `bluez-utils` | the bluetooth surface |
 | `nmcli` | `networkmanager` | the wifi surface |
 | `brightnessctl` | `brightnessctl` | internal laptop backlight control |
 | `awww + awww-daemon` | `awww` | the wallpaper backend (client and daemon) |
 | `curl + magick + python3 + ffmpeg` | `curl`, `imagemagick`, `python`, `ffmpeg` | wallpaper download, thumbnails, palette generation and video-wallpaper stills |
-| `cava` | `cava` | the music visualiser |
+| `cava` | `cava` | the rest-pill audio visualiser |
 | `cliphist + wl-paste` | `cliphist`, `wl-clipboard` | the clipboard history surface |
 | `slurp` | `slurp` | the window/region picker for screen recording |
 
@@ -31,9 +31,9 @@ ones you actually want.
 | Package | Adds |
 | --- | --- |
 | `hyprsunset` | the night light on Hyprland; niri night light is not implemented yet |
-| `gpu-screen-recorder` | the screen-recording backend — recording is disabled without it |
+| `gpu-screen-recorder` | the screen-recording backend — recording cannot start without it |
 | `mpvpaper` | animated / video wallpapers |
-| `matugen` | Material base16 palettes (always-dark terminal theme, dynamic wallpaper palette) |
+| `matugen` | the dynamic wallpaper palette and the terminal colour theme |
 | `ddcutil` | monitor brightness via DDC (external display faders) |
 | `kdialog` / `zenity` | the native folder picker for the record output directory |
 | `power-profiles-daemon` | the power-profile picker on the battery hover — the row shows "Not installed" without it, and it isn't needed on desktops |

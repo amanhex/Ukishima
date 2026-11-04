@@ -30,7 +30,7 @@
       "id": "notify",
       "check": { "bin": "notify-send" },
       "pkg": ["libnotify"],
-      "why": "desktop notifications for the pill and for these dependency reports"
+      "why": "desktop notifications for timers, events, recordings and night light"
     },
     {
       "id": "jq",
@@ -48,7 +48,7 @@
       "id": "upower",
       "check": { "bin": "upower" },
       "pkg": ["upower"],
-      "why": "battery status and charge reporting"
+      "why": "the UPower daemon behind battery status and charge reporting"
     },
     {
       "id": "bluetooth",
@@ -90,7 +90,7 @@
       "id": "cava",
       "check": { "bin": "cava" },
       "pkg": ["cava"],
-      "why": "the music visualiser"
+      "why": "the rest-pill audio visualiser"
     },
     {
       "id": "clipboard",
@@ -111,7 +111,7 @@
       "id": "gpu-screen-recorder",
       "check": { "bin": "gpu-screen-recorder" },
       "pkg": ["gpu-screen-recorder"],
-      "why": "the screen-recording backend — recording is disabled without it",
+      "why": "the screen-recording backend — recording cannot start without it",
       "nudge": true
     },
     {
@@ -132,7 +132,7 @@
       "id": "matugen",
       "check": { "bin": "matugen" },
       "pkg": ["matugen"],
-      "why": "Material base16 palettes (always-dark terminal theme, dynamic wallpaper palette)",
+      "why": "the dynamic wallpaper palette and the terminal colour theme",
       "nudge": true
     },
     {
