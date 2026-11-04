@@ -1,8 +1,8 @@
 # 浮島 Ukishima
 
-> A dynamic-island Quickshell shell for Hyprland and niri.
+> A Quickshell desktop shell for Hyprland and niri.
 
-Ukishima (浮島, *"floating island"*) is a widget layer for Hyprland and niri built around a morphing pill at the top of every monitor that expands in place into a control centre, plus a floating macOS-style 泊 dock at the bottom edge for pinned and running apps. Fully self-contained — it makes no changes to your compositor configuration.
+Ukishima (浮島, *"floating island"*) puts a pill at the top of every monitor and a dock along the bottom. The pill expands in place into surfaces — launcher, media, settings and the rest — rather than opening separate panels. It is a self-contained Quickshell config and does not edit your compositor files.
 
 ## Preview
 
@@ -16,18 +16,19 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 
 ## Features
 
-- **Dynamic island** — one morphing pill per monitor. Modules grow their surfaces out of it in place; right-click walks the pill through media, timer, and up to two more surfaces you pick under **Settings → Interface → Right-click**.
-- **泊 Dock** — pinned and running apps with hover magnification and multi-window previews, auto-hide, and its own theme and glass.
-- **Surfaces** — launcher, emoji, weather, calendar, media, mixer, wallpaper strip + Wallhaven search, screen recorder, clipboard, Wi-Fi, Bluetooth, battery, power menu, system monitor, notifications, OSD, toasts, scratchpad, settings.
-- **Wallpapers** — shuffled `awww` bag, live `mpvpaper` videos, per-wallpaper fit, and a palette that retints the UI.
-- **Compositor-aware** — workspaces, window state, keyboard layout, lock backends, and dependency checks all follow the active compositor. Hyprland-only features are hidden on niri.
-- **Extras** — night light (Hyprland), game mode, keep-awake, in-app updater.
+- **Pill** — one per monitor. Hovering expands it into a row of modules; surfaces open from the pill and fold back into it when dismissed. Right-clicking the pill cycles through the media surface, the timer, and up to two more surfaces chosen under **Settings → Interface → Right-click**.
+- **Dock** — pinned and running apps, hover magnification, window previews, auto-hide, and its own theme.
+- **Surfaces** — launcher, emoji, weather, calendar, media player, mixer, wallpaper browser and Wallhaven search, screen recorder, clipboard, Wi-Fi, Bluetooth, battery, power menu, system monitor, scratchpad and settings.
+- **Surface styles** — the pill, media player, mixer, system monitor, scratchpad and lock screen each offer several layouts, under **Settings → Appearance → Surface Styles**.
+- **Wallpapers** — shuffled image wallpapers through `awww`, video wallpapers through `mpvpaper`, a cover/contain/stretch/center fit, and a palette taken from the current wallpaper.
+- **Compositor-aware** — workspaces, window state, keyboard layout, lock backends and dependency checks follow Hyprland or niri. Hyprland-only features are hidden on niri.
+- **Extras** — night light (Hyprland), game mode, keep-awake and an in-app updater.
 
 ## Requirements
 
-- Linux + Wayland, **Hyprland** or **niri**
-- **Quickshell** 0.3.0+
-- CLI tools checked by the installer — see [Dependencies](docs/DEPENDENCIES.md)
+- Linux with Wayland, running **Hyprland** or **niri**
+- **Quickshell** 0.3.0 or newer
+- The command-line tools listed in [Dependencies](docs/DEPENDENCIES.md)
 
 ## Install
 
@@ -35,7 +36,7 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/remote-install.sh | bash
 ```
 
-Clones to `~/.local/share/quickshell/ukishima`, checks the tools your compositor needs, and prints the matching startup command. An existing clean, official `master` checkout with no local commits is updated only after confirmation; local changes and other directories are left untouched. The installer does not edit your configuration.
+The installer clones into `~/.local/share/quickshell/ukishima`, checks the tools your compositor needs, and prints the startup line for your compositor config. If that directory already contains a clean official `master` checkout, it offers to update it; anything else is left untouched.
 
 ## Launch
 
@@ -71,32 +72,32 @@ spawn-at-startup "awww-daemon"
 
 ## Keybinds
 
-Ukishima does not modify your keybindings. For example:
+Ukishima does not install keybindings. Call its IPC from your own, for example:
 
 ```bash
 qs -p ~/.local/share/quickshell/ukishima ipc call ukishima launcher ""
 ```
 
-See the [Keybindings & IPC Guide](docs/KEYBINDINGS.md) for Hyprland, Hyprland Lua, and niri examples and the full IPC list.
+See the [Keybindings & IPC Guide](docs/KEYBINDINGS.md) for Hyprland, Hyprland Lua and niri examples, plus the full IPC list.
 
 ## Lock
 
-Ukishima provides its own lockscreen and supports external lockers:
+Ukishima provides its own lockscreen and can also hand off to an external locker:
 
 - **Hyprland** — Hyprlock or Quickshell
 - **niri** — swaylock or Quickshell
 
-Choose a backend under **Settings → Lock**, then bind `~/.local/share/quickshell/ukishima/scripts/lock.sh` to a shortcut.
+Choose a backend under **Settings → Lock screen**, then bind `~/.local/share/quickshell/ukishima/scripts/lock.sh` to a shortcut.
 
 ## Update
 
-Open **Settings → Update**, click **Check for Updates**, and select **Update Ukishima**. The in-app updater keeps local modifications.
+Open **Settings → Update** and choose **Check for Updates**. The updater only works on a clean official `master` checkout: uncommitted changes block it, and any other checkout is refused. When updates are available it fast-forwards and reloads the shell.
 
-To update from a terminal, run the install command again. It asks before updating and only touches a clean, official `master` checkout tracking `origin/master` with no local commits. Local changes and development checkouts are left alone.
+You can also run the install command again. It asks before updating and, like the in-app updater, only touches a clean `master` checkout that tracks `origin/master`; local changes and development checkouts are left alone.
 
 ## Troubleshooting
 
-Quickshell output is written to `$XDG_STATE_HOME/ukishima/ukishima.log` (default `~/.local/state/ukishima/ukishima.log`), with one rotated copy, and is also printed to the terminal when you launch from one. Check the log for private paths before attaching it to an issue. To see which tools are missing, run:
+Quickshell output is written to `$XDG_STATE_HOME/ukishima/ukishima.log` (default `~/.local/state/ukishima/ukishima.log`), with one rotated copy, and is also printed to the terminal when you launch from one. The log can contain file paths, so check it before posting it publicly. To see which tools are missing, run:
 
 ```bash
 ~/.local/share/quickshell/ukishima/scripts/check-deps.sh
@@ -108,8 +109,10 @@ Quickshell output is written to `$XDG_STATE_HOME/ukishima/ukishima.log` (default
 curl -fsSL https://raw.githubusercontent.com/amanhex/Ukishima/master/uninstall.sh | bash
 ```
 
-This completely removes Ukishima: application files, settings, state, caches, and generated wallpaper stills. It does not touch personal wallpapers, other applications, or compositor configuration. Remove any Ukishima startup commands or keybindings afterwards.
+The script asks for confirmation, stops a running shell, and removes the application directory, settings, state, caches and generated wallpaper stills. It refuses to remove a modified or non-`master` git checkout. Your own wallpapers, other applications and compositor configuration are not touched. Remove the startup line and any keybindings afterwards.
 
 ## Credits
 
 Built on top of [**Ricelin**](https://github.com/Gakuseei/Ricelin) by [**Gakuseei**](https://github.com/Gakuseei) — the pill concept, the morphing-surface architecture and most of the original codebase. All credit for the base code goes to the original author.
+
+The media, mixer, system monitor, scratchpad and lock screen surface styles are inspired by [**Chaldea**](https://github.com/Aleph1-9012/Chaldea) by [**Aleph1-9012**](https://github.com/Aleph1-9012).
