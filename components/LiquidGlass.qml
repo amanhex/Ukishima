@@ -51,9 +51,12 @@ Rectangle {
     property bool pressed: false
     property bool active: false
 
-    /// Master switch: the glass material is on. OLED no longer forces the legacy
-    /// path — transparency can work with OLED.
-    readonly property bool glassy: Flags.glass
+    /// Master switch: the glass material is on. OLED forces the solid path the
+    /// same way the dock's `dockGlass` does — a translucent black pane reads as
+    /// dark glass, not the pure-black island OLED is after — so transparency
+    /// yields while the pill's palette is OLED. The saved `Flags.glass` is kept,
+    /// so leaving OLED restores the user's choice.
+    readonly property bool glassy: Flags.glass && !Theme.oled
 
     /// The veil actually painted when glassy: the surface baseline plus the
     /// user's text-visibility boost (up to +0.12), capped so it never becomes a
