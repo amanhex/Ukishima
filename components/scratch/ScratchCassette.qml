@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import ".."
 import "../../Singletons"
+import "../../lib/scratch.js" as ScratchNav
 
 /**
  * Chaldea "Cassette": the pad as a drawer list — numbered note rows under a
@@ -22,30 +23,17 @@ Item {
         : notes.length + (notes.length === 1 ? " note" : " notes")
 
     function locateCurrent() {
-        for (var i = 0; i < notes.length; i++)
-            if (notes[i].slug === Scratch.currentSlug) {
-                list.currentIndex = i;
-                return;
-            }
-        if (list.currentIndex >= notes.length)
-            list.currentIndex = Math.max(0, notes.length - 1);
+        list.currentIndex = ScratchNav.locate(notes, Scratch.currentSlug, list.currentIndex);
     }
 
     function focusList() { list.forceActiveFocus(); }
 
     function openCurrent() {
-        var note = notes[list.currentIndex];
-        if (!note) {
-            cassette.host.openCreate();
-            return;
-        }
-        cassette.host.openNote(note.slug);
+        ScratchNav.open(cassette.host, notes, list.currentIndex);
     }
 
     function removeCurrent() {
-        var note = notes[list.currentIndex];
-        if (note)
-            Scratch.remove(note.slug);
+        ScratchNav.remove(Scratch, notes, list.currentIndex);
     }
 
     Component.onCompleted: {

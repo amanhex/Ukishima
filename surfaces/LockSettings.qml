@@ -19,7 +19,6 @@ SettingsSurface {
     id: root
 
     backSurface: "appearance"
-    implicitHeight: content.implicitHeight
 
     // ── Lock method ─────────────────────────────────────────────────────
     //
@@ -292,271 +291,259 @@ SettingsSurface {
 
     rows: root.visibleRows
 
-    Column {
-        id: content
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        spacing: 0
+    glyph: "錠"
+    title: "LOCK"
+    showBack: true
 
-        SettingsHeader {
+    SettingsRow {
+        id: methodRow
+        surface: root
+        name: "Method"
+        icon: "lock"
+        sub: root.methodSub
+
+        Dropdown {
+            id: methodDrop
             s: root.s
-            glyph: "錠"
-            title: "LOCK"
-            showBack: true
-        }
-
-        Item { width: 1; height: 10 * root.s }
-        SettingsRow {
-            id: methodRow
-            surface: root
-            name: "Method"
-            icon: "lock"
-            sub: root.methodSub
-
-            Dropdown {
-                id: methodDrop
-                s: root.s
-                //* Built from the compositor capability list in methodValues
-                //* so the picker and row registry
-                //* below are the same list, and neither can offer a method
-                //* that is not installed.
-                options: {
-                    const out = [];
-                    for (const v of root.methodValues) {
-                        const label = v === "hyprlock" ? "Hyprlock"
-                            : (v === "swaylock" ? "swaylock" : "Quickshell");
-                        out.push({ label: label, value: v });
-                    }
-                    return out;
+            //* Built from the compositor capability list in methodValues
+            //* so the picker and row registry
+            //* below are the same list, and neither can offer a method
+            //* that is not installed.
+            options: {
+                const out = [];
+                for (const v of root.methodValues) {
+                    const label = v === "hyprlock" ? "Hyprlock"
+                        : (v === "swaylock" ? "swaylock" : "Quickshell");
+                    out.push({ label: label, value: v });
                 }
-                value: root.methodValue
-                onChipClicked: methodDrop.open = !methodDrop.open
-                onPicked: (v) => Flags.lockMethod = v
+                return out;
             }
+            value: root.methodValue
+            onChipClicked: methodDrop.open = !methodDrop.open
+            onPicked: (v) => Flags.lockMethod = v
         }
+    }
 
-        SettingsRow {
-            id: bgRow
-            surface: root
-            name: "Backdrop"
-            icon: "wallpaper"
-            //* The backdrop is drawn by LockSurface, which only exists under the
-            //* Quickshell lock. hyprlock paints whatever its own config says, so
-            //* this setting is not merely ignored there — there is no code on
-            //* that path that could read it.
-            visible: root.quickshellLock
+    SettingsRow {
+        id: bgRow
+        surface: root
+        name: "Backdrop"
+        icon: "wallpaper"
+        //* The backdrop is drawn by LockSurface, which only exists under the
+        //* Quickshell lock. hyprlock paints whatever its own config says, so
+        //* this setting is not merely ignored there — there is no code on
+        //* that path that could read it.
+        visible: root.quickshellLock
 
-            Dropdown {
-                id: bgDrop
-                s: root.s
-                options: [
-                    { label: "Capture", value: "capture" },
-                    { label: "Wallpaper", value: "wallpaper" },
-                    { label: "Solid", value: "solid" }
-                ]
-                value: Flags.lockBackground
-                onChipClicked: bgDrop.open = !bgDrop.open
-                onPicked: (v) => Flags.lockBackground = v
-            }
+        Dropdown {
+            id: bgDrop
+            s: root.s
+            options: [
+                { label: "Capture", value: "capture" },
+                { label: "Wallpaper", value: "wallpaper" },
+                { label: "Solid", value: "solid" }
+            ]
+            value: Flags.lockBackground
+            onChipClicked: bgDrop.open = !bgDrop.open
+            onPicked: (v) => Flags.lockBackground = v
         }
+    }
 
-        SettingsRow {
-            id: blurRow
-            surface: root
-            name: "Blur"
-            icon: "droplet"
-            sub: "Background blur strength"
-            //* Hidden, not disabled, outside capture mode. LockSurface's blur
-            //* layer is `visible: background === "capture" && ...`, so in
-            //* wallpaper and solid there is genuinely nothing for this to
-            //* change — a greyed-out row just spends a line on the reader.
-            //*
-            //* Hiding rather than disabling also closes a hole: a disabled row
-            //* is still in `rows`, so kbActivate would keep seg-cycling a
-            //* control the mouse refuses to touch. Out of the list means out
-            //* of reach by both.
-            //*
-            //* The quickshellLock half is what keeps this from outliving
-            //* bgRow: `lockBackground` keeps its stored value while the row is
-            //* hidden, so gating on "capture" alone would leave a Blur row
-            //* stranded under the method row with no Background above it once
-            //* hyprlock is selected.
-            //*
-            //* The stored value is untouched, so switching back to capture
-            //* finds the blur level you had rather than a default.
-            visible: root.quickshellLock && Flags.lockBackground === "capture"
+    SettingsRow {
+        id: blurRow
+        surface: root
+        name: "Blur"
+        icon: "droplet"
+        sub: "Background blur strength"
+        //* Hidden, not disabled, outside capture mode. LockSurface's blur
+        //* layer is `visible: background === "capture" && ...`, so in
+        //* wallpaper and solid there is genuinely nothing for this to
+        //* change — a greyed-out row just spends a line on the reader.
+        //*
+        //* Hiding rather than disabling also closes a hole: a disabled row
+        //* is still in `rows`, so kbActivate would keep seg-cycling a
+        //* control the mouse refuses to touch. Out of the list means out
+        //* of reach by both.
+        //*
+        //* The quickshellLock half is what keeps this from outliving
+        //* bgRow: `lockBackground` keeps its stored value while the row is
+        //* hidden, so gating on "capture" alone would leave a Blur row
+        //* stranded under the method row with no Background above it once
+        //* hyprlock is selected.
+        //*
+        //* The stored value is untouched, so switching back to capture
+        //* finds the blur level you had rather than a default.
+        visible: root.quickshellLock && Flags.lockBackground === "capture"
 
-            Dropdown {
-                id: blurDrop
-                s: root.s
-                options: [
-                    { label: "Off", value: 0 },
-                    { label: "Low", value: 32 },
-                    { label: "Med", value: 64 },
-                    { label: "High", value: 96 }
-                ]
-                value: Flags.lockBlur
-                onChipClicked: blurDrop.open = !blurDrop.open
-                onPicked: (v) => Flags.lockBlur = v
-            }
+        Dropdown {
+            id: blurDrop
+            s: root.s
+            options: [
+                { label: "Off", value: 0 },
+                { label: "Low", value: 32 },
+                { label: "Med", value: 64 },
+                { label: "High", value: 96 }
+            ]
+            value: Flags.lockBlur
+            onChipClicked: blurDrop.open = !blurDrop.open
+            onPicked: (v) => Flags.lockBlur = v
         }
+    }
 
-        SettingsRow {
-            id: avatarRow
-            surface: root
-            name: "Avatar"
-            icon: "dot"
-            //* LockSurface's, not hyprlock's. Same reasoning as bgRow.
-            visible: root.quickshellLock
+    SettingsRow {
+        id: avatarRow
+        surface: root
+        name: "Avatar"
+        icon: "dot"
+        //* LockSurface's, not hyprlock's. Same reasoning as bgRow.
+        visible: root.quickshellLock
 
-            LinkToggle {
-                s: root.s
-                on: Flags.lockShowAvatar
-                onToggled: Flags.lockShowAvatar = !Flags.lockShowAvatar
-            }
+        LinkToggle {
+            s: root.s
+            on: Flags.lockShowAvatar
+            onToggled: Flags.lockShowAvatar = !Flags.lockShowAvatar
         }
+    }
 
-        SettingsRow {
-            id: avatarPathRow
-            surface: root
-            //* "Avatar image", not "Avatar": the row above already owns
-            //* "Avatar", and two rows with the same label read as a rendering
-            //* bug. This one is the image that toggle turns on.
-            name: "Avatar image"
-            //* "wallpaper" is the only one of image/wallpaper that exists in
-            //* GlyphIcon's table; an unknown name silently falls through to the
-            //* default shape, so "image" here would have drawn a different
-            //* picture from the tile beside it.
-            icon: "wallpaper"
-            //* Pointless while the avatar is off — the lock draws nothing, so
-            //* a path field here is editing a setting that has no effect.
-            //* And pointless under hyprlock, which draws no avatar at all.
-            visible: root.quickshellLock && Flags.lockShowAvatar
-            //* While the field is open the caption clears, the way the
-            //* wallpaper surface's header path does beside its own field:
-            //* at rest it carries the one thing the field cannot say —
-            //* whether the path resolved, and what an empty flag means.
-            sub: avatarPathRow.editing ? "" : root.avatarSub
-            captionOnFocus: true
+    SettingsRow {
+        id: avatarPathRow
+        surface: root
+        //* "Avatar image", not "Avatar": the row above already owns
+        //* "Avatar", and two rows with the same label read as a rendering
+        //* bug. This one is the image that toggle turns on.
+        name: "Avatar image"
+        //* "wallpaper" is the only one of image/wallpaper that exists in
+        //* GlyphIcon's table; an unknown name silently falls through to the
+        //* default shape, so "image" here would have drawn a different
+        //* picture from the tile beside it.
+        icon: "wallpaper"
+        //* Pointless while the avatar is off — the lock draws nothing, so
+        //* a path field here is editing a setting that has no effect.
+        //* And pointless under hyprlock, which draws no avatar at all.
+        visible: root.quickshellLock && Flags.lockShowAvatar
+        //* While the field is open the caption clears, the way the
+        //* wallpaper surface's header path does beside its own field:
+        //* at rest it carries the one thing the field cannot say —
+        //* whether the path resolved, and what an empty flag means.
+        sub: avatarPathRow.editing ? "" : root.avatarSub
+        captionOnFocus: true
 
-            property bool editing: false
+        property bool editing: false
 
-            //* Wallpaper-surface style field (see Wallpaper.qml folderRow):
-            //* a bare TextInput, no box, opening instantly at full row width
-            //* with the current value as its hint when cleared. 58* is where
-            //* the name's text column ends — its 44* left offset plus its 14*
-            //* gap — so the name elides to nothing as the field claims the
-            //* space instead of sitting under it. No width animation: the
-            //* swap is instant on the wallpaper surface too, and an animated
-            //* close would re-wrap the caption mid-move.
-            Item {
-                width: avatarPathRow.editing ? avatarPathRow.width - 58 * root.s : 26 * root.s
-                height: 26 * root.s
+        //* Wallpaper-surface style field (see Wallpaper.qml folderRow):
+        //* a bare TextInput, no box, opening instantly at full row width
+        //* with the current value as its hint when cleared. 58* is where
+        //* the name's text column ends — its 44* left offset plus its 14*
+        //* gap — so the name elides to nothing as the field claims the
+        //* space instead of sitting under it. No width animation: the
+        //* swap is instant on the wallpaper surface too, and an animated
+        //* close would re-wrap the caption mid-move.
+        Item {
+            width: avatarPathRow.editing ? avatarPathRow.width - 58 * root.s : 26 * root.s
+            height: 26 * root.s
 
-                TextInput {
-                    id: avatarInput
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12 * root.s
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: avatarPathRow.editing
-                    enabled: avatarPathRow.editing
-                    clip: true
-                    color: Theme.cream
+            TextInput {
+                id: avatarInput
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.rightMargin: 12 * root.s
+                anchors.verticalCenter: parent.verticalCenter
+                visible: avatarPathRow.editing
+                enabled: avatarPathRow.editing
+                clip: true
+                color: Theme.cream
+                font.family: Theme.font
+                font.pixelSize: 11 * root.s
+                selectByMouse: true
+                selectionColor: Theme.verm
+
+                Keys.onPressed: (e) => {
+                    if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                        root.endAvatarEdit(true, text);
+                        e.accepted = true;
+                    } else if (e.key === Qt.Key_Escape) {
+                        root.endAvatarEdit(false, "");
+                        e.accepted = true;
+                    }
+                }
+
+                //* The stored path as the hint when the field is empty —
+                //* "no image" while the flag is unset, mirroring how the
+                //* wallpaper surface's field hints the dir it would use.
+                Text {
+                    anchors.fill: parent
+                    verticalAlignment: Text.AlignVCenter
+                    visible: avatarInput.text.length === 0
+                    text: root.avatarStored !== "" ? root.avatarStored : root.avatarPlaceholder
+                    elide: Text.ElideMiddle
+                    color: Theme.faint
                     font.family: Theme.font
                     font.pixelSize: 11 * root.s
-                    selectByMouse: true
-                    selectionColor: Theme.verm
-
-                    Keys.onPressed: (e) => {
-                        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
-                            root.endAvatarEdit(true, text);
-                            e.accepted = true;
-                        } else if (e.key === Qt.Key_Escape) {
-                            root.endAvatarEdit(false, "");
-                            e.accepted = true;
-                        }
-                    }
-
-                    //* The stored path as the hint when the field is empty —
-                    //* "no image" while the flag is unset, mirroring how the
-                    //* wallpaper surface's field hints the dir it would use.
-                    Text {
-                        anchors.fill: parent
-                        verticalAlignment: Text.AlignVCenter
-                        visible: avatarInput.text.length === 0
-                        text: root.avatarStored !== "" ? root.avatarStored : root.avatarPlaceholder
-                        elide: Text.ElideMiddle
-                        color: Theme.faint
-                        font.family: Theme.font
-                        font.pixelSize: 11 * root.s
-                    }
-                }
-
-                //* "wallpaper", not "image" — that is the glyph the wallpaper
-                //* folder row's tile uses, and the only one of the two that
-                //* actually exists in GlyphIcon's table. An unknown name falls
-                //* through to the default, so "image" would have rendered as a
-                //* different shape than the one beside it.
-                GlyphIcon {
-                    anchors.centerIn: parent
-                    visible: !avatarPathRow.editing
-                    width: 15 * root.s
-                    height: 15 * root.s
-                    name: "wallpaper"
-                    color: avatarPathRow.focused ? Theme.cream : Theme.iconDim
-                    stroke: 1.7
                 }
             }
-        }
 
-        SettingsRow {
-            id: wifiRow
-            surface: root
-            name: "Wifi indicator"
-            icon: "wifi"
-            //* Drawn by LockSurface. hyprlock shows its own indicators from
-            //* hyprlock.conf.
-            visible: root.quickshellLock
-
-            LinkToggle {
-                s: root.s
-                on: Flags.lockShowWifi
-                onToggled: Flags.lockShowWifi = !Flags.lockShowWifi
+            //* "wallpaper", not "image" — that is the glyph the wallpaper
+            //* folder row's tile uses, and the only one of the two that
+            //* actually exists in GlyphIcon's table. An unknown name falls
+            //* through to the default, so "image" would have rendered as a
+            //* different shape than the one beside it.
+            GlyphIcon {
+                anchors.centerIn: parent
+                visible: !avatarPathRow.editing
+                width: 15 * root.s
+                height: 15 * root.s
+                name: "wallpaper"
+                color: avatarPathRow.focused ? Theme.cream : Theme.iconDim
+                stroke: 1.7
             }
         }
-
-        SettingsRow {
-            id: batteryRow
-            surface: root
-            name: "Battery indicator"
-            icon: "bolt"
-            //* LockSurface's, same as wifiRow.
-            visible: root.quickshellLock
-
-            LinkToggle {
-                s: root.s
-                on: Flags.lockShowBattery
-                onToggled: Flags.lockShowBattery = !Flags.lockShowBattery
-            }
-        }
-
-        SettingsRow {
-            id: mediaRow
-            surface: root
-            name: "Media player"
-            icon: "music"
-            //* LockSurface's card under the clock, same arrangement as wifiRow;
-            //* hyprlock draws no media card of its own.
-            visible: root.quickshellLock
-
-            LinkToggle {
-                s: root.s
-                on: Flags.lockShowMedia
-                onToggled: Flags.lockShowMedia = !Flags.lockShowMedia
-            }
-        }
-
     }
+
+    SettingsRow {
+        id: wifiRow
+        surface: root
+        name: "Wifi indicator"
+        icon: "wifi"
+        //* Drawn by LockSurface. hyprlock shows its own indicators from
+        //* hyprlock.conf.
+        visible: root.quickshellLock
+
+        LinkToggle {
+            s: root.s
+            on: Flags.lockShowWifi
+            onToggled: Flags.lockShowWifi = !Flags.lockShowWifi
+        }
+    }
+
+    SettingsRow {
+        id: batteryRow
+        surface: root
+        name: "Battery indicator"
+        icon: "bolt"
+        //* LockSurface's, same as wifiRow.
+        visible: root.quickshellLock
+
+        LinkToggle {
+            s: root.s
+            on: Flags.lockShowBattery
+            onToggled: Flags.lockShowBattery = !Flags.lockShowBattery
+        }
+    }
+
+    SettingsRow {
+        id: mediaRow
+        surface: root
+        name: "Media player"
+        icon: "music"
+        //* LockSurface's card under the clock, same arrangement as wifiRow;
+        //* hyprlock draws no media card of its own.
+        visible: root.quickshellLock
+
+        LinkToggle {
+            s: root.s
+            on: Flags.lockShowMedia
+            onToggled: Flags.lockShowMedia = !Flags.lockShowMedia
+        }
+    }
+
 }

@@ -141,11 +141,11 @@ Rectangle {
     //* parses the file and never writes it.
     property bool use12h: false
     property bool batteryShimmerOn: true
-    //* Read from the desktop's reduceMotion setting. When it is on, the lock
-    //* skips the entrance choreography entirely and paints its final state on
-    //* the first frame. The staggered fade/zoom/translate is exactly the kind
-    //* of motion that setting exists to suppress, and honouring it here also
-    //* gives anyone who finds the lock sluggish a one-setting way out.
+    //* Read from the desktop's reduceMotion setting. The lock composes its
+    //* final state before the first frame; this snaps the staged entrance to
+    //* its end state and turns the battery shimmer and other incidental motion
+    //* off. The unlock handover stays, because fading the furniture is what
+    //* keeps the compositor from flashing.
     property bool reduceMotion: false
     //* Lock-specific settings, written by the pill's LOCK surface (surfaces/
     //* LockSettings.qml -> Flags -> flags.json) and read back here. Defaults
@@ -190,15 +190,42 @@ Rectangle {
     //* unbound. A missing file is not a special case to predict anyway -- bind
     //* the URL and let the Image report status=Error, which the wallpaper
     //* layer behind already treats as "no capture".
-    readonly property string grimSource: background === "capture"
-        ? "file://" + lockShot
-        : ""
+    //* The pre-capture is always decoded, even in wallpaper mode. It is the
+    //* exact desktop pixels at lock time, so the entrance fade can start from
+    //* the thing that is already on screen and settle to the composed lock.
+    //* Without it the first lock frame showed the chosen wallpaper (which may
+    //* not match the live desktop crop) and then the style faded in, which
+    //* reads as two steps rather than one transition.
+    readonly property string grimSource: "file://" + lockShot
 
     //* Re-report if the mode changes after load, so a lock that starts in the
     //* default and is then pointed at "capture" still says what it painted.
     onBackgroundChanged: {
         root.captureLogged = false;
         root.reportCapture("mode=" + background);
+        root.evaluateBackdrop();
+        root.maybeCompose();
+    }
+
+    onStyleLockChanged: {
+        root.evaluateDesign();
+        root.maybeCompose();
+    }
+
+    //* Read the wallpaper state now instead of waiting for its onLoaded
+    //* signal. blockLoading has the file text ready at component completion;
+    //* onLoaded fires afterwards, by which time the surface has already
+    //* painted the legacy fallback (which usually does not exist). Reading it
+    //* here keeps the first frame on the real wallpaper.
+    function syncWallpaperState() {
+        try {
+            const p = wallpaperState.text().trim();
+            if (p.length > 0) {
+                root.currentWallpaper = p;
+                root.wallpaperReady = true;
+            }
+        } catch (e) {
+        }
     }
 
     function syncSharedFlags() {
@@ -235,10 +262,10 @@ Rectangle {
 
             if (shared && ["default", "relay", "folio", "editorial", "phase", "spine", "reactive"].indexOf(shared.styleLock) >= 0)
                 root.styleLock = shared.styleLock;
+            return true;
         } catch (e) {
+            return false;
         }
-        //* Now that reduceMotion is known, the entrance can start.
-        root.startEntrance();
     }
 
     FileView {
@@ -248,9 +275,16 @@ Rectangle {
         blockLoading: true
         watchChanges: true
         printErrors: false
-        onLoaded: root.syncSharedFlags()
+        onLoaded: {
+            root.flagsReady = true;
+            root.syncSharedFlags();
+            root.evaluateDesign();
+            root.evaluateBackdrop();
+            root.maybeCompose();
+        }
         onFileChanged: reload()
         onLoadFailed: {
+            root.flagsReady = true;
             root.use12h = false;
             root.batteryShimmerOn = true;
             root.showAvatar = true;
@@ -261,6 +295,9 @@ Rectangle {
             root.background = "capture";
             root.avatarPath = "";
             root.styleLock = "default";
+            root.evaluateDesign();
+            root.evaluateBackdrop();
+            root.maybeCompose();
         }
     }
 
@@ -280,14 +317,20 @@ Rectangle {
             root.currentWallpaper = text().trim();
             if (wallpaperShot)
                 wallpaperShot.candidate = 0;
+            root.wallpaperReady = true;
             root.reportWallpaper("loaded");
+            root.evaluateBackdrop();
+            root.maybeCompose();
         }
         onFileChanged: reload()
         onLoadFailed: {
             root.currentWallpaper = "";
             if (wallpaperShot)
                 wallpaperShot.candidate = 0;
+            root.wallpaperReady = true;
             root.reportWallpaper("load-failed");
+            root.evaluateBackdrop();
+            root.maybeCompose();
         }
     }
 
@@ -394,9 +437,135 @@ Rectangle {
         easing.type: Easing.Linear
     }
 
-    //* How "still a lock screen" this is right now. The furniture reads this
-    //* directly; the backdrop reads the curve below.
+    //* ── Atomic compose ──
+    //
+    //* The lock surface is the first frame the compositor gives us, but the
+    //* surface and its contents do not all become paintable on the same frame
+    //* if they are left to load asynchronously: the backdrop image is decoded
+    //* immediately, then the capture/veil/design are laid out and their text
+    //* rasterised a frame or two later. Left alone that reads as wallpaper ->
+    //* dim -> style, three separate arrivals under the entrance.
+    //*
+    //* The normal path below reads flags and the wallpaper path synchronously
+    //* in Component.onCompleted, so the first painted frame already has the
+    //* right background, veil and design, and the staged entrance starts from
+    //* that complete scene. This gate is the fallback for a decode that is
+    //* genuinely still in flight: until everything settles the backdrop stays
+    //* a plain, undimmed copy of what is already on screen, then `composed`
+    //* flips once and the entrance runs on the settled scene.
+    property bool composed: false
+    property bool flagsReady: false
+    property bool wallpaperReady: false
+    property bool backdropReady: false
+    property bool designReady: false
+
+    function evaluateBackdrop() {
+        if (root.background === "solid") {
+            root.backdropReady = true;
+            return;
+        }
+        if (root.background === "wallpaper") {
+            root.backdropReady = wallpaperShot.status === Image.Ready
+                || wallpaperShot.status === Image.Error;
+            return;
+        }
+        root.backdropReady = grimShot.status === Image.Ready
+            || grimShot.status === Image.Error
+            || bgShot.hasContent;
+    }
+
+    function evaluateDesign() {
+        if (root.styleLock === "default") {
+            root.designReady = true;
+            return;
+        }
+        root.designReady = designLoader.status === Loader.Ready
+            || designLoader.status === Loader.Error;
+    }
+
+    function maybeCompose() {
+        if (root.composed)
+            return;
+        if (root.flagsReady && root.wallpaperReady
+            && root.backdropReady && root.designReady)
+            settleTimer.start();
+    }
+
+    //* Two frames of grace after the Loader reports Ready. The design is
+    //* instantiated and laid out by then; this only lets its text nodes reach
+    //* the scene graph so the first visible frame is already complete.
+    Timer {
+        id: settleTimer
+
+        interval: 32
+        repeat: false
+        onTriggered: root.composed = true
+    }
+
+    //* An invisible lock is worse than a staged one. If flags, the backdrop or
+    //* a design never settle (a broken file, a compositor that never fills the
+    //* screencopy), show the lock anyway rather than leaving the furniture at
+    //* zero opacity forever.
+    Timer {
+        running: true
+        interval: 1200
+        repeat: false
+        onTriggered: root.composed = true
+    }
+
+    //* Entrance choreography, one master clock. The backdrop and veil are
+    //* already final on the first frame; only the furniture is staged, with
+    //* each element mapped to its own window by stage(). This mirrors the
+    //* default lock's clock-drifts-in / auth-rises entrance and gives every
+    //* surface style the same kind of assembly instead of a uniform fade.
+    property real entrance: 0
+    readonly property int entranceMs: 380
+
+    function stage(from, to, peak) {
+        const u = Math.max(0, Math.min(1, (root.entrance - from) / (to - from)));
+        return (1 - Math.pow(1 - u, 3)) * peak;
+    }
+
+    onComposedChanged: {
+        if (composed)
+            startEntrance();
+    }
+
+    property bool entranceStarted: false
+
+    function startEntrance() {
+        if (entranceStarted)
+            return;
+        entranceStarted = true;
+        if (reduceMotion) {
+            entrance = 1;
+            return;
+        }
+        showAnim.start();
+    }
+
+    NumberAnimation {
+        id: showAnim
+
+        target: root
+        property: "entrance"
+        from: 0
+        to: 1
+        duration: root.entranceMs
+        //* Linear: stage() applies the easing per element window, so each
+        //* stage keeps its own curve instead of being flattened into one.
+        easing.type: Easing.Linear
+    }
+
+    //* Unlock only. Entrance opacity lives on the furniture via stage(), so
+    //* the two phases cannot fight over the same property.
     readonly property real held: 1 - Math.max(0, Math.min(1, root.release))
+
+    //* Backdrop-side treatment (dim, veil, vignette, grading). It follows
+    //* `held` on unlock but stays off until the scene is composed, so the
+    //* deferred-decode path still starts from the plain desktop and then
+    //* settles in one step instead of dimming an empty backdrop.
+    readonly property real backdropHeld: root.composed ? root.held : 0
 
     //* Perceived blur is very non-linear in blurMax. Measured on a real
     //* 1920x1200 capture, recording the share of high-frequency detail that
@@ -430,105 +599,38 @@ Rectangle {
         return 0;
     }
 
-    // entrance choreography, Caelestia initAnim style:
-    // the clock drifts down and the auth cluster rises, staggered so the
-    // lock "assembles" smoothly
+    //* The scene is composed here, before the first frame. The pre-capture is
+    //* decoded synchronously and lock.sh has already finished it, so the
+    //* backdrop, the chosen surface style and the default furniture all exist
+    //* on that frame. The only motion is the staged entrance and then the
+    //* unlock.
     Component.onCompleted: {
         //* No capture polling to arm: lock.sh finished grim before spawning
         //* this process, so the file is already on disk and grimSource binds
         //* straight to it.
-        //* The entrance is NOT started here. reduceMotion lives in the shared
-        //* flags file, which loads asynchronously, so at onCompleted it is
-        //* still the default `false` -- starting the animation then ran the
-        //* full choreography for everyone, including users who had asked for
-        //* reduced motion. startEntrance() is called once the flags are known.
-        entranceFallback.start();
+        //
+        //* Read both files synchronously here rather than leaving it to their
+        //* onLoaded signals. blockLoading has the text ready by now, while
+        //* onLoaded is delivered after the surface has already committed its
+        //* first frame — which is what made the lock start in the default
+        //* mode and then visibly switch to the chosen background and style.
+        root.flagsReady = root.syncSharedFlags();
+        root.syncWallpaperState();
+        root.evaluateBackdrop();
+        root.evaluateDesign();
+        //* If the backdrop and design are already up, reveal on this first
+        //* frame. The gate below is only for a decode that is genuinely still
+        //* in flight; it is not the normal path.
+        if (root.flagsReady && root.wallpaperReady
+            && root.backdropReady && root.designReady)
+            root.composed = true;
+        else
+            root.maybeCompose();
+        console.log("[lock] compose " + (root.composed ? "first-frame" : "deferred")
+            + ": style=" + root.styleLock + " background=" + root.background
+            + " design=" + designLoader.status + " wallpaper=" + wallpaperShot.status
+            + " flags=" + root.flagsReady + " backdrop=" + root.backdropReady);
         Qt.callLater(() => reportWallpaper("startup"));
-    }
-
-    //* Start the entrance at most once, honouring reduceMotion.
-    property bool entranceStarted: false
-
-    function startEntrance() {
-        if (entranceStarted)
-            return;
-        entranceStarted = true;
-        if (reduceMotion) {
-            //* Snap to the end state instead of skipping the entrance. Skipping
-            //* was a real bug: every element derives its opacity from
-            //* `entrance`, and nothing but the animation ever moved it, so a
-            //* reduced-motion lock screen had no clock, no password field and
-            //* no indicators — the UI needed to actually unlock, gone.
-            //* Honouring reduced motion means no *motion*, not no *content*.
-            entrance = 1;
-            console.log("[lock] reduceMotion on -- entrance applied without motion");
-            return;
-        }
-        showAnim.start();
-    }
-
-    //* If the flags file never arrives (missing, unreadable, a partial write),
-    //* still run the entrance rather than leaving every element stuck at
-    //* opacity 0 on a locked screen.
-    Timer {
-        id: entranceFallback
-
-        interval: 300
-        onTriggered: root.startEntrance()
-    }
-
-    //* Entrance choreography: the clock drifts down, the auth cluster rises,
-    //* the corner indicators follow — staggered so the lock "assembles"
-    //* smoothly, all inside ~380ms.
-    //*
-    //* These were 450/750/90/180/140ms over 500-600ms eases, which put the last
-    //* element at 780ms after the first frame. Combined with process startup
-    //* that is a ~2s lock, and the long tail is why it read as sluggish rather
-    //* than merely brief.
-    //*
-    //* The backdrop is not animated at all any more. It used to fade from 0
-    //* over 220ms, which held the WlSessionLockSurface's #0b0d0c on screen —
-    //* black on black — for that whole window, and that was the flash on the
-    //* way in. (Its `scale` zoom had already gone: bgLayer holds a full-screen
-    //* MultiEffect, so animating scale re-rasterised a 1920x1200 blur on every
-    //* frame, for a 5% zoom on an image nobody could see moving.) lock.sh
-    //* finishes the capture before this process starts, so there is nothing to
-    //* reveal; the furniture carries the entrance by itself.
-    //
-    //* One master value rather than a NumberAnimation per element. An animation
-    //* assigns its target property directly, which BREAKS that property's
-    //* declarative binding — so animating `clockCol.opacity` and also binding
-    //* it to `* root.held` would quietly stop working the instant the
-    //* entrance finished, stranding the clock and the password field on screen
-    //* through the unlock. Every element below stays a plain expression off
-    //* `entrance` and `held`, so the unlock fade is exact and free.
-    property real entrance: 0
-
-    //* Map the master clock onto one element's window. `from`/`to` are
-    //* fractions of the entrance, `peak` the value it settles at.
-    //*
-    //* The OutCubic is applied per stage, not to the master clock, so each
-    //* element keeps exactly the curve it had as a standalone NumberAnimation.
-    //* Easing the master and remapping linearly would flatten every stage into
-    //* the same shape.
-    //*
-    //* Windows are the original absolute milliseconds divided by entranceMs:
-    //* clock 40-240 (opacity) and 40-320 (drift), auth 80-280 and 80-360,
-    //* indicators 120-320.
-    function stage(from, to, peak) {
-        const u = Math.max(0, Math.min(1, (root.entrance - from) / (to - from)));
-        return (1 - Math.pow(1 - u, 3)) * peak;
-    }
-    readonly property int entranceMs: 380
-
-    NumberAnimation {
-        id: showAnim
-
-        target: root
-        property: "entrance"
-        from: 0
-        to: 1
-        duration: root.entranceMs
     }
 
     // ── Background ──
@@ -539,13 +641,9 @@ Rectangle {
 
         anchors.fill: parent
         //* Opaque from the very first frame, and deliberately NOT animated.
-        //* This used to start at 0 and fade in over 220ms, which meant the
-        //* WlSessionLockSurface's own #0b0d0c was on screen — black on black —
-        //* for that whole window even though the capture had been finished and
-        //* decoded before this process was even spawned. That was the flash on
-        //* the way in. The capture is guaranteed present now, so there is
-        //* nothing to reveal and nothing to wait for; the clock and the auth
-        //* cluster still animate in, which is where the entrance reads from.
+        //* The capture is decoded synchronously before this process paints, so
+        //* the backdrop and the furniture appear together rather than the
+        //* wallpaper sitting alone while the lock assembles.
         opacity: 1
 
         // 1) grim pre-capture — most reliable, no ext-session-lock race
@@ -564,12 +662,18 @@ Rectangle {
             fillMode: Image.PreserveAspectCrop
             asynchronous: false
             cache: false
-            visible: root.background === "capture"
+            //* Capture mode paints it as the backdrop; wallpaper mode uses it
+            //* underneath as the exact desktop frame the entrance fades from.
+            visible: root.background === "capture" || root.background === "wallpaper"
 
             //* A grim failure and a not-yet-decoded file look identical on
             //* screen, and the startup report can land before the decode
             //* finishes. Report again when it settles.
-            onStatusChanged: root.reportCapture("grimShot status=" + status)
+            onStatusChanged: {
+                root.reportCapture("grimShot status=" + status);
+                root.evaluateBackdrop();
+                root.maybeCompose();
+            }
         }
 
 
@@ -587,6 +691,10 @@ Rectangle {
             //* needs to be visible, so it never showed and the fallback was
             //* unreachable in every capture run.
             visible: root.background === "capture" && grimShot.status !== Image.Ready && hasContent
+            onHasContentChanged: {
+                root.evaluateBackdrop();
+                root.maybeCompose();
+            }
         }
 
         // One blurred layer over whichever source is live.
@@ -604,15 +712,14 @@ Rectangle {
             //* No Behavior on these: they are bound to `release`, which is
             //* already animated. A Behavior here would re-animate the same
             //* value on top of that and the two would fight.
-            blurEnabled: root.blurAt(root.release) > 0
+            blurEnabled: root.composed && root.blurAt(root.release) > 0
             blur: 1
             blurMax: root.blurAt(root.release)
             blurMultiplier: 1
             //* Saturation and brightness are linear perceptual effects, so a
-            //* straight ramp from `held` is the right shape for them — no
-            //* curve needed.
-            saturation: -0.08 * root.held
-            brightness: -0.06 * root.held
+            //* straight ramp is the right shape for them — no curve needed.
+            saturation: -0.08 * root.backdropHeld
+            brightness: -0.06 * root.backdropHeld
         }
 
         // 3) Wallpaper — the explicit "wallpaper" choice, and the fallback when
@@ -631,6 +738,14 @@ Rectangle {
             //* produced nothing.
             visible: root.background === "wallpaper"
                 || (root.background === "capture" && grimShot.status !== Image.Ready && !bgShot.hasContent)
+            //* With a capture underneath, the wallpaper is part of the lock
+            //* layer, so it crossfades in over the exact desktop pixels the
+            //* entrance starts from. That crossfade is over by ~45% of the
+            //* entrance so the backdrop is settled before the furniture has
+            //* finished assembling, rather than still moving underneath it.
+            opacity: root.background === "wallpaper" && grimShot.status === Image.Ready
+                ? root.stage(0, 0.45, 1)
+                : 1
             //* Walk videoBackdropCandidates on failure: shared video still, then
             //* this output's, then the grim capture. `candidate` is reset when
             //* the wallpaper state is (re)read.
@@ -639,6 +754,8 @@ Rectangle {
             onStatusChanged: {
                 if (status === Image.Error && candidate < root.videoBackdropCandidates.length - 1)
                     candidate++;
+                root.evaluateBackdrop();
+                root.maybeCompose();
             }
             fillMode: Image.PreserveAspectCrop
             //* Decode at screen resolution, never at the file's native size.
@@ -658,11 +775,13 @@ Rectangle {
         }
 
         // Dark veil for text contrast — lighter than before so wallpaper
-        // stays visible like the reference (was 0.38/0.52 washing to gray)
+        // stays visible like the reference (was 0.38/0.52 washing to gray).
+        // Rides `backdropHeld` so it is absent from the plain backdrop while the
+        // scene composes, and fades back to the bare desktop on unlock.
         Rectangle {
             anchors.fill: parent
             color: "#000000"
-            opacity: 0.3
+            opacity: 0.3 * root.backdropHeld
         }
 
         // Extra legibility veil for the finer-grained lock designs on a sharp
@@ -671,13 +790,14 @@ Rectangle {
         Rectangle {
             anchors.fill: parent
             color: "#000000"
-            opacity: root.designVeil * root.held
+            opacity: root.designVeil * root.backdropHeld
             visible: opacity > 0
         }
 
         // subtle top/bottom vignette so status icons + pill read like reference
         Rectangle {
             anchors.fill: parent
+            opacity: root.backdropHeld
 
             gradient: Gradient {
                 GradientStop {
@@ -719,11 +839,7 @@ Rectangle {
         opacity: root.stage(40 / root.entranceMs, 240 / root.entranceMs, 1) * root.held
 
         transform: Translate {
-            id: clockShift
-            //* Drifts the remaining 22px to rest over 40-320ms. The base y was
-            //* -22 while the old animation started from -14, so the clock
-            //* visibly jumped 8px the instant the entrance began; the drift now
-            //* continues from where the element actually sits.
+            //* Drifts the remaining 22px to rest over 40-320ms.
             y: -22 * (1 - root.stage(40 / root.entranceMs, 320 / root.entranceMs, 1))
         }
 
@@ -917,9 +1033,7 @@ Rectangle {
         opacity: root.stage(80 / root.entranceMs, 280 / root.entranceMs, 1) * root.held
 
         transform: Translate {
-            id: authShift
-            //* Rises its remaining 26px over 80-360ms. Same 10px jump as the
-            //* clock used to have; see clockShift.
+            //* Rises its remaining 26px over 80-360ms.
             y: 26 * (1 - root.stage(80 / root.entranceMs, 360 / root.entranceMs, 1))
         }
 
@@ -1390,9 +1504,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: clockCol.bottom
         anchors.topMargin: 28
-        // Same window as the battery/wifi corners, and back down with `held`
-        // on unlock. clockCol.bottom is the layout edge, so the clock's drift
-        // transform never drags the card along with it.
+        //* 120-320ms, following the auth cluster.
         opacity: root.stage(120 / root.entranceMs, 320 / root.entranceMs, 1) * root.held
         // Visible only for default style; designs provide their own media card
         visible: root.styleLock === "default"
@@ -1416,6 +1528,10 @@ Rectangle {
             : root.styleLock === "spine" ? spineLock
             : root.styleLock === "reactive" ? reactiveLock
             : null
+        onStatusChanged: {
+            root.evaluateDesign();
+            root.maybeCompose();
+        }
     }
 
     Component { id: relayLock; LockRelay { host: root } }

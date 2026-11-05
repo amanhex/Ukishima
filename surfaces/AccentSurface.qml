@@ -22,7 +22,6 @@ SettingsSurface {
     id: root
 
     backSurface: "appcat"
-    implicitHeight: content.implicitHeight
 
     /** Accent override on: a custom hex is pinned and wins over every palette mode. */
     readonly property bool accentCustom: Flags.accentOverride.length > 0
@@ -81,265 +80,254 @@ SettingsSurface {
         { item: accentRow, kind: "toggle", get: function () { return root.accentCustom; }, set: function (v) { root.setAccentCustom(v); } }
     ]
 
-    Column {
-        id: content
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        spacing: 0
+    glyph: "彩"
+    title: "ACCENT"
+    showBack: true
 
-        SettingsHeader {
-            s: root.s
-            glyph: "彩"
-            title: "ACCENT"
-            showBack: true
+    /**
+     * Accent color: an optional user hex that wins over the Light/Dark default,
+     * the wallpaper accent and the manual hue for every warm token (glow,
+     * verm ramps, flame ink). Turning Custom on seeds from the current scheme
+     * accent and unfolds the picker below. The chip in the row previews the
+     * live accent either way.
+     */
+    SettingsRow {
+        id: accentRow
+        surface: root
+        name: "Accent color"
+        icon: "sparkles"
+        sub: root.accentSub
+
+        Item {
+            width: accentChip.width + 10 * root.s + accentToggle.width
+            height: 26 * root.s
+
+            Rectangle {
+                id: accentChip
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                width: 20 * root.s
+                height: 20 * root.s
+                radius: 6 * root.s
+                color: root.accentColorValue
+                border.width: 1
+                border.color: Theme.hairSoft
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
+            }
+
+            LinkToggle {
+                id: accentToggle
+                anchors.left: accentChip.right
+                anchors.leftMargin: 10 * root.s
+                anchors.verticalCenter: parent.verticalCenter
+                s: root.s
+                on: root.accentCustom
+                onToggled: root.setAccentCustom(!root.accentCustom)
+            }
         }
+    }
 
-Item { width: 1; height: 10 * root.s }
-        /**
-         * Accent color: an optional user hex that wins over the Light/Dark default,
-         * the wallpaper accent and the manual hue for every warm token (glow,
-         * verm ramps, flame ink). Turning Custom on seeds from the current scheme
-         * accent and unfolds the picker below. The chip in the row previews the
-         * live accent either way.
-         */
-        SettingsRow {
-            id: accentRow
-            surface: root
-            name: "Accent color"
-            icon: "sparkles"
-            sub: root.accentSub
+    /**
+     * The accent picker, folded shut unless Custom is on. Hue and saturation
+     * are native QtQuick Controls sliders: they recolor live while held
+     * (`pressed`) and re-commit on release (`onMoved`) so the final position
+     * always lands. The row beneath pairs a live swatch with the hex field
+     * for exact entry, and typing keeps both sliders in sync.
+     */
+    Item {
+        id: accentSection
+        width: parent.width
+        height: root.accentCustom ? accentPanel.implicitHeight : 0
+        clip: true
+        Behavior on height { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+
+        Column {
+            id: accentPanel
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 12 * root.s
+            anchors.rightMargin: 12 * root.s
+            topPadding: 4 * root.s
+            bottomPadding: 16 * root.s
+            spacing: 14 * root.s
 
             Item {
-                width: accentChip.width + 10 * root.s + accentToggle.width
+                width: parent.width
                 height: 26 * root.s
 
+                Slider {
+                    id: accentHueSlider
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 26 * root.s
+                    from: 0
+                    to: 1
+                    stepSize: 0.005
+                    onValueChanged: if (pressed) root.setAccentHsl(Math.round(accentHueSlider.value * 359), root.accentSat01, root.accentLight01)
+                    onMoved: root.setAccentHsl(Math.round(accentHueSlider.value * 359), root.accentSat01, root.accentLight01)
+                    Component.onCompleted: accentHueSlider.value = root.accentHue01
+
+                    background: Rectangle {
+                        y: accentHueSlider.availableHeight / 2 - 7 * root.s
+                        width: accentHueSlider.availableWidth
+                        height: 14 * root.s
+                        radius: 7 * root.s
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: Qt.hsla(0.0, 0.7, 0.5, 1) }
+                            GradientStop { position: 1 / 6; color: Qt.hsla(1 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 2 / 6; color: Qt.hsla(2 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 3 / 6; color: Qt.hsla(3 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 4 / 6; color: Qt.hsla(4 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 5 / 6; color: Qt.hsla(5 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 1.0; color: Qt.hsla(1.0, 0.7, 0.5, 1) }
+                        }
+                    }
+                    handle: Rectangle {
+                        x: accentHueSlider.leftPadding + accentHueSlider.visualPosition * (accentHueSlider.availableWidth - width)
+                        y: accentHueSlider.availableHeight / 2 - height / 2
+                        width: 16 * root.s
+                        height: 16 * root.s
+                        radius: width / 2
+                        color: root.sliderKnob
+                        border.width: 2.5 * root.s
+                        border.color: root.sliderKnobRing
+                    }
+                }
+            }
+
+            Item {
+                width: parent.width
+                height: 26 * root.s
+
+                Slider {
+                    id: accentSatSlider
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 26 * root.s
+                    from: 0
+                    to: 1
+                    stepSize: 0.005
+                    onValueChanged: if (pressed) root.setAccentHsl(root.accentHue01 * 359, accentSatSlider.value, root.accentLight01)
+                    onMoved: root.setAccentHsl(root.accentHue01 * 359, accentSatSlider.value, root.accentLight01)
+                    Component.onCompleted: accentSatSlider.value = root.accentSat01
+
+                    background: Rectangle {
+                        y: accentSatSlider.availableHeight / 2 - 7 * root.s
+                        width: accentSatSlider.availableWidth
+                        height: 14 * root.s
+                        radius: 7 * root.s
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: Qt.hsla(root.accentHue01, 0.0, 0.5, 1) }
+                            GradientStop { position: 0.5; color: Qt.hsla(root.accentHue01, 0.5, 0.5, 1) }
+                            GradientStop { position: 1.0; color: Qt.hsla(root.accentHue01, 1.0, 0.5, 1) }
+                        }
+                    }
+                    handle: Rectangle {
+                        x: accentSatSlider.leftPadding + accentSatSlider.visualPosition * (accentSatSlider.availableWidth - width)
+                        y: accentSatSlider.availableHeight / 2 - height / 2
+                        width: 16 * root.s
+                        height: 16 * root.s
+                        radius: width / 2
+                        color: root.sliderKnob
+                        border.width: 2.5 * root.s
+                        border.color: root.sliderKnobRing
+                    }
+                }
+            }
+
+            Item {
+                width: parent.width
+                height: Math.max(34 * root.s, accentHexField.implicitHeight)
+
                 Rectangle {
-                    id: accentChip
+                    id: accentPickSwatch
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 20 * root.s
-                    height: 20 * root.s
-                    radius: 6 * root.s
+                    width: 34 * root.s
+                    height: 34 * root.s
+                    radius: 9 * root.s
                     color: root.accentColorValue
                     border.width: 1
-                    border.color: Theme.hairSoft
+                    border.color: Theme.border
                     Behavior on color { ColorAnimation { duration: Motion.fast } }
                 }
 
-                LinkToggle {
-                    id: accentToggle
-                    anchors.left: accentChip.right
-                    anchors.leftMargin: 10 * root.s
+                Text {
+                    id: accentHexHint
+                    anchors.left: accentPickSwatch.right
+                    anchors.leftMargin: 12 * root.s
                     anchors.verticalCenter: parent.verticalCenter
-                    s: root.s
-                    on: root.accentCustom
-                    onToggled: root.setAccentCustom(!root.accentCustom)
+                    text: "#"
+                    color: Theme.faint
+                    font.family: Theme.font
+                    font.pixelSize: 14 * root.s
+                    font.weight: Font.DemiBold
                 }
-            }
-        }
 
-        /**
-         * The accent picker, folded shut unless Custom is on. Hue and saturation
-         * are native QtQuick Controls sliders: they recolor live while held
-         * (`pressed`) and re-commit on release (`onMoved`) so the final position
-         * always lands. The row beneath pairs a live swatch with the hex field
-         * for exact entry, and typing keeps both sliders in sync.
-         */
-        Item {
-            id: accentSection
-            width: parent.width
-            height: root.accentCustom ? accentPanel.implicitHeight : 0
-            clip: true
-            Behavior on height { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+                TextField {
+                    id: accentHexField
+                    anchors.left: accentHexHint.right
+                    anchors.leftMargin: 6 * root.s
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    background: null
+                    padding: 0
+                    color: Theme.cream
+                    font.family: Theme.font
+                    font.pixelSize: 13 * root.s
+                    font.features: { "tnum": 1 }
+                    selectByMouse: true
+                    selectionColor: Theme.verm
+                    maximumLength: 6
 
-            Column {
-                id: accentPanel
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: 12 * root.s
-                anchors.rightMargin: 12 * root.s
-                topPadding: 4 * root.s
-                bottomPadding: 16 * root.s
-                spacing: 14 * root.s
+                    onActiveFocusChanged: if (!activeFocus) text = "";
 
-                Item {
-                    width: parent.width
-                    height: 26 * root.s
-
-                    Slider {
-                        id: accentHueSlider
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 26 * root.s
-                        from: 0
-                        to: 1
-                        stepSize: 0.005
-                        onValueChanged: if (pressed) root.setAccentHsl(Math.round(accentHueSlider.value * 359), root.accentSat01, root.accentLight01)
-                        onMoved: root.setAccentHsl(Math.round(accentHueSlider.value * 359), root.accentSat01, root.accentLight01)
-                        Component.onCompleted: accentHueSlider.value = root.accentHue01
-
-                        background: Rectangle {
-                            y: accentHueSlider.availableHeight / 2 - 7 * root.s
-                            width: accentHueSlider.availableWidth
-                            height: 14 * root.s
-                            radius: 7 * root.s
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0.0; color: Qt.hsla(0.0, 0.7, 0.5, 1) }
-                                GradientStop { position: 1 / 6; color: Qt.hsla(1 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 2 / 6; color: Qt.hsla(2 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 3 / 6; color: Qt.hsla(3 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 4 / 6; color: Qt.hsla(4 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 5 / 6; color: Qt.hsla(5 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 1.0; color: Qt.hsla(1.0, 0.7, 0.5, 1) }
-                            }
+                    function commit() {
+                        var c = Theme.parseHex(text);
+                        if (c) {
+                            Flags.accentOverride = Theme.hexUpper(c);
+                            accentHueSlider.value = root.accentHue01;
+                            accentSatSlider.value = root.accentSat01;
                         }
-                        handle: Rectangle {
-                            x: accentHueSlider.leftPadding + accentHueSlider.visualPosition * (accentHueSlider.availableWidth - width)
-                            y: accentHueSlider.availableHeight / 2 - height / 2
-                            width: 16 * root.s
-                            height: 16 * root.s
-                            radius: width / 2
-                            color: root.sliderKnob
-                            border.width: 2.5 * root.s
-                            border.color: root.sliderKnobRing
+                        text = "";
+                        focus = false;
+                    }
+
+                    onAccepted: commit()
+                    onEditingFinished: commit()
+
+                    /* Enter/Space must apply, not leak into the surface's row
+                     * activation (which would flip the Custom toggle and revert
+                     * the hex). Accepting the key at the field stops it before
+                     * the shell's settings-activate handler sees it. */
+                    Keys.onPressed: (e) => {
+                        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                            commit();
+                            e.accepted = true;
+                        } else if (e.key === Qt.Key_Space) {
+                            e.accepted = true;
                         }
                     }
                 }
 
-                Item {
-                    width: parent.width
-                    height: 26 * root.s
-
-                    Slider {
-                        id: accentSatSlider
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 26 * root.s
-                        from: 0
-                        to: 1
-                        stepSize: 0.005
-                        onValueChanged: if (pressed) root.setAccentHsl(root.accentHue01 * 359, accentSatSlider.value, root.accentLight01)
-                        onMoved: root.setAccentHsl(root.accentHue01 * 359, accentSatSlider.value, root.accentLight01)
-                        Component.onCompleted: accentSatSlider.value = root.accentSat01
-
-                        background: Rectangle {
-                            y: accentSatSlider.availableHeight / 2 - 7 * root.s
-                            width: accentSatSlider.availableWidth
-                            height: 14 * root.s
-                            radius: 7 * root.s
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0.0; color: Qt.hsla(root.accentHue01, 0.0, 0.5, 1) }
-                                GradientStop { position: 0.5; color: Qt.hsla(root.accentHue01, 0.5, 0.5, 1) }
-                                GradientStop { position: 1.0; color: Qt.hsla(root.accentHue01, 1.0, 0.5, 1) }
-                            }
-                        }
-                        handle: Rectangle {
-                            x: accentSatSlider.leftPadding + accentSatSlider.visualPosition * (accentSatSlider.availableWidth - width)
-                            y: accentSatSlider.availableHeight / 2 - height / 2
-                            width: 16 * root.s
-                            height: 16 * root.s
-                            radius: width / 2
-                            color: root.sliderKnob
-                            border.width: 2.5 * root.s
-                            border.color: root.sliderKnobRing
-                        }
-                    }
-                }
-
-                Item {
-                    width: parent.width
-                    height: Math.max(34 * root.s, accentHexField.implicitHeight)
-
-                    Rectangle {
-                        id: accentPickSwatch
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 34 * root.s
-                        height: 34 * root.s
-                        radius: 9 * root.s
-                        color: root.accentColorValue
-                        border.width: 1
-                        border.color: Theme.border
-                        Behavior on color { ColorAnimation { duration: Motion.fast } }
-                    }
-
-                    Text {
-                        id: accentHexHint
-                        anchors.left: accentPickSwatch.right
-                        anchors.leftMargin: 12 * root.s
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "#"
-                        color: Theme.faint
-                        font.family: Theme.font
-                        font.pixelSize: 14 * root.s
-                        font.weight: Font.DemiBold
-                    }
-
-                    TextField {
-                        id: accentHexField
-                        anchors.left: accentHexHint.right
-                        anchors.leftMargin: 6 * root.s
-                        anchors.right: parent.right
-                        anchors.rightMargin: 12 * root.s
-                        anchors.verticalCenter: parent.verticalCenter
-                        background: null
-                        padding: 0
-                        color: Theme.cream
-                        font.family: Theme.font
-                        font.pixelSize: 13 * root.s
-                        font.features: { "tnum": 1 }
-                        selectByMouse: true
-                        selectionColor: Theme.verm
-                        maximumLength: 6
-
-                        onActiveFocusChanged: if (!activeFocus) text = "";
-
-                        function commit() {
-                            var c = Theme.parseHex(text);
-                            if (c) {
-                                Flags.accentOverride = Theme.hexUpper(c);
-                                accentHueSlider.value = root.accentHue01;
-                                accentSatSlider.value = root.accentSat01;
-                            }
-                            text = "";
-                            focus = false;
-                        }
-
-                        onAccepted: commit()
-                        onEditingFinished: commit()
-
-                        /* Enter/Space must apply, not leak into the surface's row
-                         * activation (which would flip the Custom toggle and revert
-                         * the hex). Accepting the key at the field stops it before
-                         * the shell's settings-activate handler sees it. */
-                        Keys.onPressed: (e) => {
-                            if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
-                                commit();
-                                e.accepted = true;
-                            } else if (e.key === Qt.Key_Space) {
-                                e.accepted = true;
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.left: accentHexField.left
-                        anchors.right: accentHexField.right
-                        anchors.top: accentHexField.bottom
-                        anchors.topMargin: 3 * root.s
-                        height: 1
-                        color: Theme.faint
-                        opacity: accentHexField.activeFocus ? 0.7 : 0.18
-                        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
-                    }
+                Rectangle {
+                    anchors.left: accentHexField.left
+                    anchors.right: accentHexField.right
+                    anchors.top: accentHexField.bottom
+                    anchors.topMargin: 3 * root.s
+                    height: 1
+                    color: Theme.faint
+                    opacity: accentHexField.activeFocus ? 0.7 : 0.18
+                    Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
                 }
             }
         }
     }
+
 }

@@ -49,33 +49,7 @@ DockPanel {
      * slot in DockPins.pins but contributes no row, so the dock's order is this
      * and NOT the raw array (the same contract DOCK APPS uses).
      */
-    readonly property var dockPins: {
-        var out = [];
-        for (var i = 0; i < DockPins.pins.length; i++) {
-            var e = root.appById(DockPins.pins[i]);
-            if (e)
-                out.push(e.id);
-        }
-        return out;
-    }
-
-    /** The installed entry for a desktop-entry id, tolerating a .desktop suffix. */
-    function appById(id) {
-        if (!id)
-            return null;
-        var src = root.allEntries;
-        var q = String(id).toLowerCase();
-        for (var i = 0; i < src.length; i++)
-            if (src[i] && src[i].id && src[i].id.toLowerCase() === q)
-                return src[i];
-        if (q.endsWith(".desktop")) {
-            var bare = q.slice(0, -8);
-            for (var j = 0; j < src.length; j++)
-                if (src[j] && src[j].id && src[j].id.toLowerCase() === bare)
-                    return src[j];
-        }
-        return null;
-    }
+    readonly property var dockPins: Apps.resolvePins(root.allEntries, DockPins.pins)
 
     function isPinned(id) {
         return !!id && root.dockPins.indexOf(id) >= 0;

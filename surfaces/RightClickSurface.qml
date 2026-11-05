@@ -19,7 +19,6 @@ SettingsSurface {
     id: root
 
     backSurface: "interface"
-    implicitHeight: content.implicitHeight
 
     /**
      * The surfaces these stops can name, as one list so the picker and the
@@ -60,53 +59,41 @@ SettingsSurface {
         { item: slot5Row, kind: "seg", vals: root.cycleVals, get: function () { return Flags.cycleSlot5; }, set: function (v) { Flags.cycleSlot5 = v; } }
     ]
 
-    Column {
-        id: content
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        spacing: 0
+    glyph: "右"
+    title: "RIGHT-CLICK"
+    showBack: true
 
-        SettingsHeader {
+    SettingsRow {
+        id: slot4Row
+        surface: root
+        icon: "cursor"
+        name: "4th stop"
+
+        Dropdown {
+            id: slot4Drop
             s: root.s
-            glyph: "右"
-            title: "RIGHT-CLICK"
-            showBack: true
-        }
-
-        Item { width: 1; height: 10 * root.s }
-
-        SettingsRow {
-            id: slot4Row
-            surface: root
-            icon: "cursor"
-            name: "4th stop"
-
-            Dropdown {
-                id: slot4Drop
-                s: root.s
-                options: root.cycleChoices
-                value: Flags.cycleSlot4
-                onChipClicked: slot4Drop.open = !slot4Drop.open
-                onPicked: (v) => Flags.cycleSlot4 = v
-            }
-        }
-
-        SettingsRow {
-            id: slot5Row
-            surface: root
-            icon: "cursor"
-            name: "5th stop"
-            last: true
-
-            Dropdown {
-                id: slot5Drop
-                s: root.s
-                options: root.cycleChoices
-                value: Flags.cycleSlot5
-                onChipClicked: slot5Drop.open = !slot5Drop.open
-                onPicked: (v) => Flags.cycleSlot5 = v
-            }
+            options: root.cycleChoices
+            value: Flags.cycleSlot4
+            onChipClicked: slot4Drop.open = !slot4Drop.open
+            onPicked: (v) => Flags.cycleSlot4 = v
         }
     }
+
+    SettingsRow {
+        id: slot5Row
+        surface: root
+        icon: "cursor"
+        name: "5th stop"
+        last: true
+
+        Dropdown {
+            id: slot5Drop
+            s: root.s
+            options: root.cycleChoices
+            value: Flags.cycleSlot5
+            onChipClicked: slot5Drop.open = !slot5Drop.open
+            onPicked: (v) => Flags.cycleSlot5 = v
+        }
+    }
+
 }

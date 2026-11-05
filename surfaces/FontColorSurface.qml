@@ -23,7 +23,6 @@ SettingsSurface {
     id: root
 
     backSurface: "appcat"
-    implicitHeight: content.implicitHeight
 
     /** Text override on: a custom hex is pinned and wins over every palette mode. */
     readonly property bool fontCustom: Flags.textOverride.length > 0
@@ -84,264 +83,253 @@ SettingsSurface {
         { item: fontRow, kind: "toggle", get: function () { return root.fontCustom; }, set: function (v) { root.setFontCustom(v); } }
     ]
 
-    Column {
-        id: content
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        spacing: 0
+    glyph: "字"
+    title: "FONT COLOUR"
+    showBack: true
 
-        SettingsHeader {
-            s: root.s
-            glyph: "字"
-            title: "FONT COLOUR"
-            showBack: true
+    /**
+     * Text colour: an optional user hex that recolours the primary text family
+     * (cream/bright on the pill, the dock's title copy) over the scheme's.
+     * Turning Custom on seeds from the current text colour and unfolds the
+     * picker below. The chip in the row previews the live text colour either way.
+     */
+    SettingsRow {
+        id: fontRow
+        surface: root
+        name: "Font colour"
+        icon: "type"
+        sub: root.fontSub
+
+        Item {
+            width: fontChip.width + 10 * root.s + fontToggle.width
+            height: 26 * root.s
+
+            Rectangle {
+                id: fontChip
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                width: 20 * root.s
+                height: 20 * root.s
+                radius: 6 * root.s
+                color: root.fontColorValue
+                border.width: 1
+                border.color: Theme.hairSoft
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
+            }
+
+            LinkToggle {
+                id: fontToggle
+                anchors.left: fontChip.right
+                anchors.leftMargin: 10 * root.s
+                anchors.verticalCenter: parent.verticalCenter
+                s: root.s
+                on: root.fontCustom
+                onToggled: root.setFontCustom(!root.fontCustom)
+            }
         }
+    }
 
-Item { width: 1; height: 10 * root.s }
-        /**
-         * Text colour: an optional user hex that recolours the primary text family
-         * (cream/bright on the pill, the dock's title copy) over the scheme's.
-         * Turning Custom on seeds from the current text colour and unfolds the
-         * picker below. The chip in the row previews the live text colour either way.
-         */
-        SettingsRow {
-            id: fontRow
-            surface: root
-            name: "Font colour"
-            icon: "type"
-            sub: root.fontSub
+    /**
+     * The text picker, folded shut unless Custom is on. Hue and saturation
+     * are native QtQuick Controls sliders: they recolor live while held
+     * (`pressed`) and re-commit on release (`onMoved`) so the final position
+     * always lands. The row beneath pairs a live swatch with the hex field
+     * for exact entry, and typing keeps both sliders in sync.
+     */
+    Item {
+        id: fontSection
+        width: parent.width
+        height: root.fontCustom ? fontPanel.implicitHeight : 0
+        clip: true
+        Behavior on height { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+
+        Column {
+            id: fontPanel
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 12 * root.s
+            anchors.rightMargin: 12 * root.s
+            topPadding: 4 * root.s
+            bottomPadding: 16 * root.s
+            spacing: 14 * root.s
 
             Item {
-                width: fontChip.width + 10 * root.s + fontToggle.width
+                width: parent.width
                 height: 26 * root.s
 
+                Slider {
+                    id: fontHueSlider
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 26 * root.s
+                    from: 0
+                    to: 1
+                    stepSize: 0.005
+                    onValueChanged: if (pressed) root.setFontHsl(Math.round(fontHueSlider.value * 359), root.fontSat01, root.fontWorkLight01)
+                    onMoved: root.setFontHsl(Math.round(fontHueSlider.value * 359), root.fontSat01, root.fontWorkLight01)
+                    Component.onCompleted: fontHueSlider.value = root.fontHue01
+
+                    background: Rectangle {
+                        y: fontHueSlider.availableHeight / 2 - 7 * root.s
+                        width: fontHueSlider.availableWidth
+                        height: 14 * root.s
+                        radius: 7 * root.s
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: Qt.hsla(0.0, 0.7, 0.5, 1) }
+                            GradientStop { position: 1 / 6; color: Qt.hsla(1 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 2 / 6; color: Qt.hsla(2 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 3 / 6; color: Qt.hsla(3 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 4 / 6; color: Qt.hsla(4 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 5 / 6; color: Qt.hsla(5 / 6, 0.7, 0.5, 1) }
+                            GradientStop { position: 1.0; color: Qt.hsla(1.0, 0.7, 0.5, 1) }
+                        }
+                    }
+                    handle: Rectangle {
+                        x: fontHueSlider.leftPadding + fontHueSlider.visualPosition * (fontHueSlider.availableWidth - width)
+                        y: fontHueSlider.availableHeight / 2 - height / 2
+                        width: 16 * root.s
+                        height: 16 * root.s
+                        radius: width / 2
+                        color: root.sliderKnob
+                        border.width: 2.5 * root.s
+                        border.color: root.sliderKnobRing
+                    }
+                }
+            }
+
+            Item {
+                width: parent.width
+                height: 26 * root.s
+
+                Slider {
+                    id: fontSatSlider
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 26 * root.s
+                    from: 0
+                    to: 1
+                    stepSize: 0.005
+                    onValueChanged: if (pressed) root.setFontHsl(root.fontHue01 * 359, fontSatSlider.value, root.fontWorkLight01)
+                    onMoved: root.setFontHsl(root.fontHue01 * 359, fontSatSlider.value, root.fontWorkLight01)
+                    Component.onCompleted: fontSatSlider.value = root.fontSat01
+
+                    background: Rectangle {
+                        y: fontSatSlider.availableHeight / 2 - 7 * root.s
+                        width: fontSatSlider.availableWidth
+                        height: 14 * root.s
+                        radius: 7 * root.s
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: Qt.hsla(root.fontHue01, 0.0, 0.5, 1) }
+                            GradientStop { position: 0.5; color: Qt.hsla(root.fontHue01, 0.5, 0.5, 1) }
+                            GradientStop { position: 1.0; color: Qt.hsla(root.fontHue01, 1.0, 0.5, 1) }
+                        }
+                    }
+                    handle: Rectangle {
+                        x: fontSatSlider.leftPadding + fontSatSlider.visualPosition * (fontSatSlider.availableWidth - width)
+                        y: fontSatSlider.availableHeight / 2 - height / 2
+                        width: 16 * root.s
+                        height: 16 * root.s
+                        radius: width / 2
+                        color: root.sliderKnob
+                        border.width: 2.5 * root.s
+                        border.color: root.sliderKnobRing
+                    }
+                }
+            }
+
+            Item {
+                width: parent.width
+                height: Math.max(34 * root.s, fontHexField.implicitHeight)
+
                 Rectangle {
-                    id: fontChip
+                    id: fontPickSwatch
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 20 * root.s
-                    height: 20 * root.s
-                    radius: 6 * root.s
+                    width: 34 * root.s
+                    height: 34 * root.s
+                    radius: 9 * root.s
                     color: root.fontColorValue
                     border.width: 1
-                    border.color: Theme.hairSoft
+                    border.color: Theme.border
                     Behavior on color { ColorAnimation { duration: Motion.fast } }
                 }
 
-                LinkToggle {
-                    id: fontToggle
-                    anchors.left: fontChip.right
-                    anchors.leftMargin: 10 * root.s
+                Text {
+                    id: fontHexHint
+                    anchors.left: fontPickSwatch.right
+                    anchors.leftMargin: 12 * root.s
                     anchors.verticalCenter: parent.verticalCenter
-                    s: root.s
-                    on: root.fontCustom
-                    onToggled: root.setFontCustom(!root.fontCustom)
+                    text: "#"
+                    color: Theme.faint
+                    font.family: Theme.font
+                    font.pixelSize: 14 * root.s
+                    font.weight: Font.DemiBold
                 }
-            }
-        }
 
-        /**
-         * The text picker, folded shut unless Custom is on. Hue and saturation
-         * are native QtQuick Controls sliders: they recolor live while held
-         * (`pressed`) and re-commit on release (`onMoved`) so the final position
-         * always lands. The row beneath pairs a live swatch with the hex field
-         * for exact entry, and typing keeps both sliders in sync.
-         */
-        Item {
-            id: fontSection
-            width: parent.width
-            height: root.fontCustom ? fontPanel.implicitHeight : 0
-            clip: true
-            Behavior on height { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+                TextField {
+                    id: fontHexField
+                    anchors.left: fontHexHint.right
+                    anchors.leftMargin: 6 * root.s
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    background: null
+                    padding: 0
+                    color: Theme.cream
+                    font.family: Theme.font
+                    font.pixelSize: 13 * root.s
+                    font.features: { "tnum": 1 }
+                    selectByMouse: true
+                    selectionColor: Theme.verm
+                    maximumLength: 6
 
-            Column {
-                id: fontPanel
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: 12 * root.s
-                anchors.rightMargin: 12 * root.s
-                topPadding: 4 * root.s
-                bottomPadding: 16 * root.s
-                spacing: 14 * root.s
+                    onActiveFocusChanged: if (!activeFocus) text = "";
 
-                Item {
-                    width: parent.width
-                    height: 26 * root.s
-
-                    Slider {
-                        id: fontHueSlider
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 26 * root.s
-                        from: 0
-                        to: 1
-                        stepSize: 0.005
-                        onValueChanged: if (pressed) root.setFontHsl(Math.round(fontHueSlider.value * 359), root.fontSat01, root.fontWorkLight01)
-                        onMoved: root.setFontHsl(Math.round(fontHueSlider.value * 359), root.fontSat01, root.fontWorkLight01)
-                        Component.onCompleted: fontHueSlider.value = root.fontHue01
-
-                        background: Rectangle {
-                            y: fontHueSlider.availableHeight / 2 - 7 * root.s
-                            width: fontHueSlider.availableWidth
-                            height: 14 * root.s
-                            radius: 7 * root.s
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0.0; color: Qt.hsla(0.0, 0.7, 0.5, 1) }
-                                GradientStop { position: 1 / 6; color: Qt.hsla(1 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 2 / 6; color: Qt.hsla(2 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 3 / 6; color: Qt.hsla(3 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 4 / 6; color: Qt.hsla(4 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 5 / 6; color: Qt.hsla(5 / 6, 0.7, 0.5, 1) }
-                                GradientStop { position: 1.0; color: Qt.hsla(1.0, 0.7, 0.5, 1) }
-                            }
+                    function commit() {
+                        var c = Theme.parseHex(text);
+                        if (c) {
+                            Flags.textOverride = Theme.hexUpper(c);
+                            fontHueSlider.value = root.fontHue01;
+                            fontSatSlider.value = root.fontSat01;
                         }
-                        handle: Rectangle {
-                            x: fontHueSlider.leftPadding + fontHueSlider.visualPosition * (fontHueSlider.availableWidth - width)
-                            y: fontHueSlider.availableHeight / 2 - height / 2
-                            width: 16 * root.s
-                            height: 16 * root.s
-                            radius: width / 2
-                            color: root.sliderKnob
-                            border.width: 2.5 * root.s
-                            border.color: root.sliderKnobRing
+                        text = "";
+                        focus = false;
+                    }
+
+                    onAccepted: commit()
+                    onEditingFinished: commit()
+
+                    /* Enter/Space must apply, not leak into the surface's row
+                     * activation (which would flip the Custom toggle and revert
+                     * the hex). Accepting the key at the field stops it before
+                     * the shell's settings-activate handler sees it. */
+                    Keys.onPressed: (e) => {
+                        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                            commit();
+                            e.accepted = true;
+                        } else if (e.key === Qt.Key_Space) {
+                            e.accepted = true;
                         }
                     }
                 }
 
-                Item {
-                    width: parent.width
-                    height: 26 * root.s
-
-                    Slider {
-                        id: fontSatSlider
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 26 * root.s
-                        from: 0
-                        to: 1
-                        stepSize: 0.005
-                        onValueChanged: if (pressed) root.setFontHsl(root.fontHue01 * 359, fontSatSlider.value, root.fontWorkLight01)
-                        onMoved: root.setFontHsl(root.fontHue01 * 359, fontSatSlider.value, root.fontWorkLight01)
-                        Component.onCompleted: fontSatSlider.value = root.fontSat01
-
-                        background: Rectangle {
-                            y: fontSatSlider.availableHeight / 2 - 7 * root.s
-                            width: fontSatSlider.availableWidth
-                            height: 14 * root.s
-                            radius: 7 * root.s
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0.0; color: Qt.hsla(root.fontHue01, 0.0, 0.5, 1) }
-                                GradientStop { position: 0.5; color: Qt.hsla(root.fontHue01, 0.5, 0.5, 1) }
-                                GradientStop { position: 1.0; color: Qt.hsla(root.fontHue01, 1.0, 0.5, 1) }
-                            }
-                        }
-                        handle: Rectangle {
-                            x: fontSatSlider.leftPadding + fontSatSlider.visualPosition * (fontSatSlider.availableWidth - width)
-                            y: fontSatSlider.availableHeight / 2 - height / 2
-                            width: 16 * root.s
-                            height: 16 * root.s
-                            radius: width / 2
-                            color: root.sliderKnob
-                            border.width: 2.5 * root.s
-                            border.color: root.sliderKnobRing
-                        }
-                    }
-                }
-
-                Item {
-                    width: parent.width
-                    height: Math.max(34 * root.s, fontHexField.implicitHeight)
-
-                    Rectangle {
-                        id: fontPickSwatch
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 34 * root.s
-                        height: 34 * root.s
-                        radius: 9 * root.s
-                        color: root.fontColorValue
-                        border.width: 1
-                        border.color: Theme.border
-                        Behavior on color { ColorAnimation { duration: Motion.fast } }
-                    }
-
-                    Text {
-                        id: fontHexHint
-                        anchors.left: fontPickSwatch.right
-                        anchors.leftMargin: 12 * root.s
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "#"
-                        color: Theme.faint
-                        font.family: Theme.font
-                        font.pixelSize: 14 * root.s
-                        font.weight: Font.DemiBold
-                    }
-
-                    TextField {
-                        id: fontHexField
-                        anchors.left: fontHexHint.right
-                        anchors.leftMargin: 6 * root.s
-                        anchors.right: parent.right
-                        anchors.rightMargin: 12 * root.s
-                        anchors.verticalCenter: parent.verticalCenter
-                        background: null
-                        padding: 0
-                        color: Theme.cream
-                        font.family: Theme.font
-                        font.pixelSize: 13 * root.s
-                        font.features: { "tnum": 1 }
-                        selectByMouse: true
-                        selectionColor: Theme.verm
-                        maximumLength: 6
-
-                        onActiveFocusChanged: if (!activeFocus) text = "";
-
-                        function commit() {
-                            var c = Theme.parseHex(text);
-                            if (c) {
-                                Flags.textOverride = Theme.hexUpper(c);
-                                fontHueSlider.value = root.fontHue01;
-                                fontSatSlider.value = root.fontSat01;
-                            }
-                            text = "";
-                            focus = false;
-                        }
-
-                        onAccepted: commit()
-                        onEditingFinished: commit()
-
-                        /* Enter/Space must apply, not leak into the surface's row
-                         * activation (which would flip the Custom toggle and revert
-                         * the hex). Accepting the key at the field stops it before
-                         * the shell's settings-activate handler sees it. */
-                        Keys.onPressed: (e) => {
-                            if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
-                                commit();
-                                e.accepted = true;
-                            } else if (e.key === Qt.Key_Space) {
-                                e.accepted = true;
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.left: fontHexField.left
-                        anchors.right: fontHexField.right
-                        anchors.top: fontHexField.bottom
-                        anchors.topMargin: 3 * root.s
-                        height: 1
-                        color: Theme.faint
-                        opacity: fontHexField.activeFocus ? 0.7 : 0.18
-                        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
-                    }
+                Rectangle {
+                    anchors.left: fontHexField.left
+                    anchors.right: fontHexField.right
+                    anchors.top: fontHexField.bottom
+                    anchors.topMargin: 3 * root.s
+                    height: 1
+                    color: Theme.faint
+                    opacity: fontHexField.activeFocus ? 0.7 : 0.18
+                    Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
                 }
             }
         }
     }
+
 }

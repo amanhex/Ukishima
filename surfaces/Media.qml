@@ -59,7 +59,6 @@ PillSurface {
     /** Pin state: the right-end toggle keeps the expanded pill open after the card closes. */
     property bool pinned: false
 
-    signal requestPin()
     signal requestExpand()
 
     /**

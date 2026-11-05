@@ -11,6 +11,10 @@ Item {
 
     property var host: null
 
+    function stage(from, to, peak) {
+        return root.host ? root.host.stage(from, to, peak) : 0;
+    }
+
     readonly property real s: Math.max(0.55, Math.min(1.35, Math.min(width / 1920, height / 1200)))
     readonly property bool narrow: width < 1000 * root.s
     readonly property color ink: "#e4e2dc"
@@ -22,11 +26,12 @@ Item {
         id: furniture
 
         anchors.fill: parent
-        opacity: root.host ? root.host.stage(40 / 380, 320 / 380, 1) * root.host.held : 0
+        opacity: root.host ? root.host.held : 0
 
         Item {
             id: header
 
+            opacity: root.stage(0, 0.30, 1)
             x: 32 * root.s
             y: 27 * root.s
             width: parent.width - x * 2
@@ -81,6 +86,12 @@ Item {
         Item {
             id: titleCol
 
+            opacity: root.stage(0.06, 0.38, 1)
+
+            transform: Translate {
+                y: -14 * (1 - root.stage(0.06, 0.42, 1))
+            }
+
             visible: !root.narrow
             x: 32 * root.s
             y: Math.max(header.y + header.height + 54 * root.s, parent.height * 0.20)
@@ -128,6 +139,12 @@ Item {
         LockClock {
             id: clock
 
+            opacity: root.stage(0.15, 0.47, 1)
+
+            transform: Translate {
+                y: -22 * (1 - root.stage(0.15, 0.52, 1))
+            }
+
             host: root.host
             x: root.narrow ? (parent.width - width) / 2 : 214 * root.s
             y: root.narrow ? header.y + header.height + 54 * root.s : Math.max(header.y + header.height + 90 * root.s, parent.height * 0.25)
@@ -143,6 +160,12 @@ Item {
         LockIdentity {
             id: identity
 
+            opacity: root.stage(0.24, 0.56, 1)
+
+            transform: Translate {
+                y: 20 * (1 - root.stage(0.24, 0.60, 1))
+            }
+
             host: root.host
             x: root.narrow ? (parent.width - width) / 2 : 214 * root.s
             y: clock.y + clock.height + 20 * root.s
@@ -155,6 +178,12 @@ Item {
 
         LockField {
             id: field
+
+            opacity: root.stage(0.30, 0.62, 1)
+
+            transform: Translate {
+                y: 20 * (1 - root.stage(0.30, 0.66, 1))
+            }
 
             host: root.host
             x: root.narrow ? (parent.width - width) / 2 : 214 * root.s
@@ -169,6 +198,12 @@ Item {
 
         Item {
             id: bay
+
+            opacity: root.stage(0.12, 0.44, 1)
+
+            transform: Translate {
+                y: -16 * (1 - root.stage(0.12, 0.48, 1))
+            }
 
             visible: !root.narrow
             width: Math.min(330 * root.s, parent.width * 0.20)
@@ -213,6 +248,12 @@ Item {
         LockMediaSlot {
             id: media
 
+            opacity: root.stage(0.38, 0.66, 1)
+
+            transform: Translate {
+                y: 14 * (1 - root.stage(0.38, 0.70, 1))
+            }
+
             host: root.host
             variant: "relay"
             amount: 0.9 * root.s
@@ -225,6 +266,7 @@ Item {
             anchors.leftMargin: 32 * root.s
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 26 * root.s
+            opacity: root.stage(0.30, 0.58, 1)
             visible: root.host ? root.host.showWifi && wifiDev !== null : false
         }
 
@@ -233,6 +275,7 @@ Item {
             anchors.rightMargin: 32 * root.s
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 26 * root.s
+            opacity: root.stage(0.30, 0.58, 1)
             shimmerOn: root.host ? root.host.batteryShimmerOn : false
             visible: root.host ? root.host.showBattery && present : false
         }

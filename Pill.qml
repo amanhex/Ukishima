@@ -2211,6 +2211,149 @@ Item {
                 font.pixelSize: 16 * pill.s
                 font.weight: Font.DemiBold
             }
+
+            /*
+             * Status face: the workspace strip is anchored left, the wifi
+             * strength + battery pair is anchored right, and the clock sits
+             * centred between them with the same gap on both sides, so the
+             * clock never drifts right as the strip grows. The wifi glyph then
+             * takes one small extra nudge toward the clock (wifiNudge).
+             *
+             * The active workspace is a tall bar; occupied ones sit mid-height
+             * and the rest are short.
+             */
+            Item {
+                id: statusFace
+                visible: pill.specialView === "" && Flags.mainDisplay === "status"
+                anchors.verticalCenter: parent.verticalCenter
+
+                /** Equal breathing room either side of the clock. */
+                readonly property real gap: 20 * pill.s
+                /** Wi-Fi to battery; the pair reads as one unit, with a little air between them. */
+                readonly property real clusterGap: 10 * pill.s
+                /** Nudges only the wifi glyph toward the clock; the pill and battery stay put. */
+                readonly property real wifiNudge: 4 * pill.s
+                /** Content width plus the two equal clock gaps; no reserved sides. */
+                implicitWidth: statusWss.implicitWidth + 2 * gap + statusTime.implicitWidth + statusPair.implicitWidth
+                implicitHeight: Math.max(16 * pill.s, statusTime.implicitHeight, statusPair.implicitHeight)
+                width: implicitWidth
+                height: implicitHeight
+
+                Workspaces {
+                    id: statusWss
+                    variant: "bars"
+                    visible: range.length > 0
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: implicitWidth
+                    screenName: pill.screenName
+                    s: pill.s
+                    gap: 5 * pill.s
+                    enabled: false
+                }
+                Text {
+                    id: statusTime
+                    x: statusWss.implicitWidth + statusFace.gap
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: clock.hhmm
+                    color: Theme.cream
+                    font.family: Theme.font
+                    font.pixelSize: 15 * pill.s
+                    font.weight: Font.DemiBold
+                    font.features: { "tnum": 1 }
+                }
+                Item {
+                    id: statusPair
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    readonly property real wifiW: statusWifi.visible ? statusWifi.implicitWidth : 0
+                    readonly property real battW: Battery.present ? statusBatt.width : 0
+                    readonly property real gapW: (wifiW > 0 && battW > 0) ? statusFace.clusterGap : 0
+                    implicitWidth: wifiW + gapW + battW
+                    implicitHeight: Math.max(statusWifi.implicitHeight, battW > 0 ? statusBatt.height : 0)
+
+                    Row {
+                        id: statusWifi
+                        visible: pill.wifiDev !== null
+                        anchors.left: parent.left
+                        anchors.leftMargin: -statusFace.wifiNudge
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 2 * pill.s
+
+                        /** signalStrength is 0..1 (matches WifiGlyph), not 0..100. */
+                        readonly property int lit: !pill.wifiOn ? 0
+                            : (pill.wifiLevel > 0.66 ? 3 : (pill.wifiLevel > 0.33 ? 2 : (pill.wifiLevel > 0 ? 1 : 0)))
+
+                        Repeater {
+                            model: 3
+
+                            delegate: Item {
+                                required property int index
+
+                                width: 2.4 * pill.s
+                                height: 10 * pill.s
+
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    width: parent.width
+                                    height: [4, 7, 10][index] * pill.s
+                                    radius: width / 2
+                                    color: index < statusWifi.lit ? Theme.cream : Theme.hair
+                                }
+                            }
+                        }
+                    }
+
+                    Item {
+                        id: statusBatt
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: Battery.present
+                        width: 23 * pill.s
+                        height: 12 * pill.s
+
+                        Rectangle {
+                            id: statusBattShell
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 20 * pill.s
+                            height: 11 * pill.s
+                            radius: 3 * pill.s
+                            color: "transparent"
+                            border.width: 1.3 * pill.s
+                            border.color: Battery.low ? Theme.vermLit : Qt.alpha(Theme.cream, 0.6)
+                        }
+                        Rectangle {
+                            anchors.left: statusBattShell.left
+                            anchors.leftMargin: 1.8 * pill.s
+                            anchors.verticalCenter: statusBattShell.verticalCenter
+                            width: Math.max(0, (statusBattShell.width - 3.6 * pill.s) * Battery.frac)
+                            height: statusBattShell.height - 3.6 * pill.s
+                            radius: 1.4 * pill.s
+                            color: (Battery.charging || Battery.low) ? Theme.vermLit : Theme.cream
+                        }
+                        GlyphIcon {
+                            anchors.centerIn: statusBattShell
+                            visible: Battery.charging
+                            width: 8 * pill.s
+                            height: 8 * pill.s
+                            name: "bolt"
+                            color: Theme.cream
+                            stroke: 1.6
+                        }
+                        Rectangle {
+                            anchors.left: statusBattShell.right
+                            anchors.leftMargin: 1 * pill.s
+                            anchors.verticalCenter: statusBattShell.verticalCenter
+                            width: 2 * pill.s
+                            height: 4.5 * pill.s
+                            radius: width / 2
+                            color: statusBattShell.border.color
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -2984,7 +3127,6 @@ sourceComponent: Media {
             topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
             pinned: pill.pinned
             onRequestClose: pill.requestClose()
-            onRequestPin: pill.forcePinned = !pill.forcePinned
             onRequestExpand: {
                 pill.requestClose();
                 pill.hoverLatch = true;

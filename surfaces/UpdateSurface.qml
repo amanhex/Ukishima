@@ -15,7 +15,6 @@ SettingsSurface {
     id: root
 
     backSurface: "appearance"
-    implicitHeight: content.implicitHeight
 
     property string status: ""
     property bool busy: false
@@ -194,343 +193,330 @@ SettingsSurface {
         depPageProc.running = true;
     }
 
-    Column {
-        id: content
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        spacing: 0
+    glyph: "更"
+    title: "UPDATE"
+    showBack: true
 
-        SettingsHeader {
-            s: root.s
-            glyph: "更"
-            title: "UPDATE"
-            showBack: true
+    SettingsRow {
+        id: updateRow
+        surface: root
+        name: root.busy ? root.status : (root.updateAvailable ? "Update Ukishima" : (root.checked ? root.status : "Check for Updates"))
+        // "refresh", not "refresh-cw". GlyphIcon holds no such name, and an
+        // unknown name is not a fallback shape — the lookup ends at
+        // { d: "" }, which draws nothing at all. The row was rendering its
+        // leading glyph as empty space, which is part of why the two sections
+        // here read as one row with an icon and one without.
+        icon: "refresh"
+        // The verdict goes in the row's own caption, not in a separate
+        // full-width line underneath. Three stacked standalone Texts read as
+        // a column of disconnected grey sentences floating between the two
+        // rows, and each one had to be inset and aligned by hand. In the
+        // caption slot the answer sits directly under the label it belongs
+        // to and SettingsRow does the insetting, so there is only ever one
+        // left edge to agree with.
+        //
+        sub: {
+            if (root.updateAvailable)
+                return root.pending + (root.pending === 1 ? " update available — select to install" : " updates available — select to install");
+            return "";
         }
 
-Item { width: 1; height: 10 * root.s }
-        SettingsRow {
-            id: updateRow
-            surface: root
-            name: root.busy ? root.status : (root.updateAvailable ? "Update Ukishima" : (root.checked ? root.status : "Check for Updates"))
-            // "refresh", not "refresh-cw". GlyphIcon holds no such name, and an
-            // unknown name is not a fallback shape — the lookup ends at
-            // { d: "" }, which draws nothing at all. The row was rendering its
-            // leading glyph as empty space, which is part of why the two sections
-            // here read as one row with an icon and one without.
-            icon: "refresh"
-            // The verdict goes in the row's own caption, not in a separate
-            // full-width line underneath. Three stacked standalone Texts read as
-            // a column of disconnected grey sentences floating between the two
-            // rows, and each one had to be inset and aligned by hand. In the
-            // caption slot the answer sits directly under the label it belongs
-            // to and SettingsRow does the insetting, so there is only ever one
-            // left edge to agree with.
-            //
-            sub: {
-                if (root.updateAvailable)
-                    return root.pending + (root.pending === 1 ? " update available — select to install" : " updates available — select to install");
-                return "";
-            }
+        // The spinner, and only the spinner. This is the trailing control
+        // slot, which is a different slot from the leading `icon` above —
+        // that is why a glyph can live here without doubling up on `icon`.
+        // Visible only while running, because a second `refresh` sitting
+        // still beside the row's own `refresh` while nothing is happening
+        // would be the same glyph twice for no reason. The resting state
+        // leaves the slot to the update-available dot.
+        GlyphIcon {
+            visible: root.busy
+            width: 16 * root.s
+            height: 16 * root.s
+            name: "refresh"
+            color: root.focusRowItem === updateRow ? Theme.cream : Theme.iconDim
+            stroke: 1.9
 
-            // The spinner, and only the spinner. This is the trailing control
-            // slot, which is a different slot from the leading `icon` above —
-            // that is why a glyph can live here without doubling up on `icon`.
-            // Visible only while running, because a second `refresh` sitting
-            // still beside the row's own `refresh` while nothing is happening
-            // would be the same glyph twice for no reason. The resting state
-            // leaves the slot to the update-available dot.
-            GlyphIcon {
-                visible: root.busy
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "refresh"
-                color: root.focusRowItem === updateRow ? Theme.cream : Theme.iconDim
-                stroke: 1.9
-
-                RotationAnimation on rotation {
-                    running: root.busy
-                    from: 0
-                    to: 360
-                    duration: 1000
-                    loops: Animation.Infinite
-                }
-            }
-
-            Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 8 * root.s
-                visible: root.updateAvailable
-                width: 7 * root.s
-                height: 7 * root.s
-                radius: width / 2
-                color: Theme.vermLit
-
-                SequentialAnimation on opacity {
-                    running: root.updateAvailable
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.35; duration: 900; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 900; easing.type: Easing.InOutSine }
-                }
+            RotationAnimation on rotation {
+                running: root.busy
+                from: 0
+                to: 360
+                duration: 1000
+                loops: Animation.Infinite
             }
         }
+
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 8 * root.s
+            visible: root.updateAvailable
+            width: 7 * root.s
+            height: 7 * root.s
+            radius: width / 2
+            color: Theme.vermLit
+
+            SequentialAnimation on opacity {
+                running: root.updateAvailable
+                loops: Animation.Infinite
+                NumberAnimation { to: 0.35; duration: 900; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 1; duration: 900; easing.type: Easing.InOutSine }
+            }
+        }
+    }
+
+    /**
+     * The gap that makes two sections out of what used to be one list.
+     *
+     * SettingsRow already draws a hairline under every row that is not
+     * `last`, so there is a rule between these two. A rule alone is not
+     * enough to read as a boundary, though — rows are separated by rules
+     * too, and at 12 units the pair sat close enough to look like four
+     * consecutive lines with two of them suddenly carrying a caption. The
+     * extra space is what turns the rule into a division.
+    */
+
+    SettingsRow {
+        id: depsRow
+        surface: root
+        name: root.depBusy ? "Checking dependencies..." : (root.depChecked ? "Check again" : "Check dependencies")
+        // "layers" for the same reason the row above got a working `icon`:
+        // the two sections should be recognisable apart at a glance, and
+        // right now one of them owns the leading glyph column while the other
+        // leaves it empty. Two rows, two glyphs, one shape.
+        icon: "layers"
+        // Before the first check the caption says what the button does; after
+        // it, the caption *is* the answer. One slot, never both, so the row
+        // cannot show an instruction and a verdict at once and leave the
+        // reader unsure which one is current.
+        sub: root.depChecked ? root.depStatus : "verify this system has what the current code needs"
+        last: true
 
         /**
-         * The gap that makes two sections out of what used to be one list.
+         * The verdict mark, and the only thing on this row that says a check
+         * has actually run — so it must not exist before one is asked for.
          *
-         * SettingsRow already draws a hairline under every row that is not
-         * `last`, so there is a rule between these two. A rule alone is not
-         * enough to read as a boundary, though — rows are separated by rules
-         * too, and at 12 units the pair sat close enough to look like four
-         * consecutive lines with two of them suddenly carrying a caption. The
-         * extra space is what turns the rule into a division.
+         * The leading `icon` above and this trailing glyph are separate
+         * slots, which is why `layers` here adds no second mark. This one is
+         * a check when nothing required is missing and a cross when something
+         * is, because a tick that appeared whether or not the answer was yes
+         * would be asserting a result the check never gave — the exact
+         * failure the gating below exists to prevent, one level up.
+         *
+         * Dimmed rather than spun while running. "check" is a real glyph, not
+         * a spinner frame, and rotating it would read as nonsense; the check
+         * takes well under a second, so the dim is enough to acknowledge it.
         */
-        Item { width: 1; height: 10 * root.s }
+        GlyphIcon {
+            visible: root.depBusy || root.depChecked
+            width: 16 * root.s
+            height: 16 * root.s
+            name: root.depRequiredCount > 0 ? "close" : "check"
+            color: root.depRequiredCount > 0
+                   ? Theme.vermLit
+                   : (root.focusRowItem === depsRow ? Theme.cream : Theme.iconDim)
+            stroke: 1.9
+            opacity: root.depBusy ? 0.45 : 1
 
-        SettingsRow {
-            id: depsRow
-            surface: root
-            name: root.depBusy ? "Checking dependencies..." : (root.depChecked ? "Check again" : "Check dependencies")
-            // "layers" for the same reason the row above got a working `icon`:
-            // the two sections should be recognisable apart at a glance, and
-            // right now one of them owns the leading glyph column while the other
-            // leaves it empty. Two rows, two glyphs, one shape.
-            icon: "layers"
-            // Before the first check the caption says what the button does; after
-            // it, the caption *is* the answer. One slot, never both, so the row
-            // cannot show an instruction and a verdict at once and leave the
-            // reader unsure which one is current.
-            sub: root.depChecked ? root.depStatus : "verify this system has what the current code needs"
-            last: true
+            Behavior on opacity {
+                NumberAnimation { duration: 120 }
+            }
+        }
+    }
+
+    /**
+     * The dependency result, inset to line up with the row labels above it.
+     *
+     * The inset is not cosmetic. SettingsRow places its own text 14 + 17 +
+     * 13 = 44 scale units in, to clear the leading icon, and leaves 30 more
+     * at the right for the trailing control. A list laid out from the
+     * surface's own left edge therefore sat a full icon-width to the left of
+     * the "Check dependencies" it belongs to — two unrelated-looking columns
+     * stacked in one panel. Insetting everything below puts it on the same
+     * left edge as every row, and the right inset stops the last entry
+     * running under the tick.
+     *
+     * The wrapper is a plain Item rather than a Column, and that is the
+     * whole trick: this sits inside `content`, which is itself a Column, and
+     * a Positioner places its own children — anchors on them are ignored,
+     * with a warning. An Item can be anchored; the Column goes one level
+     * deeper, inside it, where anchoring is allowed again.
+    */
+    Item {
+        id: depBlock
+        width: content.width
+        height: depCol.implicitHeight
+
+        Column {
+            id: depCol
+            anchors.left: parent.left
+            anchors.leftMargin: 44 * root.s
+            anchors.right: parent.right
+            anchors.rightMargin: 30 * root.s
+            spacing: 0
 
             /**
-             * The verdict mark, and the only thing on this row that says a check
-             * has actually run — so it must not exist before one is asked for.
-             *
-             * The leading `icon` above and this trailing glyph are separate
-             * slots, which is why `layers` here adds no second mark. This one is
-             * a check when nothing required is missing and a cross when something
-             * is, because a tick that appeared whether or not the answer was yes
-             * would be asserting a result the check never gave — the exact
-             * failure the gating below exists to prevent, one level up.
-             *
-             * Dimmed rather than spun while running. "check" is a real glyph, not
-             * a spinner frame, and rotating it would read as nonsense; the check
-             * takes well under a second, so the dim is enough to acknowledge it.
+             * Section label, shown only when that half of the list is non-empty.
+             * Left-aligned, not centred: the entries underneath it are left-
+             * aligned to the row label's own edge, and a centred heading over a
+             * left-aligned list is the one combination that makes a column look
+             * accidental. Every line in this block now shares a single left edge,
+             * which is the whole reason the block reads as one unit.
             */
-            GlyphIcon {
-                visible: root.depBusy || root.depChecked
-                width: 16 * root.s
-                height: 16 * root.s
-                name: root.depRequiredCount > 0 ? "close" : "check"
-                color: root.depRequiredCount > 0
-                       ? Theme.vermLit
-                       : (root.focusRowItem === depsRow ? Theme.cream : Theme.iconDim)
-                stroke: 1.9
-                opacity: root.depBusy ? 0.45 : 1
-
-                Behavior on opacity {
-                    NumberAnimation { duration: 120 }
-                }
+            Text {
+                visible: root.depRequiredCount > 0
+                width: parent.width
+                text: "REQUIRED"
+                color: Theme.vermDim
+                font.family: Theme.font
+                font.pixelSize: 9 * root.s
+                font.weight: Font.DemiBold
+                font.letterSpacing: 1.1
+                topPadding: 14 * root.s
+                bottomPadding: 2 * root.s
             }
-        }
 
-        /**
-         * The dependency result, inset to line up with the row labels above it.
-         *
-         * The inset is not cosmetic. SettingsRow places its own text 14 + 17 +
-         * 13 = 44 scale units in, to clear the leading icon, and leaves 30 more
-         * at the right for the trailing control. A list laid out from the
-         * surface's own left edge therefore sat a full icon-width to the left of
-         * the "Check dependencies" it belongs to — two unrelated-looking columns
-         * stacked in one panel. Insetting everything below puts it on the same
-         * left edge as every row, and the right inset stops the last entry
-         * running under the tick.
-         *
-         * The wrapper is a plain Item rather than a Column, and that is the
-         * whole trick: this sits inside `content`, which is itself a Column, and
-         * a Positioner places its own children — anchors on them are ignored,
-         * with a warning. An Item can be anchored; the Column goes one level
-         * deeper, inside it, where anchoring is allowed again.
-        */
-        Item {
-            id: depBlock
-            width: content.width
-            height: depCol.implicitHeight
+            Text {
+                visible: root.depRequiredCount === 0 && root.depList.length > 0
+                width: parent.width
+                text: "OPTIONAL"
+                color: Theme.faint
+                font.family: Theme.font
+                font.pixelSize: 9 * root.s
+                font.weight: Font.DemiBold
+                font.letterSpacing: 1.1
+                topPadding: 14 * root.s
+                bottomPadding: 2 * root.s
+            }
 
-            Column {
-                id: depCol
-                anchors.left: parent.left
-                anchors.leftMargin: 44 * root.s
-                anchors.right: parent.right
-                anchors.rightMargin: 30 * root.s
-                spacing: 0
+            /**
+             * One entry per missing dependency: the id, and the package that
+             * provides it. Required entries are inked in the alarm colour and
+             * optional ones stay dim, so the list reads in priority order
+             * without needing to be split into two repeaters.
+             *
+             * Two things are deliberately absent. The manifest's `why`, because
+             * it is written for the report page — a sentence, in a column wide
+             * enough to read a sentence in — and under every id it turned a list
+             * of six into a wall of prose to scroll past to reach the package
+             * name. And the package line when it is just the id again, which for
+             * most entries it is: showing "ghostty" over "ghostty" is noise, and
+             * noise in a list this short costs a visible row. The report has the
+             * pairing in full either way.
+            */
+            Repeater {
+                model: root.depVisible
 
-                /**
-                 * Section label, shown only when that half of the list is non-empty.
-                 * Left-aligned, not centred: the entries underneath it are left-
-                 * aligned to the row label's own edge, and a centred heading over a
-                 * left-aligned list is the one combination that makes a column look
-                 * accidental. Every line in this block now shares a single left edge,
-                 * which is the whole reason the block reads as one unit.
-                */
-                Text {
-                    visible: root.depRequiredCount > 0
-                    width: parent.width
-                    text: "REQUIRED"
-                    color: Theme.vermDim
-                    font.family: Theme.font
-                    font.pixelSize: 9 * root.s
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: 1.1
-                    topPadding: 14 * root.s
-                    bottomPadding: 2 * root.s
-                }
+                delegate: Column {
+                    id: depItem
+                    required property var modelData
 
-                Text {
-                    visible: root.depRequiredCount === 0 && root.depList.length > 0
-                    width: parent.width
-                    text: "OPTIONAL"
-                    color: Theme.faint
-                    font.family: Theme.font
-                    font.pixelSize: 9 * root.s
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: 1.1
-                    topPadding: 14 * root.s
-                    bottomPadding: 2 * root.s
-                }
-
-                /**
-                 * One entry per missing dependency: the id, and the package that
-                 * provides it. Required entries are inked in the alarm colour and
-                 * optional ones stay dim, so the list reads in priority order
-                 * without needing to be split into two repeaters.
-                 *
-                 * Two things are deliberately absent. The manifest's `why`, because
-                 * it is written for the report page — a sentence, in a column wide
-                 * enough to read a sentence in — and under every id it turned a list
-                 * of six into a wall of prose to scroll past to reach the package
-                 * name. And the package line when it is just the id again, which for
-                 * most entries it is: showing "ghostty" over "ghostty" is noise, and
-                 * noise in a list this short costs a visible row. The report has the
-                 * pairing in full either way.
-                */
-                Repeater {
-                    model: root.depVisible
-
-                    delegate: Column {
-                        id: depItem
-                        required property var modelData
-
-                        // depCol.width by id, not parent.width: a Repeater's
-                        // delegates are not reliably parented to the positioner, and
-                        // parent.width would collapse to the Repeater's own zero
-                        // width without any error. Referencing the inset column
-                        // explicitly is what keeps the entries aligned with the
-                        // labels above — depBlock is the full surface width, so
-                        // sizing to that would put them back out at the left edge.
-                        width: depCol.width
-                        spacing: 1 * root.s
-                        topPadding: 4 * root.s
-                        bottomPadding: 4 * root.s
-
-                        // The package line, minus anything that just repeats the id
-                        // above it. Most entries are named after their own package,
-                        // and "ghostty" printed over "ghostty" is a wasted row in a
-                        // list this short; but an entry can list several packages and
-                        // only one of them be the id, so the whole list is filtered
-                        // rather than the line dropped on a single comparison. If
-                        // nothing survives the filter the line is not rendered at all.
-                        readonly property var pkgOnly: {
-                            var out = [];
-                            var pk = modelData.pkg || [];
-                            for (var i = 0; i < pk.length; i++) {
-                                if (pk[i] !== modelData.id) out.push(pk[i]);
-                            }
-                            return out;
-                        }
-                        readonly property string pkgText: pkgOnly.join(", ")
-
-                        Text {
-                            width: parent.width
-                            text: depItem.modelData.id
-                            color: depItem.modelData.required ? Theme.vermLit : Theme.subtle
-                            font.family: Theme.font
-                            font.pixelSize: 11 * root.s
-                            font.weight: Font.DemiBold
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            width: parent.width
-                            visible: depItem.pkgText.length > 0
-                            // "install X" is the actual next step, and the id is often
-                            // not the package name — bluetoothctl comes from
-                            // bluez-utils, the power profiles from a unit with no
-                            // binary at all.
-                            text: depItem.pkgText
-                            color: Theme.dim
-                            font.family: Theme.font
-                            font.pixelSize: 10 * root.s
-                            elide: Text.ElideRight
-                        }
-                    }
-                }
-
-                /**
-                 * What the cap held back. Says how many, so the list reads as
-                 * truncated on purpose rather than as the whole answer — a list that
-                 * silently stops at six is indistinguishable from one where six is
-                 * the truth.
-                 *
-                 * Left-aligned like everything else in this block. Centring it put
-                 * the one line that refers back to the list somewhere the list was
-                 * not.
-                */
-                Text {
-                    visible: root.depHiddenCount > 0
-                    width: parent.width
-                    text: "+" + root.depHiddenCount + " more — see the full report"
-                    color: Theme.dim
-                    font.family: Theme.font
-                    font.pixelSize: 10 * root.s
-                    wrapMode: Text.WordWrap
+                    // depCol.width by id, not parent.width: a Repeater's
+                    // delegates are not reliably parented to the positioner, and
+                    // parent.width would collapse to the Repeater's own zero
+                    // width without any error. Referencing the inset column
+                    // explicitly is what keeps the entries aligned with the
+                    // labels above — depBlock is the full surface width, so
+                    // sizing to that would put them back out at the left edge.
+                    width: depCol.width
+                    spacing: 1 * root.s
                     topPadding: 4 * root.s
-                }
+                    bottomPadding: 4 * root.s
 
-                /**
-                 * Opens the same generated HTML report the post-update path uses, for
-                 * the install commands and anything the compact list above leaves
-                 * out. One fixed file, rewritten in place, so repeated checks never
-                 * pile up copies and this link always points at the current report.
-                */
-                Item {
-                    id: depLink
-                    visible: root.depReportUseful && !root.depBusy
-                    width: parent.width
-                    height: visible ? 26 * root.s : 0
+                    // The package line, minus anything that just repeats the id
+                    // above it. Most entries are named after their own package,
+                    // and "ghostty" printed over "ghostty" is a wasted row in a
+                    // list this short; but an entry can list several packages and
+                    // only one of them be the id, so the whole list is filtered
+                    // rather than the line dropped on a single comparison. If
+                    // nothing survives the filter the line is not rendered at all.
+                    readonly property var pkgOnly: {
+                        var out = [];
+                        var pk = modelData.pkg || [];
+                        for (var i = 0; i < pk.length; i++) {
+                            if (pk[i] !== modelData.id) out.push(pk[i]);
+                        }
+                        return out;
+                    }
+                    readonly property string pkgText: pkgOnly.join(", ")
 
-                    TapHandler {
-                        onTapped: root.openDepReport()
+                    Text {
+                        width: parent.width
+                        text: depItem.modelData.id
+                        color: depItem.modelData.required ? Theme.vermLit : Theme.subtle
+                        font.family: Theme.font
+                        font.pixelSize: 11 * root.s
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
                     }
 
                     Text {
-                        // Left, not centred, and vertically centred in the tap target
-                        // so the whole row stays clickable. Centring the label made
-                        // the one interactive line in the block the one line that did
-                        // not line up with anything above it.
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Open full report with install commands"
-                        color: depLinkHover.hovered ? Theme.cream : Theme.dim
+                        width: parent.width
+                        visible: depItem.pkgText.length > 0
+                        // "install X" is the actual next step, and the id is often
+                        // not the package name — bluetoothctl comes from
+                        // bluez-utils, the power profiles from a unit with no
+                        // binary at all.
+                        text: depItem.pkgText
+                        color: Theme.dim
                         font.family: Theme.font
                         font.pixelSize: 10 * root.s
-                        font.underline: depLinkHover.hovered
+                        elide: Text.ElideRight
                     }
-
-                    HoverHandler { id: depLinkHover }
                 }
+            }
+
+            /**
+             * What the cap held back. Says how many, so the list reads as
+             * truncated on purpose rather than as the whole answer — a list that
+             * silently stops at six is indistinguishable from one where six is
+             * the truth.
+             *
+             * Left-aligned like everything else in this block. Centring it put
+             * the one line that refers back to the list somewhere the list was
+             * not.
+            */
+            Text {
+                visible: root.depHiddenCount > 0
+                width: parent.width
+                text: "+" + root.depHiddenCount + " more — see the full report"
+                color: Theme.dim
+                font.family: Theme.font
+                font.pixelSize: 10 * root.s
+                wrapMode: Text.WordWrap
+                topPadding: 4 * root.s
+            }
+
+            /**
+             * Opens the same generated HTML report the post-update path uses, for
+             * the install commands and anything the compact list above leaves
+             * out. One fixed file, rewritten in place, so repeated checks never
+             * pile up copies and this link always points at the current report.
+            */
+            Item {
+                id: depLink
+                visible: root.depReportUseful && !root.depBusy
+                width: parent.width
+                height: visible ? 26 * root.s : 0
+
+                TapHandler {
+                    onTapped: root.openDepReport()
+                }
+
+                Text {
+                    // Left, not centred, and vertically centred in the tap target
+                    // so the whole row stays clickable. Centring the label made
+                    // the one interactive line in the block the one line that did
+                    // not line up with anything above it.
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Open full report with install commands"
+                    color: depLinkHover.hovered ? Theme.cream : Theme.dim
+                    font.family: Theme.font
+                    font.pixelSize: 10 * root.s
+                    font.underline: depLinkHover.hovered
+                }
+
+                HoverHandler { id: depLinkHover }
             }
         }
     }

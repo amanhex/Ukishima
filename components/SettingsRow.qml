@@ -25,6 +25,10 @@ Item {
     property string sub: ""
     property bool last: false
     property bool captionOnFocus: false
+    /** Draw the trailing chevron a navigation row uses. */
+    property bool chevron: false
+    /** Chevron colour at rest; focused rows use the host's ink. */
+    property color chevronIdle: Theme.iconDim
     default property alias control: controlSlot.data
 
     readonly property real s: srow.surface ? srow.surface.s : 1
@@ -138,16 +142,27 @@ Item {
         id: controlSlot
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        width: childrenRect.width
+        width: childrenRect.width + (srow.chevron ? 16 * srow.s : 0)
         height: implicitHeight
         implicitHeight: {
-            var h = 0;
+            var h = srow.chevron ? 16 * srow.s : 0;
             for (var i = 0; i < children.length; i++) {
                 var c = children[i];
                 if (c.height > h) h = c.height;
             }
             return h;
         }
+    }
+
+    GlyphIcon {
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        width: 16 * srow.s
+        height: 16 * srow.s
+        visible: srow.chevron
+        name: "chevron-right"
+        color: srow.focused ? srow.ink : srow.chevronIdle
+        stroke: 1.9
     }
 
     Rectangle {

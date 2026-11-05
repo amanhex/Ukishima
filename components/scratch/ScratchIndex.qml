@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import ".."
 import "../../Singletons"
+import "../../lib/scratch.js" as ScratchNav
 
 /**
  * Chaldea "Index": a side index selects a note while the right column previews
@@ -21,23 +22,13 @@ Item {
     readonly property var picked: notes[idx.currentIndex] ?? null
 
     function locateCurrent() {
-        for (var i = 0; i < notes.length; i++)
-            if (notes[i].slug === Scratch.currentSlug) {
-                idx.currentIndex = i;
-                return;
-            }
-        if (idx.currentIndex >= notes.length)
-            idx.currentIndex = Math.max(0, notes.length - 1);
+        idx.currentIndex = ScratchNav.locate(notes, Scratch.currentSlug, idx.currentIndex);
     }
 
     function focusList() { idx.forceActiveFocus(); }
 
     function openPicked() {
-        if (!indexStyle.picked) {
-            indexStyle.host.openCreate();
-            return;
-        }
-        indexStyle.host.openNote(indexStyle.picked.slug);
+        ScratchNav.open(indexStyle.host, notes, idx.currentIndex);
     }
 
     Component.onCompleted: {

@@ -21,16 +21,14 @@ Item {
     property string screenName: ""
     property real s: 1
     property real stickW: 17 * s
-    property real dotW: 5 * s
+    property real dotW: (bars ? 4 : 5) * s
     property real gap: 4 * s
-
     /**
-     * Kept for callers that mount a hidden copy (the OSD indicator). The
-     * provider owns the data feed now, so this no longer gates a process; it
-     * stays because the OSD still passes it and because a future provider may
-     * want to know whether its strip is visible.
+     * "dots" is the resting bar's clickable strip; "bars" is the status face's
+     * static height-coded strip. Same workspace range, no interaction.
      */
-    property bool watch: true
+    property string variant: "dots"
+    readonly property bool bars: variant === "bars"
 
     readonly property var range: Wm.workspacesFor(screenName)
     readonly property string activeName: Wm.activeWorkspaceName(screenName)
@@ -54,8 +52,13 @@ Item {
     function slotCenterX(idx) {
         let x = 0;
         for (let i = 0; i < idx; i++)
-            x += (i === activeIndex ? stickW : dotW) + gap;
-        return x + (idx === activeIndex ? stickW : dotW) / 2;
+            x += slotW(i) + gap;
+        return x + slotW(idx) / 2;
+    }
+
+    /** End width of slot `i`; only the dots variant widens the active one. */
+    function slotW(idx) {
+        return !bars && idx === activeIndex ? stickW : dotW;
     }
 
     readonly property point activeDotPoint: {
@@ -85,23 +88,39 @@ Item {
 
                 readonly property bool isActive: workspaces.activeName.length > 0
                     && String(modelData.name) === workspaces.activeName
+                readonly property bool occupied: {
+                    if (!workspaces.bars) return false;
+                    const wins = Wm.windows;
+                    for (let i = 0; i < wins.length; i++) {
+                        const w = wins[i];
+                        if (w && w.workspace && String(w.workspace.name) === String(modelData.name))
+                            return true;
+                    }
+                    return false;
+                }
 
-                Layout.preferredWidth: slot.isActive ? workspaces.stickW : workspaces.dotW
-                Layout.preferredHeight: 22 * workspaces.s
+                Layout.preferredWidth: workspaces.slotW(index)
+                Layout.preferredHeight: (workspaces.bars ? 16 : 22) * workspaces.s
                 Behavior on Layout.preferredWidth { NumberAnimation { duration: Motion.fast; easing.type: Motion.easeStandard } }
 
                 Rectangle {
                     anchors.centerIn: parent
                     width: parent.width
-                    height: workspaces.dotW
+                    height: workspaces.bars
+                        ? (slot.isActive ? 16 : (slot.occupied ? 10 : 9)) * workspaces.s
+                        : workspaces.dotW
                     radius: height / 2
                     color: slot.isActive ? Theme.vermLit : Theme.cream
-                    opacity: slot.isActive ? 1.0 : (area.containsMouse ? 0.7 : 0.3)
+                    opacity: workspaces.bars
+                        ? (slot.isActive ? 1 : (slot.occupied ? 0.5 : 0.18))
+                        : (slot.isActive ? 1.0 : (area.containsMouse ? 0.7 : 0.3))
+                    Behavior on height { enabled: workspaces.bars; NumberAnimation { duration: Motion.fast; easing.type: Motion.easeStandard } }
                     Behavior on opacity { NumberAnimation { duration: Motion.fast } }
                 }
 
                 MouseArea {
                     id: area
+                    visible: !workspaces.bars
                     anchors.fill: parent
                     anchors.leftMargin: -workspaces.gap / 2
                     anchors.rightMargin: -workspaces.gap / 2

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import ".."
 import "../../Singletons"
+import "../../lib/scratch.js" as ScratchNav
 
 /**
  * Chaldea "Console": the pad as a personal log. Mono rows behind a printed
@@ -18,30 +19,17 @@ Item {
     readonly property var notes: Scratch.notes
 
     function locateCurrent() {
-        for (var i = 0; i < notes.length; i++)
-            if (notes[i].slug === Scratch.currentSlug) {
-                list.currentIndex = i;
-                return;
-            }
-        if (list.currentIndex >= notes.length)
-            list.currentIndex = Math.max(0, notes.length - 1);
+        list.currentIndex = ScratchNav.locate(notes, Scratch.currentSlug, list.currentIndex);
     }
 
     function focusList() { list.forceActiveFocus(); }
 
     function openCurrent() {
-        var note = notes[list.currentIndex];
-        if (!note) {
-            logPad.host.openCreate();
-            return;
-        }
-        logPad.host.openNote(note.slug);
+        ScratchNav.open(logPad.host, notes, list.currentIndex);
     }
 
     function removeCurrent() {
-        var note = notes[list.currentIndex];
-        if (note)
-            Scratch.remove(note.slug);
+        ScratchNav.remove(Scratch, notes, list.currentIndex);
     }
 
     Component.onCompleted: {

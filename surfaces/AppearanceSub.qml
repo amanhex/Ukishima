@@ -18,7 +18,6 @@ SettingsSurface {
     id: root
 
     backSurface: "appearance"
-    implicitHeight: content.implicitHeight
 
     rows: [
         { item: themeTile, kind: "nav", surface: "theme" },
@@ -28,100 +27,59 @@ SettingsSurface {
         { item: stylesTile, kind: "nav", surface: "surfacestyles" }
     ]
 
-    Column {
-        id: content
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        spacing: 0
+    glyph: "相"
+    title: "APPEARANCE"
+    showBack: true
 
-        SettingsHeader {
-            s: root.s
-            glyph: "相"
-            title: "APPEARANCE"
-            showBack: true
-        }
+    SettingsRow {
+        id: themeTile
+        surface: root
+        glyph: "色"
+        name: "Theme"
+        sub: "Light, dark, dynamic or manual"
 
-        Item { width: 1; height: 10 * root.s }
-        SettingsRow {
-            id: themeTile
-            surface: root
-            glyph: "色"
-            name: "Theme"
-            sub: "Light, dark, dynamic or manual"
-
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === themeTile ? Theme.cream : Theme.iconDim
-                stroke: 1.9
-            }
-        }
-
-        SettingsRow {
-            id: accentTile
-            surface: root
-            glyph: "彩"
-            name: "Accent"
-            sub: "Override the warm accent colour"
-
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === accentTile ? Theme.cream : Theme.iconDim
-                stroke: 1.9
-            }
-        }
-
-        SettingsRow {
-            id: glassTile
-            surface: root
-            glyph: "玻"
-            name: "Glass"
-            sub: "Pill material and copy contrast"
-
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === glassTile ? Theme.cream : Theme.iconDim
-                stroke: 1.9
-            }
-        }
-
-        SettingsRow {
-            id: fontColorTile
-            surface: root
-            glyph: "字"
-            name: "Font colour"
-            sub: "Recolour the text family"
-
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === fontColorTile ? Theme.cream : Theme.iconDim
-                stroke: 1.9
-            }
-        }
-
-        SettingsRow {
-            id: stylesTile
-            surface: root
-            glyph: "枠"
-            name: "Surface Styles"
-            sub: "Pill face, players, lock layout"
-            last: true
-
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === stylesTile ? Theme.cream : Theme.iconDim
-                stroke: 1.9
-            }
-        }
+        chevron: true
     }
+
+    SettingsRow {
+        id: accentTile
+        surface: root
+        glyph: "彩"
+        name: "Accent"
+        sub: "Override the warm accent colour"
+
+        chevron: true
+    }
+
+    SettingsRow {
+        id: glassTile
+        surface: root
+        glyph: "玻"
+        name: "Glass"
+        sub: "Pill material and copy contrast"
+
+        chevron: true
+    }
+
+    SettingsRow {
+        id: fontColorTile
+        surface: root
+        glyph: "字"
+        name: "Font colour"
+        sub: "Recolour the text family"
+
+        chevron: true
+    }
+
+    SettingsRow {
+        id: stylesTile
+        surface: root
+        glyph: "枠"
+        name: "Surface Styles"
+        sub: "Pill face, players, lock layout"
+        last: true
+
+        chevron: true
+    }
+
 }

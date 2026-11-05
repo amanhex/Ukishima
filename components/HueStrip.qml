@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import "../Singletons"
 
 /**
  * Horizontal hue slider used by the dock's and the pill's manual-palette rows:

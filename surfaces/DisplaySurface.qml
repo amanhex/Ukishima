@@ -24,7 +24,6 @@ SettingsSurface {
     id: root
 
     backSurface: "appearance"
-    implicitHeight: content.implicitHeight
 
     rows: [
         { item: expandRow, kind: "seg", vals: ["media", "pill"], get: function () { return Flags.expandTo; }, set: function (v) { Flags.expandTo = v; } },
@@ -36,192 +35,175 @@ SettingsSurface {
         { item: dockRow, kind: "toggle", get: function () { return Flags.dockEnabled; }, set: function (v) { Flags.dockEnabled = v; } }
     ]
 
-    Column {
-        id: content
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        spacing: 0
+    glyph: "時"
+    title: "DISPLAY"
+    showBack: true
 
-        SettingsHeader {
+    SettingsRow {
+        id: expandRow
+        surface: root
+        name: "Expand"
+        icon: "layers"
+        sub: "What the media card opens into"
+
+        Dropdown {
+            id: expandDrop
             s: root.s
-            glyph: "時"
-            title: "DISPLAY"
-            showBack: true
-        }
-
-Item { width: 1; height: 10 * root.s }
-        SettingsRow {
-            id: expandRow
-            surface: root
-            name: "Expand"
-            icon: "layers"
-            sub: "What the media card opens into"
-
-            Dropdown {
-                id: expandDrop
-                s: root.s
-                options: [{ label: "Media", value: "media" }, { label: "Full pill", value: "pill" }]
-                value: Flags.expandTo
-                onChipClicked: expandDrop.open = !expandDrop.open
-                onPicked: (v) => Flags.expandTo = v
-            }
-        }
-
-        SettingsRow {
-            id: timeRow
-            surface: root
-            name: "Time format"
-            icon: "clock"
-
-            Dropdown {
-                id: timeDrop
-                s: root.s
-                options: [{ label: "24H", value: false }, { label: "12H", value: true }]
-                value: Flags.time12h
-                onChipClicked: timeDrop.open = !timeDrop.open
-                onPicked: (v) => Flags.time12h = v
-            }
-        }
-
-        SettingsRow {
-            id: secRow
-            surface: root
-            name: "Clock seconds"
-            icon: "stopwatch"
-
-            LinkToggle {
-                s: root.s
-                on: Flags.clockSeconds
-                onToggled: Flags.clockSeconds = !Flags.clockSeconds
-            }
-        }
-
-        SettingsRow {
-            id: glyphRow
-            surface: root
-            name: "Japanese glyphs"
-            icon: "language"
-
-            LinkToggle {
-                s: root.s
-                on: Flags.showGlyphs
-                onToggled: Flags.showGlyphs = !Flags.showGlyphs
-            }
-        }
-
-        /**
-         * Only meaningful with the Japanese glyphs off — 時 and the clock face
-         * are alternatives in the same slot, so with the glyphs on this toggle
-         * changes nothing at all.
-         *
-         * `visible`, not `enabled`: showGlyphs defaults to on, so an `enabled`
-         * row was a live-looking switch that silently did nothing on a fresh
-         * install. Hidden, it appears exactly when it has an effect. A disabled
-         * item also takes no mouse events, which is what made it read as broken.
-         */
-        SettingsRow {
-            id: clockIconRow
-            surface: root
-            name: "Clock icon"
-            icon: "clock"
-            sub: "Icon left of the time"
-            visible: !Flags.showGlyphs
-
-            LinkToggle {
-                s: root.s
-                on: Flags.clockIcon
-                onToggled: Flags.clockIcon = !Flags.clockIcon
-            }
-        }
-
-        SettingsRow {
-            id: vizRow
-            surface: root
-            name: "Music visualizer"
-            icon: "music"
-
-            LinkToggle {
-                s: root.s
-                on: Flags.musicViz
-                onToggled: Flags.musicViz = !Flags.musicViz
-            }
-        }
-
-        /**
-         * Which icons the expanded pill's hover row draws keeps its own
-         * surface — 器 TOGGLE MODULES, opened by this row — so the optional
-         * module switches do not bury the clock settings. See that file for
-         * the list and for why the Appearance cog is not among them.
-         */
-        SettingsRow {
-            id: modulesTile
-            surface: root
-            glyph: "器"
-            name: "Toggle modules"
-
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === modulesTile ? Theme.cream : Theme.iconDim
-                stroke: 1.9
-            }
-        }
-
-        /**
-         * The air the pill keeps between itself and the windows that tile
-         * around it, as a percentage of the shipped 12px: 100% is the shipped
-         * gap, 0% tucks the windows flush under the pill — pickable as four
-         * fixed steps, like the Interface surface's UI scale row. Hidden
-         * under auto-hide: the pill then reserves no band at all, so the gap
-         * it would describe does not exist either.
-         */
-        SettingsRow {
-            id: pillGapRow
-            surface: root
-            name: "Window gap"
-            icon: "monitor"
-            visible: !Flags.autoHide
-
-            Dropdown {
-                id: pillGapDrop
-                s: root.s
-                options: [{ label: "25%", value: 0.25 }, { label: "50%", value: 0.5 }, { label: "100%", value: 1 }, { label: "150%", value: 1.5 }]
-                value: Flags.appGap
-                onChipClicked: pillGapDrop.open = !pillGapDrop.open
-                onPicked: (v) => Flags.appGap = v
-            }
-        }
-
-        /**
-         * 泊 The bottom dock's on/off switch — the ONE dock setting the pill
-         * keeps, and it is here for a structural reason rather than a tidy one.
-         *
-         * Everything else the dock can be told lives on the dock itself, in the
-         * panel its own gear chip opens. But that panel can only be opened from
-         * the gear, and the gear is on the bar, and the bar is what slides off
-         * the bottom edge when the dock is disabled. A switch that can switch
-         * off the only thing you can reach it through is a one-way door, so this
-         * row is the way back — here, in the pill, which is always on screen.
-         *
-         * It is a switch and not a link into the dock's settings, on purpose:
-         * the pill must not become a second front door to a panel that belongs to
-         * the dock, or the two would drift apart again. Turning the dock on puts
-         * its gear within reach; the gear leads to everything else.
-         */
-        SettingsRow {
-            id: dockRow
-            surface: root
-            name: "Dock"
-            icon: "dock"
-            last: true
-
-            LinkToggle {
-                s: root.s
-                on: Flags.dockEnabled
-                onToggled: Flags.dockEnabled = !Flags.dockEnabled
-            }
+            options: [{ label: "Media", value: "media" }, { label: "Full pill", value: "pill" }]
+            value: Flags.expandTo
+            onChipClicked: expandDrop.open = !expandDrop.open
+            onPicked: (v) => Flags.expandTo = v
         }
     }
+
+    SettingsRow {
+        id: timeRow
+        surface: root
+        name: "Time format"
+        icon: "clock"
+
+        Dropdown {
+            id: timeDrop
+            s: root.s
+            options: [{ label: "24H", value: false }, { label: "12H", value: true }]
+            value: Flags.time12h
+            onChipClicked: timeDrop.open = !timeDrop.open
+            onPicked: (v) => Flags.time12h = v
+        }
+    }
+
+    SettingsRow {
+        id: secRow
+        surface: root
+        name: "Clock seconds"
+        icon: "stopwatch"
+
+        LinkToggle {
+            s: root.s
+            on: Flags.clockSeconds
+            onToggled: Flags.clockSeconds = !Flags.clockSeconds
+        }
+    }
+
+    SettingsRow {
+        id: glyphRow
+        surface: root
+        name: "Japanese glyphs"
+        icon: "language"
+
+        LinkToggle {
+            s: root.s
+            on: Flags.showGlyphs
+            onToggled: Flags.showGlyphs = !Flags.showGlyphs
+        }
+    }
+
+    /**
+     * Only meaningful with the Japanese glyphs off — 時 and the clock face
+     * are alternatives in the same slot, so with the glyphs on this toggle
+     * changes nothing at all.
+     *
+     * `visible`, not `enabled`: showGlyphs defaults to on, so an `enabled`
+     * row was a live-looking switch that silently did nothing on a fresh
+     * install. Hidden, it appears exactly when it has an effect. A disabled
+     * item also takes no mouse events, which is what made it read as broken.
+     */
+    SettingsRow {
+        id: clockIconRow
+        surface: root
+        name: "Clock icon"
+        icon: "clock"
+        sub: "Icon left of the time"
+        visible: !Flags.showGlyphs
+
+        LinkToggle {
+            s: root.s
+            on: Flags.clockIcon
+            onToggled: Flags.clockIcon = !Flags.clockIcon
+        }
+    }
+
+    SettingsRow {
+        id: vizRow
+        surface: root
+        name: "Music visualizer"
+        icon: "music"
+
+        LinkToggle {
+            s: root.s
+            on: Flags.musicViz
+            onToggled: Flags.musicViz = !Flags.musicViz
+        }
+    }
+
+    /**
+     * Which icons the expanded pill's hover row draws keeps its own
+     * surface — 器 TOGGLE MODULES, opened by this row — so the optional
+     * module switches do not bury the clock settings. See that file for
+     * the list and for why the Appearance cog is not among them.
+     */
+    SettingsRow {
+        id: modulesTile
+        surface: root
+        glyph: "器"
+        name: "Toggle modules"
+
+        chevron: true
+    }
+
+    /**
+     * The air the pill keeps between itself and the windows that tile
+     * around it, as a percentage of the shipped 12px: 100% is the shipped
+     * gap, 0% tucks the windows flush under the pill — pickable as four
+     * fixed steps, like the Interface surface's UI scale row. Hidden
+     * under auto-hide: the pill then reserves no band at all, so the gap
+     * it would describe does not exist either.
+     */
+    SettingsRow {
+        id: pillGapRow
+        surface: root
+        name: "Window gap"
+        icon: "monitor"
+        visible: !Flags.autoHide
+
+        Dropdown {
+            id: pillGapDrop
+            s: root.s
+            options: [{ label: "25%", value: 0.25 }, { label: "50%", value: 0.5 }, { label: "100%", value: 1 }, { label: "150%", value: 1.5 }]
+            value: Flags.appGap
+            onChipClicked: pillGapDrop.open = !pillGapDrop.open
+            onPicked: (v) => Flags.appGap = v
+        }
+    }
+
+    /**
+     * 泊 The bottom dock's on/off switch — the ONE dock setting the pill
+     * keeps, and it is here for a structural reason rather than a tidy one.
+     *
+     * Everything else the dock can be told lives on the dock itself, in the
+     * panel its own gear chip opens. But that panel can only be opened from
+     * the gear, and the gear is on the bar, and the bar is what slides off
+     * the bottom edge when the dock is disabled. A switch that can switch
+     * off the only thing you can reach it through is a one-way door, so this
+     * row is the way back — here, in the pill, which is always on screen.
+     *
+     * It is a switch and not a link into the dock's settings, on purpose:
+     * the pill must not become a second front door to a panel that belongs to
+     * the dock, or the two would drift apart again. Turning the dock on puts
+     * its gear within reach; the gear leads to everything else.
+     */
+    SettingsRow {
+        id: dockRow
+        surface: root
+        name: "Dock"
+        icon: "dock"
+        last: true
+
+        LinkToggle {
+            s: root.s
+            on: Flags.dockEnabled
+            onToggled: Flags.dockEnabled = !Flags.dockEnabled
+        }
+    }
+
 }

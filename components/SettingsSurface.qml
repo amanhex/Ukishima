@@ -29,6 +29,18 @@ PillSurface {
     property string backSurface: ""
     signal requestSurface(string name)
 
+    /** Header, drawn above the surface's own content by the scaffold below. */
+    property string glyph: ""
+    property string title: ""
+    property bool showBack: true
+    /** Gap under the header; one surface uses 8 instead of 10. */
+    property real headerGap: 10 * root.s
+
+    /** The scaffold column, exposed for surfaces that measure against it. */
+    readonly property alias content: contentCol
+    /** The surface's own rows, appended under the header. */
+    default property alias contentData: contentCol.data
+
     /** The row registry, assigned by the deriving surface. */
     property var rows: []
 
@@ -79,4 +91,28 @@ PillSurface {
 
     ameForm: rowFocused ? "rowseam" : "off"
     amePoint: rowPoint
+
+    /**
+     * Header + content column shared by every pill settings surface. The
+     * surface only names its kanji and title; its own rows land here through
+     * the default property, under the header.
+     */
+    implicitHeight: contentCol.implicitHeight
+
+    Column {
+        id: contentCol
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        spacing: 0
+
+        SettingsHeader {
+            s: root.s
+            glyph: root.glyph
+            title: root.title
+            showBack: root.showBack
+        }
+
+        Item { width: 1; height: root.headerGap }
+    }
 }

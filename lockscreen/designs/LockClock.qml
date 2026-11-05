@@ -15,7 +15,6 @@ Item {
     property color ink: "#e4e2dc"
     property color muted: "#98948a"
     property color accent: "#d1161c"
-    property bool accentColon: false
     readonly property bool isSharpCapture: root.host ? (root.host.background === "capture" && root.host.blurMax <= 16) : false
 
     readonly property string timeText: {

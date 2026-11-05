@@ -36,13 +36,6 @@ Singleton {
     readonly property string ext: ".md"
 
     /**
-     * The scanner only matches `*.md`, so the atomic-write staging file is named
-     * to stay outside that glob. If it ever matched, an interrupted save would
-     * leave the temp file listed as a note.
-     */
-    readonly property string tmpName: ".ukisave"
-
-    /**
      * Sorted, pinned-first. Entries are `{ slug, title, path, pinned, mtime,
      * sizeLabel, heading, preview }`; `slug` is the extensionless filename and
      * doubles as the identity used by the selection and the pin map. `heading`

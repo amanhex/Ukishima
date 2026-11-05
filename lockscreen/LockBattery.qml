@@ -30,7 +30,6 @@ Item {
     //* and pct >= 100 covers drivers that never leave the Charging state.
     readonly property bool full: root.chargeState === UPowerDeviceState.FullyCharged || root.pct >= 100
     readonly property bool charging: root.chargeState === UPowerDeviceState.Charging && !root.full
-    readonly property bool onAc: root.charging || root.full || root.chargeState === UPowerDeviceState.PendingCharge
     //* Sweeps the charging overlay; LockSurface drives this from the shared
     //* flags (batteryShimmer && !reduceMotion).
     property bool shimmerOn: true

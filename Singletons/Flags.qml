@@ -167,7 +167,7 @@ Singleton {
             property bool keepAwake: false
             property bool time12h: false
             property bool clockSeconds: false
-            //* Collapsed-pill face: "minimal" (glyph + time), "classic" (date + time), "system" (weekday, time, workspace, layout, battery) or "strip" (full-width top bar).
+            //* Collapsed-pill face: "minimal" (glyph + time), "classic" (date + time), "system" (weekday, time, workspace, layout, battery), "status" (workspace bars, time, wifi bars, battery icon) or "strip" (full-width top bar).
             property string mainDisplay: "minimal"
             //* What the media card's Expand control opens: "media" keeps the surface as the main screen, "pill" swaps to the expanded pill. With auto-hide off, "media" also makes hovering the resting pill grow into the player.
             property string expandTo: "pill"

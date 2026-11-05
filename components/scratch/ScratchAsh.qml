@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import ".."
 import "../../Singletons"
+import "../../lib/scratch.js" as ScratchNav
 
 /**
  * Chaldea "Ash": the pad as a stack of memo cards. One card expands to show its
@@ -21,28 +22,18 @@ Item {
     function focusList() { stack.forceActiveFocus(); }
 
     function locateCurrent() {
-        for (var i = 0; i < notes.length; i++)
-            if (notes[i].slug === Scratch.currentSlug) {
-                ash.expandedIndex = i;
-                return;
-            }
-        if (ash.expandedIndex < 0 && ash.notes.length > 0)
-            ash.expandedIndex = 0;
+        var i = ScratchNav.locate(notes, Scratch.currentSlug, ash.expandedIndex);
+        if (ash.expandedIndex < 0 && ash.notes.length > 0 && i < 0)
+            i = 0;
+        ash.expandedIndex = i;
     }
 
     function openCurrent() {
-        var note = notes[ash.expandedIndex];
-        if (!note) {
-            ash.host.openCreate();
-            return;
-        }
-        ash.host.openNote(note.slug);
+        ScratchNav.open(ash.host, notes, ash.expandedIndex);
     }
 
     function removeCurrent() {
-        var note = notes[ash.expandedIndex];
-        if (note)
-            Scratch.remove(note.slug);
+        ScratchNav.remove(Scratch, notes, ash.expandedIndex);
     }
 
     function move(step) {

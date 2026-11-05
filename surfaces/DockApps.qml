@@ -31,35 +31,7 @@ DockPanel {
      * against the installed entries, unresolvable ones dropped. A pin whose app
      * was uninstalled still occupies a slot in DockPins.pins but contributes no
      * chip, so the dock's real order is this list and NOT the pins array. */
-    readonly property var dockPins: {
-        var out = [];
-        for (var i = 0; i < DockPins.pins.length; i++) {
-            var e = root.appById(DockPins.pins[i]);
-            if (e)
-                out.push(e.id);
-        }
-        return out;
-    }
-
-    /** The installed entry for a desktop-entry id, tolerating a .desktop suffix. */
-    function appById(id) {
-        if (!id)
-            return null;
-        var src = root.allEntries;
-        var q = id.toLowerCase();
-        for (var i = 0; i < src.length; i++) {
-            if (src[i] && src[i].id && src[i].id.toLowerCase() === q)
-                return src[i];
-        }
-        if (q.endsWith(".desktop")) {
-            var bare = q.slice(0, -8);
-            for (var j = 0; j < src.length; j++) {
-                if (src[j] && src[j].id && src[j].id.toLowerCase() === bare)
-                    return src[j];
-            }
-        }
-        return null;
-    }
+    readonly property var dockPins: Apps.resolvePins(root.allEntries, DockPins.pins)
 
     /** Pinned-first partition. Pinned entries are ordered by their position in
      * dockPins (read here, so the list re-partitions on any pin change — a pin,

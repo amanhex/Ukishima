@@ -36,25 +36,16 @@ Rectangle {
     readonly property color glyphGround: root.styled ? "#090909" : "#14181a"
     readonly property color artGround: root.styled ? Qt.rgba(0.894, 0.886, 0.863, 0.06) : Qt.rgba(1, 1, 1, 0.10)
     readonly property color hoverGround: root.styled ? Qt.rgba(0.894, 0.886, 0.863, 0.10) : Qt.rgba(1, 1, 1, 0.16)
-    readonly property color cardFill: {
-        switch (root.variant) {
-        case "editorial":
-            return "transparent";
-        case "folio":
-            return Qt.rgba(0.894, 0.886, 0.863, 0.12);
-        case "phase":
-            return Qt.rgba(0.894, 0.886, 0.863, 0.10);
-        case "relay":
-        case "reactive":
-            return Qt.rgba(0.894, 0.886, 0.863, 0.10);
-        case "spine":
-            return Qt.rgba(0.894, 0.886, 0.863, 0.10);
-        default:
-            return Qt.rgba(1, 1, 1, 0.14);
-        }
-    }
+    readonly property color cardFill: root.styled
+        //* The designs sit on a full-brightness wallpaper, where the old
+        //* 10-12% white wash read as no card at all. A dark translucent panel
+        //* (the same ground Phase uses for its login panel) separates the
+        //* transport from the art without hiding the wallpaper.
+        ? Qt.rgba(9 / 255, 9 / 255, 9 / 255, 0.66)
+        : Qt.rgba(1, 1, 1, 0.14)
     readonly property int cardRadius: root.styled ? 0 : 19
-    readonly property color cardBorder: root.isSharpCapture ? "transparent" : (root.variant === "editorial" ? "transparent" : (root.styled ? Qt.rgba(0.894, 0.886, 0.863, 0.18) : Qt.rgba(1, 1, 1, 0.18)))
+    readonly property color cardBorder: root.isSharpCapture ? "transparent"
+        : (root.styled ? Qt.rgba(0.894, 0.886, 0.863, 0.18) : Qt.rgba(1, 1, 1, 0.18))
     readonly property string cardFont: root.styled && root.variant !== "folio" ? "JetBrainsMono NF" : "Adwaita Sans"
     readonly property string titleFont: root.variant === "folio" ? "Noto Serif" : root.cardFont
     readonly property bool technicalRule: root.variant === "editorial" || root.variant === "spine" || root.variant === "folio"
@@ -182,7 +173,7 @@ Rectangle {
     implicitHeight: 64
     radius: root.cardRadius
     color: root.cardFill
-    border.width: root.variant === "editorial" ? 0 : 1
+    border.width: 1
     border.color: root.cardBorder
 
     /** One baked GlyphIcon vector: the path lives in a 24-unit square and

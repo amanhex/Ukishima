@@ -53,13 +53,8 @@ DockPanel {
             name: "Behavior"
             sub: "Auto-hide, UI scale, window gap, minimal"
 
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === behaviorTile ? root.ink : root.dim
-                stroke: 1.9
-            }
+            chevron: true
+            chevronIdle: root.dim
         }
 
         SettingsRow {
@@ -69,13 +64,8 @@ DockPanel {
             name: "Appearance"
             sub: "Theme, OLED, glass, manual hue"
 
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === appearanceTile ? root.ink : root.dim
-                stroke: 1.9
-            }
+            chevron: true
+            chevronIdle: root.dim
         }
 
         SettingsRow {
@@ -85,13 +75,8 @@ DockPanel {
             name: "Apps"
             sub: root.pinSummary
 
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === appsTile ? root.ink : root.dim
-                stroke: 1.9
-            }
+            chevron: true
+            chevronIdle: root.dim
         }
 
         SettingsRow {
@@ -102,13 +87,8 @@ DockPanel {
             sub: "Standard, snap, float, bounce"
             last: true
 
-            GlyphIcon {
-                width: 16 * root.s
-                height: 16 * root.s
-                name: "chevron-right"
-                color: root.focusRowItem === motionTile ? root.ink : root.dim
-                stroke: 1.9
-            }
+            chevron: true
+            chevronIdle: root.dim
         }
     }
 }

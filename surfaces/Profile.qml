@@ -26,7 +26,6 @@ SettingsSurface {
     id: root
 
     backSurface: ""
-    implicitHeight: content.implicitHeight
 
     // Purely informational — no rows for the keyboard cursor to walk.
     rows: []
@@ -233,181 +232,168 @@ SettingsSurface {
         stdout: SplitParser { onRead: (line) => root.diskUsed = line.trim() }
     }
 
-    Column {
-        id: content
-        anchors.top: parent.top
+    glyph: "我"
+    title: "PROFILE"
+    showBack: true
+    headerGap: 8 * root.s
+
+    Item {
         anchors.left: parent.left
+        anchors.leftMargin: 18 * root.s
         anchors.right: parent.right
-        spacing: 0
+        anchors.rightMargin: 18 * root.s
+        implicitHeight: Math.max(avatarCol.implicitHeight, factsCol.implicitHeight)
 
-        SettingsHeader {
-            s: root.s
-            glyph: "我"
-            title: "PROFILE"
-            showBack: true
-        }
-
-        Item { width: 1; height: 8 * root.s }
-
-        Item {
+        // Avatar + name, vertically centred against the info block.
+        Column {
+            id: avatarCol
             anchors.left: parent.left
-            anchors.leftMargin: 18 * root.s
-            anchors.right: parent.right
-            anchors.rightMargin: 18 * root.s
-            implicitHeight: Math.max(avatarCol.implicitHeight, factsCol.implicitHeight)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 8 * root.s
+            width: 84 * root.s
 
-            // Avatar + name, vertically centred against the info block.
-            Column {
-                id: avatarCol
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 8 * root.s
-                width: 84 * root.s
+            ClippingRectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 72 * root.s
+                height: 72 * root.s
+                radius: 36 * root.s
+                color: Theme.frameBg
 
-                ClippingRectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: 72 * root.s
-                    height: 72 * root.s
-                    radius: 36 * root.s
-                    color: Theme.frameBg
-
-                    Image {
-                        id: faceImg
-                        anchors.fill: parent
-                        source: root.faceFile !== "" ? "file://" + root.faceFile : ""
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        visible: status === Image.Ready
-                        // Decode at the displayed size (2x for HiDPI) instead of
-                        // scaling the full image on every paint — that is what
-                        // made the avatar look soft/blurred.
-                        sourceSize: Qt.size(144 * root.s, 144 * root.s)
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        visible: !faceImg.visible
-                        text: "\uf007"
-                        color: Theme.iconDim
-                        font.family: "JetBrainsMono NFM"
-                        font.pixelSize: 22 * root.s
-                    }
+                Image {
+                    id: faceImg
+                    anchors.fill: parent
+                    source: root.faceFile !== "" ? "file://" + root.faceFile : ""
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    visible: status === Image.Ready
+                    // Decode at the displayed size (2x for HiDPI) instead of
+                    // scaling the full image on every paint — that is what
+                    // made the avatar look soft/blurred.
+                    sourceSize: Qt.size(144 * root.s, 144 * root.s)
                 }
 
                 Text {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.userName
-                    color: Theme.cream
-                    font.family: Theme.font
-                    font.pixelSize: 13 * root.s
-                    font.weight: Font.Medium
-                    elide: Text.ElideRight
-                    width: parent.width
-                    horizontalAlignment: Text.AlignHCenter
+                    anchors.centerIn: parent
+                    visible: !faceImg.visible
+                    text: "\uf007"
+                    color: Theme.iconDim
+                    font.family: "JetBrainsMono NFM"
+                    font.pixelSize: 22 * root.s
                 }
             }
 
-            // Facts: distro heading on top, then two label:value columns so
-            // the card stays wide and short instead of one tall list.
-            Column {
-                id: factsCol
-                anchors.left: avatarCol.right
-                anchors.leftMargin: 20 * root.s
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 10 * root.s
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: root.userName
+                color: Theme.cream
+                font.family: Theme.font
+                font.pixelSize: 13 * root.s
+                font.weight: Font.Medium
+                elide: Text.ElideRight
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+            }
+        }
 
-                component Fact: Item {
-                    required property var modelData
-                    width: parent.width
-                    implicitHeight: valueText.implicitHeight
+        // Facts: distro heading on top, then two label:value columns so
+        // the card stays wide and short instead of one tall list.
+        Column {
+            id: factsCol
+            anchors.left: avatarCol.right
+            anchors.leftMargin: 20 * root.s
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 10 * root.s
 
-                    Text {
-                        id: labelText
-                        text: modelData.label
-                        color: Theme.faint
-                        font.family: Theme.font
-                        font.pixelSize: 10.5 * root.s
-                        font.letterSpacing: 1 * root.s
-                        width: 64 * root.s
-                        anchors.left: parent.left
-                        // Small label and bigger value share one text baseline,
-                        // not the row's vertical center — the centering is what
-                        // made the values look off-line.
-                        anchors.baseline: valueText.baseline
-                    }
-                    Text {
-                        id: valueText
-                        anchors.left: parent.left
-                        anchors.leftMargin: 64 * root.s + 8 * root.s
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        text: modelData.value !== "" ? modelData.value : "—"
-                        color: Theme.subtle
-                        font.family: Theme.font
-                        font.pixelSize: 12.5 * root.s
-                        elide: Text.ElideRight
+            component Fact: Item {
+                required property var modelData
+                width: parent.width
+                implicitHeight: valueText.implicitHeight
+
+                Text {
+                    id: labelText
+                    text: modelData.label
+                    color: Theme.faint
+                    font.family: Theme.font
+                    font.pixelSize: 10.5 * root.s
+                    font.letterSpacing: 1 * root.s
+                    width: 64 * root.s
+                    anchors.left: parent.left
+                    // Small label and bigger value share one text baseline,
+                    // not the row's vertical center — the centering is what
+                    // made the values look off-line.
+                    anchors.baseline: valueText.baseline
+                }
+                Text {
+                    id: valueText
+                    anchors.left: parent.left
+                    anchors.leftMargin: 64 * root.s + 8 * root.s
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    text: modelData.value !== "" ? modelData.value : "—"
+                    color: Theme.subtle
+                    font.family: Theme.font
+                    font.pixelSize: 12.5 * root.s
+                    elide: Text.ElideRight
+                }
+            }
+
+            Row {
+                spacing: 8 * root.s
+                Text {
+                    text: root.distroGlyph
+                    color: Theme.cream
+                    font.family: "JetBrainsMono NFM"
+                    font.pixelSize: 26 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Text {
+                    text: root.distro !== "" ? root.distro : "—"
+                    color: Theme.cream
+                    font.family: Theme.font
+                    font.pixelSize: 15 * root.s
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                    width: parent.width - 26 * root.s - 8 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Row {
+                spacing: 20 * root.s
+                width: parent.width
+
+                Column {
+                    spacing: 7 * root.s
+                    width: (parent.width - 20 * root.s) / 2
+                    Repeater {
+                        model: [
+                            { label: "HOSTNAME", value: root.hostName },
+                            { label: "KERNEL",   value: root.kernel },
+                            { label: "WM",       value: root.wmName },
+                            { label: "SHELL",    value: root.shellName },
+                            { label: "UPTIME",   value: root.uptime }
+                        ]
+                        delegate: Fact {}
                     }
                 }
 
-                Row {
-                    spacing: 8 * root.s
-                    Text {
-                        text: root.distroGlyph
-                        color: Theme.cream
-                        font.family: "JetBrainsMono NFM"
-                        font.pixelSize: 26 * root.s
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Text {
-                        text: root.distro !== "" ? root.distro : "—"
-                        color: Theme.cream
-                        font.family: Theme.font
-                        font.pixelSize: 15 * root.s
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                        width: parent.width - 26 * root.s - 8 * root.s
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                }
-
-                Row {
-                    spacing: 20 * root.s
-                    width: parent.width
-
-                    Column {
-                        spacing: 7 * root.s
-                        width: (parent.width - 20 * root.s) / 2
-                        Repeater {
-                            model: [
-                                { label: "HOSTNAME", value: root.hostName },
-                                { label: "KERNEL",   value: root.kernel },
-                                { label: "WM",       value: root.wmName },
-                                { label: "SHELL",    value: root.shellName },
-                                { label: "UPTIME",   value: root.uptime }
-                            ]
-                            delegate: Fact {}
-                        }
-                    }
-
-                    Column {
-                        spacing: 7 * root.s
-                        width: (parent.width - 20 * root.s) / 2
-                        Repeater {
-                            model: [
-                                { label: "CPU",      value: root.cpu },
-                                { label: "GPU",      value: root.gpu },
-                                { label: "PACKAGES", value: root.pkgCount },
-                                { label: "MEMORY",   value: root.memUsed },
-                                { label: "DISK",     value: root.diskUsed }
-                            ]
-                            delegate: Fact {}
-                        }
+                Column {
+                    spacing: 7 * root.s
+                    width: (parent.width - 20 * root.s) / 2
+                    Repeater {
+                        model: [
+                            { label: "CPU",      value: root.cpu },
+                            { label: "GPU",      value: root.gpu },
+                            { label: "PACKAGES", value: root.pkgCount },
+                            { label: "MEMORY",   value: root.memUsed },
+                            { label: "DISK",     value: root.diskUsed }
+                        ]
+                        delegate: Fact {}
                     }
                 }
             }
         }
-
-        Item { width: 1; height: 6 * root.s }
     }
+
 }

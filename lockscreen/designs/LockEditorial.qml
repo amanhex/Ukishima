@@ -11,6 +11,10 @@ Item {
 
     property var host: null
 
+    function stage(from, to, peak) {
+        return root.host ? root.host.stage(from, to, peak) : 0;
+    }
+
     readonly property real s: Math.max(0.55, Math.min(1.35, Math.min(width / 1920, height / 1200)))
     readonly property bool narrow: width < 1050 * root.s
     readonly property color ink: "#e4e2dc"
@@ -22,11 +26,12 @@ Item {
         id: furniture
 
         anchors.fill: parent
-        opacity: root.host ? root.host.stage(40 / 380, 320 / 380, 1) * root.host.held : 0
+        opacity: root.host ? root.host.held : 0
 
         Item {
             id: header
 
+            opacity: root.stage(0, 0.30, 1)
             x: 40 * root.s
             y: 27 * root.s
             width: parent.width - x * 2
@@ -91,6 +96,12 @@ Item {
             LockClock {
                 id: clock
 
+                opacity: root.stage(0.15, 0.47, 1)
+
+                transform: Translate {
+                    y: -22 * (1 - root.stage(0.15, 0.52, 1))
+                }
+
                 host: root.host
                 width: root.narrow ? parent.width : 330 * root.s
                 timeSize: (root.narrow ? 56 : 74) * root.s
@@ -102,6 +113,12 @@ Item {
 
             LockIdentity {
                 id: identity
+
+                opacity: root.stage(0.24, 0.56, 1)
+
+                transform: Translate {
+                    y: 20 * (1 - root.stage(0.24, 0.60, 1))
+                }
 
                 host: root.host
                 visible: !root.narrow
@@ -115,6 +132,12 @@ Item {
 
             LockField {
                 id: field
+
+                opacity: root.stage(0.30, 0.62, 1)
+
+                transform: Translate {
+                    y: 20 * (1 - root.stage(0.30, 0.66, 1))
+                }
 
                 host: root.host
                 visible: !root.narrow
@@ -130,6 +153,12 @@ Item {
             LockIdentity {
                 id: identityNarrow
 
+                opacity: root.stage(0.24, 0.56, 1)
+
+                transform: Translate {
+                    y: 20 * (1 - root.stage(0.24, 0.60, 1))
+                }
+
                 host: root.host
                 visible: root.narrow
                 y: clock.y + clock.height + 16 * root.s
@@ -142,6 +171,12 @@ Item {
 
             LockField {
                 id: fieldNarrow
+
+                opacity: root.stage(0.30, 0.62, 1)
+
+                transform: Translate {
+                    y: 20 * (1 - root.stage(0.30, 0.66, 1))
+                }
 
                 host: root.host
                 visible: root.narrow
@@ -156,6 +191,12 @@ Item {
 
             Item {
                 id: glyphCol
+
+                opacity: root.stage(0.12, 0.44, 1)
+
+                transform: Translate {
+                    y: -16 * (1 - root.stage(0.12, 0.48, 1))
+                }
 
                 visible: !root.narrow
                 //* Sit clear of both the login column and the media column
@@ -186,6 +227,12 @@ Item {
 
             Column {
                 id: playerCol
+
+                opacity: root.stage(0.38, 0.66, 1)
+
+                transform: Translate {
+                    y: 14 * (1 - root.stage(0.38, 0.70, 1))
+                }
 
                 visible: !root.narrow
                 anchors.right: parent.right
@@ -218,6 +265,12 @@ Item {
             LockMediaSlot {
                 id: mediaNarrow
 
+                opacity: root.stage(0.38, 0.66, 1)
+
+                transform: Translate {
+                    y: 14 * (1 - root.stage(0.38, 0.70, 1))
+                }
+
                 host: root.host
                 variant: "editorial"
                 visible: root.narrow
@@ -230,6 +283,7 @@ Item {
         Item {
             id: footer
 
+            opacity: root.stage(0.30, 0.58, 1)
             x: 40 * root.s
             y: parent.height - height - 26 * root.s
             width: parent.width - x * 2
