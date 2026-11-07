@@ -948,7 +948,7 @@ PillSurface {
         Rectangle {
             id: headDivider
             anchors.top: head.bottom
-            anchors.topMargin: 7 * root.s
+            anchors.topMargin: 9 * root.s
             anchors.left: parent.left
             anchors.right: parent.right
             height: 1
@@ -979,7 +979,7 @@ PillSurface {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: headDivider.bottom
-            anchors.topMargin: 10 * root.s
+            anchors.topMargin: 13 * root.s
             horizontalAlignment: Text.AlignHCenter
             visible: root.naming
             text: "the note's name is its filename"
@@ -994,11 +994,11 @@ PillSurface {
         ScrollView {
             id: bodyScroll
             anchors.top: headDivider.bottom
-            anchors.topMargin: 8 * root.s
+            anchors.topMargin: 11 * root.s
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: statBar.top
-            anchors.bottomMargin: 6 * root.s
+            anchors.bottomMargin: 9 * root.s
             visible: root.hasNote && !root.naming
             clip: true
             //* No native scrollbar: it is the one control chrome in the pill that
@@ -1015,11 +1015,20 @@ PillSurface {
                 selectByMouse: true
                 color: Theme.cream
                 font.family: Theme.fontMono
-                font.pixelSize: 13 * root.s
+                font.pixelSize: 13.5 * root.s
                 //* Same reasoning as the title field's selection.
                 selectionColor: Theme.verm
                 selectedTextColor: Theme.cream
                 background: null
+
+                //* The Basic style insets a TextArea 10px left / 6px top, which
+                //* pushes the body out of line with the title and divider and eats
+                //* usable width. Normalise it to the editor's own gutter; the
+                //* "start writing…" prompt mirrors these values so it stays aligned.
+                leftPadding: 4 * root.s
+                rightPadding: 4 * root.s
+                topPadding: 2 * root.s
+                bottomPadding: 2 * root.s
 
                 //* Focus is taken synchronously from `onActiveFocusChanged`, not from
                 //* `onTextEdited`: the model's read for a note lands asynchronously, so

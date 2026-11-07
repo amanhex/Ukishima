@@ -9,7 +9,13 @@
 # the background thread keeps the returns off the UI's free path, where a 0ms
 # decay would put an madvise on every free. This script resolves its own
 # location, so it works from any install path (just point your autostart at it).
-export MALLOC_CONF="background_thread:true,retain:false,dirty_decay_ms:100,muzzy_decay_ms:100"
+#
+# narenas caps the arena set. jemalloc defaults to 4 arenas per CPU (72 here),
+# and every arena holds its own partially-used 2 MB extents; the same idle shell
+# measured 102 MB anon at the default and 76 MB with two (26 MB less). Hot
+# allocations are absorbed by per-thread tcaches, so two arenas is plenty for a
+# UI shell; raise to 4 if malloc contention ever shows up in a profile.
+export MALLOC_CONF="background_thread:true,retain:false,dirty_decay_ms:100,muzzy_decay_ms:100,narenas:2"
 # qt.qpa.wayland.textinput joins the log with the system Qt 6.12 update: every
 # fresh launch now logs "Trying to disable ... but 0x0 is focused" a few times —
 # text-input bookkeeping from the Wayland QPA, new since the update while

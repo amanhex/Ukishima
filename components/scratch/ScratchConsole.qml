@@ -113,7 +113,7 @@ Item {
         anchors.bottomMargin: 8 * logPad.s
         clip: true
         focus: true
-        spacing: 2 * logPad.s
+        spacing: 6 * logPad.s
         boundsBehavior: Flickable.StopAtBounds
         model: logPad.notes
 
@@ -130,7 +130,7 @@ Item {
             required property int index
             required property var modelData
             width: list.width
-            height: 33 * logPad.s
+            height: 42 * logPad.s
 
             HoverHandler { id: hover }
 
