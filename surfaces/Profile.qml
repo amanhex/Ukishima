@@ -9,7 +9,7 @@ import "../components"
 
 /**
  * 我 PROFILE sub-surface: who is at this machine. Horizontal card —
- * avatar (auto-detected from ~/.face) with the login name under it on the
+ * avatar (from the lock's avatar setting) with the login name under it on the
  * left, live system facts on the right.
  * Reached from the pill's monitor icon and folds back to the hover pill on
  * the back chevron or an empty click.
@@ -29,42 +29,27 @@ SettingsSurface {
 
     // Purely informational — no rows for the keyboard cursor to walk.
     rows: []
-    // ── Avatar: auto-detected, no configuring ────────────────────────────
+    // ── Avatar: the lock's avatar setting, nothing else ───────────────────
 
-    /** Avatar: prefer lock avatar path if set, else first of ~/.face* files, else "". */
-    property string faceFile: ""
-    function expandPath(p) {
-        if (!p || p === "")
+    /**
+     * Avatar path, or "" for none. There is deliberately no ~/.face* probe:
+     * the lock dropped that i3lock convention (see LockSurface.facePath), and
+     * the profile was the last surface still auto-picking an image nobody
+     * configured. `lockShowAvatar` gates it too, so turning the avatar off in
+     * settings hides it here as well. The settings field expands `~` before
+     * storing, but flags.json can be hand-edited, so expand again.
+     */
+    readonly property string facePath: {
+        if (!Flags.lockShowAvatar)
             return "";
-        if (p === "~")
+        const t = String(Flags.lockAvatarPath || "").trim();
+        if (t === "")
+            return "";
+        if (t === "~")
             return Quickshell.env("HOME");
-        if (p.indexOf("~/") === 0)
-            return (Quickshell.env("HOME") || "") + p.slice(1);
-        return p;
-    }
-    FileView {
-        id: flagsView
-        path: "file://" + (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/ukishima/flags.json"
-        printErrors: false
-        onLoaded: {
-            try {
-                const f = JSON.parse(flagsView.text());
-                let path = f.lockAvatarPath || "";
-                if (path) {
-                    root.faceFile = root.expandPath(path);
-                    if (root.faceFile)
-                        return;
-                }
-            } catch (e) {}
-            // fall back to ~/.face*
-            faceProc.running = true;
-        }
-    }
-    Process {
-        id: faceProc
-        running: false
-        command: ["sh", "-c", "for f in \"$HOME/.face\" \"$HOME/.face.icon\" \"$HOME/.face.png\" \"$HOME/.face.jpg\"; do if [ -f \"$f\" ]; then echo \"$f\"; break; fi; done"]
-        stdout: SplitParser { onRead: (line) => root.faceFile = line.trim() }
+        if (t.indexOf("~/") === 0)
+            return (Quickshell.env("HOME") || "") + t.slice(1);
+        return t;
     }
 
     // ── Live system facts ──────────────────────────────────────────────
@@ -262,7 +247,7 @@ SettingsSurface {
                 Image {
                     id: faceImg
                     anchors.fill: parent
-                    source: root.faceFile !== "" ? "file://" + root.faceFile : ""
+                    source: root.facePath !== "" ? "file://" + root.facePath : ""
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     visible: status === Image.Ready
