@@ -121,6 +121,7 @@ Item {
     readonly property bool calendarOpen: surface === "calendar"
     readonly property bool launcherOpen: surface === "launcher"
     readonly property bool clipboardOpen: surface === "clipboard"
+    readonly property bool fileTrayOpen: surface === "filetray"
     readonly property bool emojiOpen: surface === "emoji"
     readonly property bool scratchOpen: surface === "scratch"
     readonly property bool wallpaperOpen: surface === "wallpaper"
@@ -353,6 +354,8 @@ Item {
     readonly property real launcherH: 332 * s
     readonly property real clipboardW: 360 * s
     readonly property real clipboardH: 332 * s
+    readonly property real fileTrayW: 640 * s
+    readonly property real fileTrayH: 224 * s
     //* Three card columns on the deck, and a full-surface line length once a note is open.
     readonly property real scratchW: 556 * s
     readonly property real scratchH: 348 * s
@@ -421,6 +424,7 @@ Item {
         weather:   { size: () => { const it = surfaceItem("weather"); return Qt.size((it.implicitWidth > 0 ? it.implicitWidth : 282 * s) + 36 * s, it.implicitHeight + 32 * s); }, ame: () => surfaceItem("weather") },
         launcher:  { size: () => { surfaceItem("launcher"); return Qt.size(launcherW, launcherH); }, ame: () => surfaceItem("launcher") },
         clipboard: { size: () => { surfaceItem("clipboard"); return Qt.size(clipboardW, clipboardH); }, ame: () => surfaceItem("clipboard") },
+        filetray:  { size: () => { surfaceItem("filetray"); return Qt.size(fileTrayW, fileTrayH); }, ame: () => surfaceItem("filetray") },
         emoji:     { size: () => { surfaceItem("emoji"); return Qt.size(clipboardW, clipboardH); }, ame: () => surfaceItem("emoji") },
         scratch:   { size: () => { surfaceItem("scratch"); return Qt.size(scratchW, scratchH); }, ame: () => surfaceItem("scratch") },
         wallpaper: { size: () => { surfaceItem("wallpaper"); return Qt.size(wallpaperW, wallpaperH); }, ame: () => null },
@@ -463,6 +467,7 @@ Item {
         weather:    () => ldWeather,
         launcher:   () => ldLauncher,
         clipboard:  () => ldClip,
+        filetray:   () => ldFileTray,
         emoji:      () => ldEmoji,
         scratch:    () => ldScratch,
         wallpaper:  () => ldWall,
@@ -608,14 +613,14 @@ Item {
             Qt.callLater(pill.reapJs);
     }
 
-    readonly property string mode: dragActive ? "dragOver"
-        : (surfaceOpen && surfaces[surface] !== undefined ? surface
+    readonly property string mode: (surfaceOpen && surfaces[surface] !== undefined ? surface
+        : (dragActive ? "dragOver"
         : (Flags.gameMode ? "game"
         : (quickChoosing ? "quickChoose"
         : (quickCounting ? "quickCount"
         : (toastActive && Notifs.toastCritical && !held ? "toast"
         : (toastActive && !held ? "toast"
-        : (expanded ? "hover" : "rest")))))))
+        : (expanded ? "hover" : "rest"))))))))
 
     /**
      * AppImage drag-install state, live only while a file hovers the resting pill.
@@ -624,6 +629,8 @@ Item {
     property bool dragActive: false
     property string dragName: ""
     property string dragStage: ""
+    /** The hover face is a tray drop, not an install drop (strip reveals only). */
+    property bool dragKeep: false
 
     signal requestSurface(string name)
     signal requestClose()
@@ -771,6 +778,28 @@ Item {
     function wallpaperMove(dir) {
         if (pill.wallpaperOpen && ldWall.item)
             ldWall.item.move(dir);
+    }
+
+    /**
+     * Slide the open file tray's strip by `dir` tiles; the shell's arrow keys
+     * land here, as they do for the wallpaper strip. No-op unless the tray is
+     * open.
+     */
+    function fileTrayMove(dir) {
+        if (pill.fileTrayOpen && ldFileTray.item)
+            ldFileTray.item.move(dir);
+    }
+
+    /** Page the open file tray a screenful; the bottom arrows call this. */
+    function fileTrayPage(dir) {
+        if (pill.fileTrayOpen && ldFileTray.item)
+            ldFileTray.item.page(dir);
+    }
+
+    /** Open the file tray's focused entry; Enter lands here. */
+    function fileTrayActivate() {
+        if (pill.fileTrayOpen && ldFileTray.item)
+            ldFileTray.item.activate();
     }
 
     /**
@@ -1360,19 +1389,50 @@ Item {
         return decodeURIComponent(s);
     }
 
-    readonly property var dropExt: /\.(appimage|deb|rpm|flatpakref|zip|tgz|txz|tbz2|ttf|otf|png|jpe?g|webp)$|\.(pkg\.)?tar\.(gz|xz|bz2|zst)$/i
+    /**
+     * Installable types the drag face owns: packages, AppImages, fonts, and the
+     * archives app-install.sh unpacks. Every other file a drag carries is a
+     * tray file, so images and documents keep by reference instead of falling
+     * through to the old "can't install this" flash.
+     */
+    readonly property var installExt: /\.(appimage|deb|rpm|flatpakref|zip|tgz|txz|tbz2|ttf|otf)$|\.(pkg\.)?tar\.(gz|xz|bz2|zst)$/i
 
     function droppablePaths(urls) {
         var out = [];
         for (var i = 0; i < urls.length; i++)
-            if (pill.dropExt.test(String(urls[i])))
+            if (pill.installExt.test(String(urls[i])))
                 out.push(pill.localPath(urls[i]));
+        return out;
+    }
+
+    /**
+     * Everything the installer does not claim belongs in the file tray, so a
+     * drop needs no type menu: package-ish files install, the rest are kept.
+     */
+    function trayPaths(urls) {
+        var out = [];
+        for (var i = 0; i < urls.length; i++) {
+            var u = String(urls[i]);
+            /* A browser drag is a remote reference: keep it as-is, no stat and
+             * no decode (that would turn %23 into a fragment). */
+            if (FileTray.isRemote(u)) {
+                out.push(u);
+                continue;
+            }
+            /* A trailing slash is a directory URL from the file manager. The
+             * real `-f` check is in FileTray.addDropped; this just keeps the
+             * tray from morphing open for an obviously-folder drag. */
+            if (pill.installExt.test(u) || u.charAt(u.length - 1) === "/"
+                || (u.indexOf("file://") !== 0 && u.charAt(0) !== "/"))
+                continue;
+            out.push(pill.localPath(u));
+        }
         return out;
     }
 
     function dropLabel(urls) {
         var p = pill.localPath(urls.length ? urls[0] : "");
-        return p.substring(p.lastIndexOf("/") + 1).replace(pill.dropExt, "");
+        return p.substring(p.lastIndexOf("/") + 1).replace(pill.installExt, "");
     }
 
     property bool installedAny: false
@@ -1392,7 +1452,7 @@ Item {
             return;
         }
         var next = pill.installQueue.shift();
-        pill.dragName = next.substring(next.lastIndexOf("/") + 1).replace(pill.dropExt, "");
+        pill.dragName = next.substring(next.lastIndexOf("/") + 1).replace(pill.installExt, "");
         pill.installLine = "";
         pill.installProto = "";
         pill.installPct = "";
@@ -1482,9 +1542,24 @@ Item {
      * or over the auto-hide reveal strip in shell.qml), dropped at release.
      * Extracted so the hidden pill's reveal strip can hand drops straight into
      * the same install flow the resting pill uses.
+     *
+     * Tray files morph the file tray open on enter, so a drop needs no manual
+     * surface switch: the tray is already up under the cursor, and the drop
+     * lands there. The strip passes `autoOpen` false because its own DropArea
+     * must survive the drag; the pill is reached by moving down onto it.
      */
-    function dropEntered(urls) {
+    function dropEntered(urls, autoOpen) {
+        if (pill.trayPaths(urls).length > 0) {
+            pill.dragActive = true;
+            pill.dragStage = "hover";
+            pill.dragKeep = true;
+            pill.dragName = urls.length === 1 ? FileTray.nameOf(FileTray.pathOf(String(urls[0]))) : urls.length + " files";
+            if (autoOpen && !pill.surfaceOpen && pill.surface !== "filetray")
+                pill.requestSurface("filetray");
+            return;
+        }
         pill.dragActive = true;
+        pill.dragKeep = false;
         pill.dragStage = pill.droppablePaths(urls).length > 0 ? "hover" : "bad";
         pill.dragName = pill.dropLabel(urls);
     }
@@ -1497,6 +1572,18 @@ Item {
     }
 
     function dropDropped(urls) {
+        var tray = pill.trayPaths(urls);
+        if (tray.length > 0) {
+            FileTray.addDropped(tray);
+            /* The tray keeps the drop face from ever showing, so clear the drag
+             * state here instead of leaving the pill stuck in "dragOver". */
+            pill.dragActive = false;
+            pill.dragStage = "";
+            pill.dragKeep = false;
+            if (pill.surface !== "filetray")
+                pill.requestSurface("filetray");
+            return;
+        }
         var files = pill.droppablePaths(urls);
         if (files.length === 0) {
             pill.dragActive = true;
@@ -1518,18 +1605,19 @@ Item {
     }
 
     /**
-     * File drops land only on the resting pill; an open surface turns the pill
-     * into a fullscreen modal that swallows the drag before it can start.
-     * app-install.sh routes each drop by type (apps install, fonts land in the
-     * font dir, images become the wallpaper), anything else flashes a rejection.
+     * Drops land on the resting pill, and on any open surface that has no drop
+     * area of its own, so keeping a file needs no surface switch first. The
+     * tray stays a target while it is open so a drag that began before the tray
+     * morphed up can still land on this area (the surface's own DropArea
+     * handles later drags). Everything else flashes the install face.
      */
     DropArea {
         anchors.fill: parent
-        enabled: !pill.surfaceOpen && pill.dragStage !== "installing" && pill.dragStage !== "done"
+        enabled: pill.dragStage !== "installing" && pill.dragStage !== "done"
         keys: ["text/uri-list"]
         onEntered: (drag) => {
             drag.acceptProposedAction();
-            pill.dropEntered(drag.urls);
+            pill.dropEntered(drag.urls, true);
         }
         onExited: pill.dropExited()
         onDropped: (drop) => {
@@ -1609,7 +1697,8 @@ Item {
                     color: dragOverView.accent
                     name: (pill.dragStage === "bad" || pill.dragStage === "fail") ? "close"
                         : (pill.dragStage === "installing" ? "reboot"
-                        : (pill.dragStage === "done" ? "check" : "download"))
+                        : (pill.dragStage === "done" ? "check"
+                        : (pill.dragKeep ? "folder" : "download")))
 
                     RotationAnimation on rotation {
                         running: pill.dragStage === "installing"
@@ -1634,7 +1723,7 @@ Item {
                         : (!pill.installedApp && pill.installKind === "font" ? "Font installed"
                         : (pill.installAction === "updated" ? "Updated"
                         : (pill.installAction === "reinstalled" ? "Reinstalled" : "Installed")))))
-                    : "Drop to install")))
+                    : (pill.dragKeep ? "Drop to keep" : "Drop to install"))))
                 color: Theme.cream
                 font.family: Theme.font
                 font.pixelSize: 13 * pill.s
@@ -2842,6 +2931,32 @@ Item {
                 }
 
                 Item {
+                    id: fileTrayIcon
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Flags.pillShowFileTray
+                    width: 17 * pill.s
+                    height: 17 * pill.s
+
+                    GlyphIcon {
+                        anchors.fill: parent
+                        name: "folder"
+                        color: fileTrayArea.containsMouse ? Theme.cream : Theme.iconDim
+                        stroke: 1.7
+                    }
+
+                    MouseArea {
+                        id: fileTrayArea
+                        anchors.fill: parent
+                        anchors.margins: -6 * pill.s
+                        hoverEnabled: true
+                        enabled: hover.live
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pill.requestSurface("filetray")
+                        onContainsMouseChanged: if (containsMouse) pill.soulTarget = "filetray"
+                    }
+                }
+
+                Item {
                     id: clipboardIcon
                     anchors.verticalCenter: parent.verticalCenter
                     width: 17 * pill.s
@@ -3063,6 +3178,18 @@ Item {
         sourceComponent: Clipboard {
             s: pill.s
             open: pill.clipboardOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
+        }
+    }
+
+    Loader {
+        id: ldFileTray
+        active: false
+        anchors.fill: parent
+        sourceComponent: FileTraySurface {
+            s: pill.s
+            open: pill.fileTrayOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
         }

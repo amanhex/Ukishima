@@ -34,6 +34,7 @@ SettingsSurface {
         { label: "Clipboard", value: "clipboard", icon: "clipboard" },
         { label: "Emoji", value: "emoji", icon: "emoji" },
         { label: "Scratchpad", value: "scratch", icon: "type" },
+        { label: "File tray", value: "filetray", icon: "folder" },
         { label: "Wallpaper", value: "wallpaper", icon: "wallpaper" },
         { label: "Power", value: "power", icon: "shutdown" },
         { label: "Mixer", value: "mixer", icon: "mixer" },

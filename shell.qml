@@ -287,6 +287,7 @@ ShellRoot {
         function clipboard(mon: string): void { root.toggleSurface(mon, "clipboard"); }
         function emoji(mon: string): void { root.toggleSurface(mon, "emoji"); }
         function scratch(mon: string): void { root.toggleSurface(mon, "scratch"); }
+        function fileTray(mon: string): void { root.toggleSurface(mon, "filetray"); }
         function wallpaper(mon: string): void { root.toggleSurface(mon, "wallpaper"); }
         function media(mon: string): void {
             if (Players.list.length > 0)
@@ -471,7 +472,7 @@ ShellRoot {
 
             anchors { top: true; left: true; right: true; bottom: true }
 
-            mask: monFullscreen ? hiddenRegion : (modal ? fullRegion : (pill.mode === "game" ? pillRegion : (Flags.autoHide ? (pill.revealSession || pill.transientLive ? revealPillRegion : (pill.expanded ? pillRegion : revealRegion)) : pillRegion)))
+            mask: monFullscreen ? hiddenRegion : (modal && !FileTray.dragging ? fullRegion : (pill.mode === "game" ? pillRegion : (Flags.autoHide ? (pill.revealSession || pill.transientLive ? revealPillRegion : (pill.expanded ? pillRegion : revealRegion)) : pillRegion)))
             Region { id: hiddenRegion }
 
             /**
@@ -594,11 +595,13 @@ ShellRoot {
                 Keys.onUpPressed: (e) => {
                     if (Selector.open) { Selector.move(-1); e.accepted = true; }
                     else if (pill.wallpaperMenuOpen) { pill.wallpaperMenuMove(-1); e.accepted = true; }
+                    else if (pill.fileTrayOpen) { pill.fileTrayMove(-1); e.accepted = true; }
                     else e.accepted = pill.mixerStep(1) || pill.recorderStep(5) || pill.settingsMove(-1);
                 }
                 Keys.onDownPressed: (e) => {
                     if (Selector.open) { Selector.move(1); e.accepted = true; }
                     else if (pill.wallpaperMenuOpen) { pill.wallpaperMenuMove(1); e.accepted = true; }
+                    else if (pill.fileTrayOpen) { pill.fileTrayMove(1); e.accepted = true; }
                     else e.accepted = pill.mixerStep(-1) || pill.recorderStep(-5) || pill.settingsMove(1);
                 }
                 Keys.onLeftPressed: (e) => {
@@ -606,6 +609,7 @@ ShellRoot {
                     else if (pill.wallpaperMenuOpen) { e.accepted = true; }
                     else if (pill.mixerOpen) { pill.mixerFocusMove(-1); e.accepted = true; }
                     else if (pill.wallpaperOpen) { pill.wallpaperMove(-1); e.accepted = true; }
+                    else if (pill.fileTrayOpen) { pill.fileTrayMove(-1); e.accepted = true; }
                     else if (pill.powerOpen) { pill.powerMove(-1); e.accepted = true; }
                     else if (pill.recorderOpen) { e.accepted = pill.recorderStep(-5); }
                     else if (pill.settingsLike) { pill.settingsAdjust(-1); e.accepted = true; }
@@ -615,6 +619,7 @@ ShellRoot {
                     else if (pill.wallpaperMenuOpen) { e.accepted = true; }
                     else if (pill.mixerOpen) { pill.mixerFocusMove(1); e.accepted = true; }
                     else if (pill.wallpaperOpen) { pill.wallpaperMove(1); e.accepted = true; }
+                    else if (pill.fileTrayOpen) { pill.fileTrayMove(1); e.accepted = true; }
                     else if (pill.powerOpen) { pill.powerMove(1); e.accepted = true; }
                     else if (pill.recorderOpen) { e.accepted = pill.recorderStep(5); }
                     else if (pill.settingsLike) { pill.settingsAdjust(1); e.accepted = true; }
@@ -667,6 +672,9 @@ ShellRoot {
                     if (pill.wallpaperOpen) {
                         if (!e.isAutoRepeat) pill.wallpaperActivate();
                         e.accepted = true;
+                    } else if (pill.fileTrayOpen) {
+                        if (!e.isAutoRepeat) pill.fileTrayActivate();
+                        e.accepted = true;
                     } else if (pill.powerOpen) {
                         if (!e.isAutoRepeat) pill.powerPress();
                         e.accepted = true;
@@ -708,7 +716,7 @@ ShellRoot {
                     onEntered: (drag) => {
                         drag.acceptProposedAction();
                         pill.revealSession = true;
-                        pill.dropEntered(drag.urls);
+                        pill.dropEntered(drag.urls, false);
                     }
                     onExited: {
                         pill.dropExited();

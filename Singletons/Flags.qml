@@ -127,6 +127,8 @@ Singleton {
     property alias pillShowEmoji: adapter.pillShowEmoji
     property alias pillShowPower: adapter.pillShowPower
     property alias pillShowTimer: adapter.pillShowTimer
+    //* File tray icon in the hover row: files kept by reference, dragged out into apps.
+    property alias pillShowFileTray: adapter.pillShowFileTray
 
         //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
         property alias lockShowAvatar: adapter.lockShowAvatar
@@ -268,6 +270,7 @@ Singleton {
             property bool pillShowEmoji: true
             property bool pillShowPower: true
             property bool pillShowTimer: true
+            property bool pillShowFileTray: true
             //* Session lock: show the avatar above the username on lockscreen/LockSurface.qml.
             property bool lockShowAvatar: true
             //* Session lock: show the wifi indicator on lockscreen/LockSurface.qml.

@@ -25,6 +25,7 @@ singleton NightLight NightLight.qml
 singleton GameMode GameMode.qml
 singleton Config Config.qml
 singleton DockPins DockPins.qml
+singleton FileTray FileTray.qml
 singleton DockState DockState.qml
 singleton Scratch Scratch.qml
 singleton Countdown Countdown.qml
