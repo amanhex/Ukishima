@@ -5,9 +5,8 @@ import Quickshell.Io
 
 /**
  * 場 SPACES store: the reader of the Hyprland spaces config, the user-defined
- * special workspaces. Each entry is { id, name, desc, key, glyph, apps[] }: id is
- * the special-workspace name, key a single Super-prefixed letter, glyph an
- * optional GlyphIcon name, apps the window classes that auto-route in.
+ * special workspaces. Each entry is { id, name }: id is the special-workspace
+ * name, name its display name.
  *
  * This is a READER now, and deliberately a small one. It used to be the single
  * read/writer: it regenerated the whole lua file through an atomic writer, fired
@@ -36,27 +35,14 @@ Singleton {
 
     property var list: []
 
-    /** Pull the fields out of one `{ ... }` entry block. Null when it has no id. */
+    /** Pull the fields the pill reads out of one `{ ... }` entry block. Null without an id. */
     function parseEntry(block) {
         var id = root.field(block, "id");
         if (id.length === 0)
             return null;
-        var apps = [];
-        var am = block.match(/apps\s*=\s*{([^}]*)}/);
-        if (am) {
-            var re = /"([^"]*)"/g;
-            var m;
-            while ((m = re.exec(am[1])) !== null)
-                if (m[1].length > 0)
-                    apps.push(m[1]);
-        }
         return {
             id: id,
-            name: root.field(block, "name") || id,
-            desc: root.field(block, "desc"),
-            key: root.field(block, "key"),
-            glyph: root.field(block, "glyph"),
-            apps: apps
+            name: root.field(block, "name") || id
         };
     }
 

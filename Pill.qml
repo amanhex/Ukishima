@@ -636,11 +636,28 @@ Item {
     signal requestClose()
 
     /**
+     * Call `method` on the item of the surface named `name`, if that surface is
+     * the one open, passing `arg` when given. One guard for the keyboard
+     * wrappers below so each surface does not grow its own copied open-check.
+     * Never activates a loader: a surface that was never opened has no item, so
+     * the call is a no-op. Returns the method's result, or false when the
+     * surface is not open.
+     */
+    function surfaceCall(name, method, arg) {
+        if (pill.surface !== name || !pill.loaders[name])
+            return false;
+        const ld = pill.loaders[name]();
+        if (!ld || !ld.item)
+            return false;
+        return ld.item[method](arg);
+    }
+
+    /**
      * Forward an arrow-key nudge to the open mixer's targeted fader. Returns true
      * when the mixer is open and a fader consumed the step.
      */
     function mixerStep(deltaPct) {
-        return (pill.mixerOpen && ldMixer.item) ? ldMixer.item.stepFocused(deltaPct) : false;
+        return pill.surfaceCall("mixer", "stepFocused", deltaPct);
     }
 
     /**
@@ -648,8 +665,7 @@ Item {
      * (right) or -1 (left). No-op unless the mixer is open.
      */
     function mixerFocusMove(dir) {
-        if (pill.mixerOpen && ldMixer.item)
-            ldMixer.item.moveFocus(dir);
+        pill.surfaceCall("mixer", "moveFocus", dir);
     }
 
     /**
@@ -657,7 +673,7 @@ Item {
      * Returns true when the recorder is open and a revealed fader consumed it.
      */
     function recorderStep(deltaPct) {
-        return (pill.recorderOpen && ldRecorder.item) ? ldRecorder.item.stepFocused(deltaPct) : false;
+        return pill.surfaceCall("recorder", "stepFocused", deltaPct);
     }
 
     /**
@@ -776,8 +792,7 @@ Item {
      * and -1 is left (newer). No-op unless the wallpaper surface is open.
      */
     function wallpaperMove(dir) {
-        if (pill.wallpaperOpen && ldWall.item)
-            ldWall.item.move(dir);
+        pill.surfaceCall("wallpaper", "move", dir);
     }
 
     /**
@@ -786,20 +801,12 @@ Item {
      * open.
      */
     function fileTrayMove(dir) {
-        if (pill.fileTrayOpen && ldFileTray.item)
-            ldFileTray.item.move(dir);
-    }
-
-    /** Page the open file tray a screenful; the bottom arrows call this. */
-    function fileTrayPage(dir) {
-        if (pill.fileTrayOpen && ldFileTray.item)
-            ldFileTray.item.page(dir);
+        pill.surfaceCall("filetray", "move", dir);
     }
 
     /** Open the file tray's focused entry; Enter lands here. */
     function fileTrayActivate() {
-        if (pill.fileTrayOpen && ldFileTray.item)
-            ldFileTray.item.activate();
+        pill.surfaceCall("filetray", "activate");
     }
 
     /**
@@ -808,8 +815,7 @@ Item {
      * wallpaper surface is open.
      */
     function wallpaperActivate() {
-        if (pill.wallpaperOpen && ldWall.item)
-            ldWall.item.activate();
+        pill.surfaceCall("wallpaper", "activate");
     }
 
     readonly property bool wallpaperSearching: pill.wallpaperOpen && ldWall.item !== null && ldWall.item.searching
@@ -826,8 +832,7 @@ Item {
      * unless the wallpaper surface is open and browsing wallhaven.
      */
     function wallpaperWhType(ch) {
-        if (pill.wallpaperOpen && ldWall.item)
-            ldWall.item.whTypeChar(ch);
+        pill.surfaceCall("wallpaper", "whTypeChar", ch);
     }
 
     /**
@@ -836,8 +841,7 @@ Item {
      * wallpaper surface is open and browsing wallhaven.
      */
     function wallpaperWhBackspace() {
-        if (pill.wallpaperOpen && ldWall.item)
-            ldWall.item.whBackspace();
+        pill.surfaceCall("wallpaper", "whBackspace");
     }
 
     /**
@@ -846,8 +850,7 @@ Item {
      * surface is open and not browsing wallhaven.
      */
     function wallpaperType(ch) {
-        if (pill.wallpaperOpen && ldWall.item)
-            ldWall.item.startSearch(ch);
+        pill.surfaceCall("wallpaper", "startSearch", ch);
     }
 
     readonly property bool wallpaperMenuOpen: pill.wallpaperOpen && ldWall.item !== null && ldWall.item.menuOpen
@@ -884,8 +887,7 @@ Item {
      * and -1 is left. No-op unless the power surface is open.
      */
     function powerMove(dir) {
-        if (pill.powerOpen && ldPower.item)
-            ldPower.item.move(dir);
+        pill.surfaceCall("power", "move", dir);
     }
 
     /**
@@ -894,7 +896,7 @@ Item {
      * consumed the key. No-op (false) unless the power surface is open.
      */
     function powerPress() {
-        return (pill.powerOpen && ldPower.item) ? ldPower.item.pressFocused() : false;
+        return pill.surfaceCall("power", "pressFocused");
     }
 
     /**
@@ -902,8 +904,7 @@ Item {
      * hold so a key let go before the fill completes never confirms.
      */
     function powerRelease() {
-        if (pill.powerOpen && ldPower.item)
-            ldPower.item.releaseFocused();
+        pill.surfaceCall("power", "releaseFocused");
     }
 
     onSurfaceOpenChanged: if (surfaceOpen) {

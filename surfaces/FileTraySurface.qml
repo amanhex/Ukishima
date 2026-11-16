@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import "../Singletons"
 import "../components"
+import "../lib/util.js" as Util
 
 /**
  * File tray surface: the entries kept by reference in FileTray, as a single
@@ -66,7 +67,7 @@ PillSurface {
         var n = FileTray.view.length;
         if (n === 0)
             return;
-        root.focusIndex = Math.max(0, Math.min(n - 1, root.focusIndex + delta));
+        root.focusIndex = Util.stepIndex(n, root.focusIndex, delta);
         view.positionViewAtIndex(root.focusIndex, ListView.Contain);
     }
 

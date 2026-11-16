@@ -7,6 +7,7 @@ import "../Singletons"
 import "../lib/fuzzy.js" as Fuzzy
 import "../lib/calc.js" as Calc
 import "../lib/apps.js" as Apps
+import "../lib/util.js" as Util
 import "../components"
 
 /**
@@ -105,7 +106,7 @@ PillSurface {
     function move(delta) {
         if (results.length === 0)
             return;
-        selectedIndex = Math.max(0, Math.min(results.length - 1, selectedIndex + delta));
+        selectedIndex = Util.stepIndex(results.length, selectedIndex, delta);
         list.positionViewAtIndex(selectedIndex, ListView.Contain);
     }
 

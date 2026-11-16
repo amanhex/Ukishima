@@ -1,4 +1,5 @@
 import QtQuick
+import "../lib/util.js" as Util
 import "../Singletons"
 
 /**
@@ -28,7 +29,7 @@ Item {
      * emitting `moved` and `committed` so the captured level updates on each step.
      */
     function step(deltaPct) {
-        const v = Math.max(0, Math.min(1, root.value + deltaPct / 100));
+        const v = Util.stepPercent(root.value, deltaPct);
         root.moved(v);
         root.committed(v);
     }

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import "../Singletons"
 import "../components"
+import "../lib/util.js" as Util
 
 /**
  * Clipboard surface: search field over the cliphist history, drawn as one of
@@ -67,7 +68,7 @@ PillSurface {
     function move(delta) {
         if (results.length === 0)
             return;
-        selectedIndex = Math.max(0, Math.min(results.length - 1, selectedIndex + delta));
+        selectedIndex = Util.stepIndex(results.length, selectedIndex, delta);
         list.positionViewAtIndex(selectedIndex, ListView.Contain);
     }
 

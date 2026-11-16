@@ -5,6 +5,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import "../lib/apps.js" as Apps
+import "../lib/util.js" as Util
 import "../Singletons"
 
 /**
@@ -361,9 +362,6 @@ Item {
      *  the dock's own `dockMode` — so a forced dark dock keeps dark text and
      *  a vermilion dot even while the pill sits on a light palette, and the
      *  matched light/dynamic variants stay readable on their own grounds. */
-    function blendColor(a, b, t) {
-        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1);
-    }
     readonly property bool dockCustom: Flags.accentOverride.length > 0
     readonly property color dockAccent: root.dockCustom ? Flags.accentOverride : (root.dockEffManual ? root.dockHue.primary : (root.dockEffDyn ? Dyn.primary : "#ff9a64"))
     readonly property color dockActive: root.dockCustom ? Flags.accentOverride : (root.dockEffManual ? root.dockHue.primary : (root.dockEffDyn ? Dyn.primary : "#e0563b"))
@@ -398,11 +396,11 @@ Item {
      */
     readonly property real dockPaneTint: (root.dockEffManual || root.dockEffDyn) ? 1 : 0
     readonly property color dockPaneTop: root.dockGlass
-        ? Qt.alpha(root.blendColor(root.dockCardTop, root.dockAccent, 0.05 * root.dockPaneTint), root.glassAlpha)
-        : root.blendColor(root.dockCardTop, root.dockAccent, 0.05 * root.dockPaneTint)
+        ? Qt.alpha(Util.lerpColor(root.dockCardTop, root.dockAccent, 0.05 * root.dockPaneTint), root.glassAlpha)
+        : Util.lerpColor(root.dockCardTop, root.dockAccent, 0.05 * root.dockPaneTint)
     readonly property color dockPaneBot: root.dockGlass
-        ? Qt.alpha(root.blendColor(root.dockCardBot, root.dockAccent, 0.03 * root.dockPaneTint), root.glassAlpha)
-        : root.blendColor(root.dockCardBot, root.dockAccent, 0.03 * root.dockPaneTint)
+        ? Qt.alpha(Util.lerpColor(root.dockCardBot, root.dockAccent, 0.03 * root.dockPaneTint), root.glassAlpha)
+        : Util.lerpColor(root.dockCardBot, root.dockAccent, 0.03 * root.dockPaneTint)
     readonly property color dockBorder: root.dockEffLight
         ? Qt.alpha("#000000", 0.12) : Qt.alpha("#ffffff", 0.14)
     readonly property color dockSheen: root.dockEffLight

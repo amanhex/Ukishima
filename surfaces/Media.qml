@@ -9,6 +9,7 @@ import "../Singletons"
 import "../components"
 import "../components/media"
 import "../lib/format.js" as Fmt
+import "../lib/util.js" as Util
 
 /**
  * Now-playing card. A small square cover floats detached on the left; the
@@ -260,10 +261,6 @@ PillSurface {
 
     ameForm: "seam"
     amePoint: Qt.point(seamHeadX, seamHeadY)
-
-    function mix(a, b, t) {
-        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1);
-    }
 
     onTitleChanged: if (playing && active) pulseAnim.restart()
 
@@ -1023,8 +1020,8 @@ PillSurface {
                 border.width: 1
                 border.color: Qt.alpha(Theme.vermLit, 0.4 + 0.4 * root.sealPulse)
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: root.mix(Theme.verm, Theme.tileBg, 0.55 - 0.27 * seal.sat) }
-                    GradientStop { position: 1.0; color: root.mix(Theme.vermDeep, Theme.tileBg, 0.55 - 0.27 * seal.sat) }
+                    GradientStop { position: 0.0; color: Util.lerpColor(Theme.verm, Theme.tileBg, 0.55 - 0.27 * seal.sat) }
+                    GradientStop { position: 1.0; color: Util.lerpColor(Theme.vermDeep, Theme.tileBg, 0.55 - 0.27 * seal.sat) }
                 }
 
                 Text {
