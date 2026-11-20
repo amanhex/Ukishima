@@ -29,7 +29,15 @@ WPDIR=$(jq -r '.wallpaperDir // ""' "$flags_file" 2>/dev/null || echo "")
 FIT=$(jq -r '.wallpaperFit // "crop"' "$flags_file" 2>/dev/null || echo crop)
 FPS=$(jq -r '.wallpaperFps // 60' "$flags_file" 2>/dev/null || echo 60)
 FPS=${FPS:-60}
+TRANS=$(jq -r '.wallpaperTransition // "wave"' "$flags_file" 2>/dev/null || echo wave)
+TRANS=${TRANS:-wave}
 case "$FIT" in no|crop|fit|stretch) ;; *) FIT=crop ;; esac
+# awww's full transition set. "none" is instant; everything else uses its
+# built-in default duration (3s) unless a wallpaper choice overrides it below.
+case "$TRANS" in
+    none|simple|fade|left|right|top|bottom|wipe|wave|grow|center|outer|random) ;;
+    *) TRANS=wave ;;
+esac
 if [ -z "$WPDIR" ]; then
     # No explicit folder set: adopt an existing collection in the usual spots.
     # Two or more images counts as a collection, a single stray file does not,
@@ -256,12 +264,15 @@ make_still() {
     ffmpeg -y -loglevel error -i "$1" -frames:v 1 -f image2 -c:v png "$2.tmp" && mv "$2.tmp" "$2"
 }
 
-# Animated picks wave in over their own first frame, then swap to the live
-# source with no transition: the frames are identical, so the gif restart and
-# the mpvpaper spawn stop reading as a flicker at the end of the wave.
+# Animated picks transition in over their own first frame, then swap to the
+# live source with no transition: the frames are identical, so the gif restart
+# and the mpvpaper spawn stop reading as a flicker at the end of the animation.
+# The transition type comes from Flags.wallpaperTransition (wallpaper surface
+# chip); awww's own default duration applies, so "none" is instant and every
+# other choice animates at its normal speed.
 apply_visual() {
     local pic="$1" out="${2:-}" show="$1" st
-    local -a oflag=()
+    local -a oflag=() tflag=()
     [ -n "$out" ] && oflag=(--outputs "$out")
     case "${pic##*.}" in
         [Mm][Pp]4|[Ww][Ee][Bb][Mm]|[Mm][Kk][Vv]|[Mm][Oo][Vv]|[Gg][Ii][Ff])
@@ -270,13 +281,14 @@ apply_visual() {
             make_still "$pic" "$st" && show="$st"
             ;;
     esac
+    if [ "$TRANS" = none ]; then
+        tflag=(--transition-type none --transition-step 255)
+    else
+        tflag=(--transition-type "$TRANS" --transition-angle 30 \
+               --transition-wave "60,30" --transition-fps 60 --transition-step 90)
+    fi
     awww img ${oflag[@]+"${oflag[@]}"} "$show" \
-        --resize "$FIT" \
-        --transition-type wave \
-        --transition-angle 30 \
-        --transition-wave "60,30" \
-        --transition-fps 60 \
-        --transition-step 90
+        --resize "$FIT" ${tflag[@]+"${tflag[@]}"}
     if [ "$show" != "$pic" ] && ! is_video "$pic"; then
         sleep 0.9
         awww img ${oflag[@]+"${oflag[@]}"} "$pic" --resize "$FIT" --transition-type none
@@ -494,6 +506,19 @@ elif [ "$cmd" = "fps" ]; then
     FPS="$fps"
     silent_reapply
     sync_videos
+    exit 0
+elif [ "$cmd" = "transition" ]; then
+    # Persist only: the choice is read by apply_visual on the next wallpaper
+    # change. No re-image needed, so the picker stays responsive.
+    mode="${2:-wave}"
+    case "$mode" in
+        none|simple|fade|left|right|top|bottom|wipe|wave|grow|center|outer|random) ;;
+        *) mode=wave ;;
+    esac
+    if command -v jq >/dev/null 2>&1; then
+        jq --arg v "$mode" '.wallpaperTransition = $v' "$flags_file" > "$flags_file.tmp" 2>/dev/null \
+            && mv "$flags_file.tmp" "$flags_file" || true
+    fi
     exit 0
 else
     scope=$(jq -r '.randomScope // "all"' "$flags_file" 2>/dev/null || echo all)

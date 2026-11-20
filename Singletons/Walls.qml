@@ -413,4 +413,28 @@ Singleton {
             }
         }
     }
+
+    /** Transition choice is persisted only; wallpaper.sh reads it on the next apply. */
+    function applyTransition(mode) {
+        if (transitionProc.running) {
+            queuedTransition = mode;
+            return;
+        }
+        transitionProc.command = ["bash", root.setScript, "transition", mode];
+        transitionProc.running = true;
+    }
+
+    property string queuedTransition: ""
+
+    Process {
+        id: transitionProc
+        onExited: {
+            if (root.queuedTransition.length) {
+                var next = root.queuedTransition;
+                root.queuedTransition = "";
+                transitionProc.command = ["bash", root.setScript, "transition", next];
+                transitionProc.running = true;
+            }
+        }
+    }
 }
