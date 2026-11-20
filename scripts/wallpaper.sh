@@ -376,13 +376,24 @@ palette_update() {
     # modes (pill and dock) track the wallpaper. In manual mode the rice side
     # effects on top follow the pill's hue through --hue, which no longer
     # rewrites colors.json.
-    python3 "$(dirname "$0")/wallcolors.py" "$show" >>"$WLOG" 2>&1 || true
-    if [ "$pmode" = "manual" ]; then
-        mh=$(jq -r '.manualHue // 30' "$flags_file" 2>/dev/null || echo 30)
-        md=$(jq -r 'if .manualDark == false then "light" else "dark" end' "$flags_file" 2>/dev/null || echo dark)
-        ms=$(jq -r '.manualSat // 0.5' "$flags_file" 2>/dev/null || echo 0.5)
-        python3 "$(dirname "$0")/wallcolors.py" --hue "$mh" "$md" "$ms" >>"$WLOG" 2>&1 || true
-    fi
+    #
+    # The histogram pass is ImageMagick reading the whole image (~1.2 s, 1.4 s
+    # on a 12 MB PNG). Running it inline blocked wallpaper.sh -- and therefore
+    # Quickshell's applyProc -- so quick picks queued up and the picker felt
+    # laggy. Detach it in its own session so the wallpaper is applied and the
+    # UI returns immediately; palette consumers can pick up the refreshed
+    # colors when it finishes. The manual --hue pass stays behind the wallpaper
+    # pass so it cannot be overwritten by it.
+    mh=$(jq -r '.manualHue // 30' "$flags_file" 2>/dev/null || echo 30)
+    md=$(jq -r 'if .manualDark == false then "light" else "dark" end' "$flags_file" 2>/dev/null || echo dark)
+    ms=$(jq -r '.manualSat // 0.5' "$flags_file" 2>/dev/null || echo 0.5)
+    setsid sh -c '
+        python3 "$1" "$2" >>"$3" 2>&1 || true
+        if [ "$4" = manual ]; then
+            python3 "$1" --hue "$5" "$6" "$7" >>"$3" 2>&1 || true
+        fi
+    ' sh "$SCRIPT_DIR/wallcolors.py" "$show" "$WLOG" "$pmode" "$mh" "$md" "$ms" \
+        >/dev/null 2>&1 &
     if [ "$UKISHIMA_WM" = hyprland ]; then
         hyprctl reload >/dev/null 2>&1 || true
     fi
