@@ -26,6 +26,7 @@ Singleton {
     property alias wallpaperDir: adapter.wallpaperDir
     property alias wallpaperFit: adapter.wallpaperFit
     property alias wallpaperFps: adapter.wallpaperFps
+    property alias wallpaperTransition: adapter.wallpaperTransition
     property alias uiScale: adapter.uiScale
     //* The dock's own UI scale, independent of the pill's `uiScale`.
     property alias dockUiScale: adapter.dockUiScale
@@ -183,6 +184,10 @@ Singleton {
             property string wallpaperFit: "crop"
             //* Live wallpaper playback FPS: 15/24/30/60 fps for mpvpaper video wallpapers.
             property int wallpaperFps: 60
+            //* awww transition used when a wallpaper is applied: none/simple/fade/
+            // left/right/top/bottom/wipe/wave/grow/center/outer/random. Defaults
+            // to wave at awww's normal speed.
+            property string wallpaperTransition: "wave"
             property real uiScale: 1
             property real dockUiScale: 1
             property bool reduceMotion: false

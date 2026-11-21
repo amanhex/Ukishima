@@ -166,11 +166,40 @@ PillSurface {
     }
 
     /**
+     * Transition choices for awww, the same tokens wallpaper.sh passes to
+     * --transition-type. "none" is an instant swap; the rest animate at awww's
+     * own default speed (no --transition-duration override).
+     */
+    readonly property var transitionOptions: [
+        { label: "Wave", value: "wave", desc: "Wavy sweep across the screen" },
+        { label: "Fade", value: "fade", desc: "Smooth crossfade" },
+        { label: "Wipe", value: "wipe", desc: "Straight sweep at an angle" },
+        { label: "Grow", value: "grow", desc: "Circle expanding from the centre" },
+        { label: "Slide", value: "left", desc: "New wallpaper slides in" },
+        { label: "Random", value: "random", desc: "Pick a different effect each time" },
+        { label: "Off", value: "none", desc: "Instant, no animation" }
+    ]
+
+    readonly property string transitionLabel: {
+        for (var i = 0; i < transitionOptions.length; i++)
+            if (String(transitionOptions[i].value) === String(Flags.wallpaperTransition))
+                return transitionOptions[i].label;
+        return "Wave";
+    }
+
+    readonly property string transitionDesc: {
+        for (var i = 0; i < transitionOptions.length; i++)
+            if (String(transitionOptions[i].value) === String(Flags.wallpaperTransition))
+                return transitionOptions[i].desc;
+        return "";
+    }
+
+    /**
      * Shared dropdown coordination: at most one menu (filter or fit) is open at
      * a time, driven by the chip clicks; keyboard input is routed through
      * `menuMove`/`menuPick`/`menuClose` to whichever is open.
      */
-    readonly property bool menuOpen: filterRow.open || whSortRow.open || dFps.open || dFit.open
+    readonly property bool menuOpen: filterRow.open || whSortRow.open || dFps.open || dFit.open || dTransition.open
 
     function toggleMenu(m) {
         var was = m.open;
@@ -178,11 +207,14 @@ PillSurface {
         whSortRow.open = false;
         dFps.open = false;
         dFit.open = false;
+        dTransition.open = false;
         m.open = !was;
     }
 
     function menuMove(dir) {
-        if (dFit.open)
+        if (dTransition.open)
+            dTransition.moveSel(dir);
+        else if (dFit.open)
             dFit.moveSel(dir);
         else if (dFps.open)
             dFps.moveSel(dir);
@@ -193,7 +225,9 @@ PillSurface {
     }
 
     function menuPick() {
-        if (dFit.open)
+        if (dTransition.open)
+            dTransition.pickSel();
+        else if (dFit.open)
             dFit.pickSel();
         else if (dFps.open)
             dFps.pickSel();
@@ -208,6 +242,7 @@ PillSurface {
         whSortRow.open = false;
         dFps.open = false;
         dFit.open = false;
+        dTransition.open = false;
     }
 
     function isVideo(path) {
@@ -1020,7 +1055,7 @@ PillSurface {
         id: filterRow
         anchors.top: parent.top
         anchors.topMargin: 9 * root.s
-        anchors.right: dFit.left
+        anchors.right: dTransition.left
         anchors.rightMargin: 8 * root.s
         z: 55
         s: root.s
@@ -1043,7 +1078,7 @@ PillSurface {
         id: whSortRow
         anchors.top: parent.top
         anchors.topMargin: 9 * root.s
-        anchors.right: dFit.left
+        anchors.right: dTransition.left
         anchors.rightMargin: 8 * root.s
         z: 55
         s: root.s
@@ -1097,6 +1132,32 @@ PillSurface {
             ? "Browsing wallhaven — click to return to local"
             : "Click to browse wallhaven wallpapers"
         onClicked: root.toggleWallhaven()
+    }
+
+    /**
+     * Transition dropdown. Persists the choice to Flags; wallpaper.sh reads it
+     * on the next wallpaper apply, so the current wallpaper is not re-imaged.
+     * Anchored left of the fit chip so the header reads, right to left:
+     * refresh, fps, fit, transition, filter.
+     */
+    Dropdown {
+        id: dTransition
+        anchors.top: parent.top
+        anchors.topMargin: 9 * root.s
+        anchors.right: dFit.left
+        anchors.rightMargin: 8 * root.s
+        z: 55
+        s: root.s
+        glyph: "transition"
+        options: root.transitionOptions
+        value: Flags.wallpaperTransition
+        title: "Transition: " + root.transitionLabel
+        desc: "Wallpaper change animation — " + root.transitionDesc
+        onChipClicked: root.toggleMenu(dTransition)
+        onPicked: (v) => {
+            Flags.wallpaperTransition = v;
+            Walls.applyTransition(v);
+        }
     }
 
     /**
