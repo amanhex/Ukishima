@@ -21,6 +21,7 @@ singleton Cava Cava.qml
 singleton Spaces Spaces.qml
 singleton Surfaces Surfaces.qml
 singleton Players Players.qml
+singleton Sound Sound.qml
 singleton NightLight NightLight.qml
 singleton GameMode GameMode.qml
 singleton Config Config.qml

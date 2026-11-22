@@ -249,6 +249,9 @@ ShellRoot {
     IpcHandler {
         target: "ukishima"
         function mixer(mon: string): void { root.toggleSurface(mon, "mixer"); }
+        function sound(mon: string): void { root.toggleSurface(mon, "sound"); }
+        function eq(): void { Sound.setEq(!Sound.eq); }
+        function eqMode(name: string): void { Sound.pick(name); }
         function calendar(mon: string): void { root.toggleSurface(mon, "calendar"); }
         function launcher(mon: string): void {
             const m = (mon && mon.length > 0) ? mon : Wm.focusedScreenName();

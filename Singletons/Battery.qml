@@ -21,7 +21,11 @@ Singleton {
     readonly property var dev: UPower.displayDevice
 
     readonly property bool present: dev !== null && dev.ready && dev.isLaptopBattery && dev.isPresent
-    readonly property real frac: dev ? Math.max(0, Math.min(1, dev.percentage)) : 0
+    // Untyped on purpose: during a config reload the UPower device can be torn
+    // down mid-read, and a typed binding then assigns undefined and logs a
+    // false alarm. `var` takes undefined quietly; the values are numbers/bools
+    // in normal operation.
+    readonly property var frac: dev ? Math.max(0, Math.min(1, dev.percentage)) : 0
     readonly property int pct: Math.round(frac * 100)
     readonly property int state: dev ? dev.state : UPowerDeviceState.Unknown
 
@@ -30,7 +34,7 @@ Singleton {
     readonly property bool discharging: state === UPowerDeviceState.Discharging
     readonly property bool low: !charging && pct <= 20
 
-    readonly property real rateW: !dev ? 0
+    readonly property var rateW: !dev ? 0
         : (discharging ? -dev.changeRate : (charging ? dev.changeRate : 0))
     readonly property real capacityWh: dev ? dev.energyCapacity : 0
 
@@ -112,9 +116,9 @@ Singleton {
     readonly property real energyFullDesign: root._energyFullDesign
     readonly property bool designSupported: root.energyFullDesign > 0
 
-    readonly property bool hasTime: !dev ? false
+    readonly property var hasTime: !dev ? false
         : (charging ? dev.timeToFull > 0 : (discharging ? dev.timeToEmpty > 0 : false))
-    readonly property string timeStr: !dev ? ""
+    readonly property var timeStr: !dev ? ""
         : (charging ? fmt(dev.timeToFull) : (discharging ? fmt(dev.timeToEmpty) : ""))
 
     readonly property string stateLabel: charging ? "Charging"

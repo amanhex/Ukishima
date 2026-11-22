@@ -17,6 +17,8 @@ Item {
     property real value: 0.5
     property bool focused: false
     property bool on: true
+    /** Override for the trailing readout; empty shows the clamped percentage. */
+    property string readout: ""
 
     signal moved(real v)
     signal committed(real v)
@@ -94,7 +96,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: 32 * root.s
         horizontalAlignment: Text.AlignRight
-        text: Math.round(root.clamped * 100) + "%"
+        text: root.readout.length ? root.readout : (Math.round(root.clamped * 100) + "%")
         color: root.focused ? Theme.cream : Theme.subtle
         font.family: Theme.font
         font.pixelSize: 10 * root.s

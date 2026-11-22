@@ -175,10 +175,13 @@ Item {
     Rectangle {
         id: removeBtn
         z: 2
+        /* Sit inside the card, clear of the rounded outline: a 1px inset put
+         * the circle straight on the border, and anchoring into the thumbnail's
+         * subtree resolved against the wrong edge. 6px keeps a visible gap. */
         anchors.top: frame.top
         anchors.right: frame.right
-        anchors.topMargin: 1 * cell.s
-        anchors.rightMargin: 1 * cell.s
+        anchors.topMargin: 6 * cell.s
+        anchors.rightMargin: 6 * cell.s
         visible: hover.hovered
         width: 16 * cell.s
         height: 16 * cell.s

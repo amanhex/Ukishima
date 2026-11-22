@@ -60,6 +60,7 @@ Item {
         // heaviest, evict first
         wallpaper:   unloadS * 1000,
         mixer:       unloadS * 1000,
+        sound:       unloadS * 1000,
         // thirsty frequent fliers: one generous reset, then reclaim
         clipboard:   unloadS * 2 * 1000,
         media:       unloadS * 2 * 1000,
@@ -118,6 +119,7 @@ Item {
 
     readonly property bool held: pinned || forcePinned
     readonly property bool mixerOpen: surface === "mixer"
+    readonly property bool soundOpen: surface === "sound"
     readonly property bool calendarOpen: surface === "calendar"
     readonly property bool launcherOpen: surface === "launcher"
     readonly property bool clipboardOpen: surface === "clipboard"
@@ -350,6 +352,7 @@ Item {
     readonly property real hoverH: 58 * s
     /** Chaldea mixer layouts carry a flat 16*s inset, so their card gets 8*s more height at the foot. */
     readonly property real mixerH: (["comb", "slats", "stipple", "weave"].indexOf(Flags.styleMixer) >= 0 ? 222 : 214) * s
+    readonly property real soundW: 460 * s
     readonly property real launcherW: 360 * s
     readonly property real launcherH: 332 * s
     readonly property real clipboardW: 360 * s
@@ -432,6 +435,7 @@ Item {
         media:     { size: () => { surfaceItem("media"); return Qt.size(mediaW, mediaH); }, ame: () => surfaceItem("media") },
         timer:     { size: () => { const it = surfaceItem("timer"); return Qt.size((it.implicitWidth > 0 ? it.implicitWidth : 282 * s) + 36 * s, it.implicitHeight + 32 * s); }, ame: () => surfaceItem("timer") },
         mixer:     { size: () => Qt.size(93 * Math.max(4, surfaceItem("mixer").faderCount) * s, mixerH), ame: () => surfaceItem("mixer") },
+        sound:     { size: () => Qt.size(soundW, surfaceItem("sound").implicitHeight + 28 * s), ame: () => surfaceItem("sound") },
         link:      { size: () => { const it = surfaceItem("link"); return Qt.size(it.desiredW, it.implicitHeight + 26 * s); }, ame: () => surfaceItem("link") },
         wifi:      { size: () => Qt.size(wifiW, surfaceItem("wifi").implicitHeight + 26 * s), ame: () => surfaceItem("wifi") },
         bt:        { size: () => Qt.size(btW, surfaceItem("bt").implicitHeight + 26 * s), ame: () => surfaceItem("bt") },
@@ -475,6 +479,7 @@ Item {
         media:      () => ldMedia,
         timer:      () => ldTimer,
         mixer:      () => ldMixer,
+        sound:      () => ldSound,
         link:       () => ldLink,
         wifi:       () => ldWifi,
         bt:         () => ldBt,
@@ -3134,6 +3139,19 @@ Item {
             s: pill.s
             open: pill.mixerOpen
             morphCloseness: pill.morphCloseness
+            onRequestSurface: (name) => pill.requestSurface(name)
+        }
+    }
+
+    Loader {
+        id: ldSound
+        active: false
+        anchors.fill: parent
+        sourceComponent: SoundSurface {
+            s: pill.s
+            open: pill.soundOpen
+            morphCloseness: pill.morphCloseness
+            onRequestClose: pill.requestClose()
         }
     }
 
