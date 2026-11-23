@@ -3311,6 +3311,7 @@ sourceComponent: Media {
         anchors.fill: parent
         sourceComponent: WifiSurface {
             s: pill.s
+            screenName: pill.screenName
             open: pill.wifiOpen
             morphCloseness: pill.morphCloseness
             onRequestClose: pill.requestClose()
