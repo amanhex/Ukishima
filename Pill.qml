@@ -99,6 +99,9 @@ Item {
         if (pill.prevSurface.length > 0 && pill.prevSurface !== pill.surface)
             pill.scheduleUnload(pill.prevSurface);
         pill.prevSurface = pill.surface;
+        /* Latch the presented name so a closing waybar card keeps its geometry while it fades. */
+        if (pill.surface.length > 0)
+            pill.waybarPopupName = pill.surface;
     }
 
     Component.onCompleted: Surfaces.register(pill)
@@ -167,6 +170,13 @@ Item {
     readonly property bool surfaceOpen: surface.length > 0
     property bool hoverLatch: false
 
+    /** Clear every hold the waybar drawer can have: chevron, empty-bar tap, pin. */
+    function closeWaybarDrawer() {
+        hoverLatch = false;
+        expandLatch = false;
+        pinned = false;
+    }
+
     /**
      * False for the first seconds after the shell maps. Hyprland hands pointer
      * focus to a freshly mapped layer surface at the cursor's position, which
@@ -207,9 +217,9 @@ Item {
      * The "waybar" main display: an edge-to-edge top bar instead of a centred
      * capsule. Rest holds the classic waybar modules (workspaces and load on
      * the left, clock centred, audio/radios/battery/inbox on the right); the
-     * chevron at the far right expands the regular hover face so every surface
-     * is still one click away. Auto-hide keeps working: the top edge reveals
-     * the bar, a click latches it open.
+     * chevron at the far right drops a detached right-edge drawer with the
+     * rest of the surfaces, so the bar itself never grows. Auto-hide keeps
+     * working: the top edge reveals the bar, a click latches it open.
      */
     readonly property bool waybar: Flags.mainDisplay === "waybar"
 
@@ -220,7 +230,7 @@ Item {
      *  flat     edge-to-edge slab, plain modules
      *  pills    slab plus a rounded chip behind every module
      *  islands  no slab; three floating rounded groups
-     *  capsule  one rounded bar inset from the screen edges
+     *  capsule  one content-hugging island centred on the screen
      *  minimal  no chrome at all, modules over the wallpaper
      */
     readonly property string waybarStyle: Flags.styleWaybar || "flat"
@@ -228,6 +238,67 @@ Item {
     readonly property bool waybarIslands: waybarStyle === "islands"
     readonly property bool waybarCapsule: waybarStyle === "capsule"
     readonly property bool waybarBare: waybarStyle === "minimal"
+
+    /**
+     * The expanded waybar face is a detached right-edge drawer, not a grown
+     * bar: `mode` still reads "hover" while it is open (the latches drive it),
+     * but the bar keeps its resting size and every non-surface expansion shows
+     * the drawer below the bar's right end instead.
+     */
+    readonly property bool waybarDrawer: waybar && mode === "hover"
+
+    /**
+     * Module a waybar surface popup is anchored to, and how its card aligns to
+     * that module. Set by the bar's click handlers through
+     * `requestWaybarSurface`; surfaces opened any other way (IPC, drawer tiles,
+     * keybinds) fall back to the right edge.
+     */
+    property Item waybarPopupAnchor: null
+    property string waybarPopupAlign: "right"
+    /**
+     * The last surface presented in waybar. Latched, not `surface`, so the card
+     * keeps its geometry while it fades out on close instead of collapsing to the
+     * bar. Set in `onSurfaceChanged`.
+     */
+    property string waybarPopupName: ""
+
+    /** Open a surface from a bar module so its card hangs under that module. */
+    function requestWaybarSurface(name, anchor, align) {
+        waybarPopupAnchor = anchor || null;
+        waybarPopupAlign = align || "right";
+        requestSurface(name);
+    }
+
+    /**
+     * The surface card's size in waybar mode. Normal modes still morph the pill
+     * to this size; waybar keeps the bar at rest and draws the card in a
+     * detached host under the module instead.
+     */
+    readonly property var waybarPopupSize: (waybar && waybarPopupName && surfaces[waybarPopupName])
+        ? surfaces[waybarPopupName].size()
+        : Qt.size(0, 0)
+    readonly property real waybarPopupW: Math.min(waybarPopupSize.width, barWidth - 16 * s)
+    readonly property real waybarPopupH: waybarPopupSize.height
+    readonly property real waybarPopupY: restH + 8 * s
+    readonly property real waybarPopupX: {
+        if (!waybar || !waybarPopupName)
+            return 0;
+        const w = waybarPopupW;
+        let x = pill.width - w - 10 * s;
+        const a = pill.waybarPopupAnchor;
+        if (a) {
+            void a.x;
+            void a.width;
+            const p = a.mapToItem(pill, 0, 0);
+            if (pill.waybarPopupAlign === "center")
+                x = p.x + (a.width - w) / 2;
+            else if (pill.waybarPopupAlign === "left")
+                x = p.x;
+            else
+                x = p.x + a.width - w;
+        }
+        return Math.max(8 * s, Math.min(x, pill.width - w - 8 * s));
+    }
 
     /** The bar's slab fill, shared by the slab, the islands and the chips' host. */
     readonly property color waybarPanel: Qt.alpha(Theme.tileBg,
@@ -250,7 +321,7 @@ Item {
      * temporarily, so focus loss (or cursor exit, via graceTimer) is what
      * releases the latch. Outside auto-hide the pill's pin still holds.
      */
-    onMonFocusedChanged: if (!monFocused && Flags.autoHide) {
+    onMonFocusedChanged: if (!monFocused && (Flags.autoHide || waybarDrawer)) {
         revealSession = false;
         hoverLatch = false;
         expandLatch = false;
@@ -262,8 +333,9 @@ Item {
      * quick-record overlay. These pop the pill open without the cursor ever
      * getting involved, so the pill must let them finish and then retract on
      * its own — transients hold the pill up, but they leave no latch behind.
+     * Waybar toasts are exempt: the bar stays at rest and the card stands alone.
      */
-    readonly property bool transientLive: toastActive || quickChoosing || quickCounting
+    readonly property bool transientLive: (toastActive && !waybar) || quickChoosing || quickCounting
 
     /**
      * True when the pill should retract off the top edge: auto-hide is on and
@@ -413,6 +485,22 @@ Item {
     readonly property real profileW: 620 * s * settingsScale
     readonly property real fontpickerW: 360 * s * settingsScale
     readonly property real toastW: 342 * s
+    /**
+     * Detached waybar toast card geometry; the overlay input mask reuses it.
+     * Centred like a banner, not hung off a module. With auto-hide the whole
+     * pill slides off the top, so add its hidden offset back to keep the card
+     * on screen while the bar itself stays at rest.
+     */
+    readonly property real hiddenOffset: height + (barWindow ? barWindow.topGap : 0)
+    readonly property real toastX: waybar ? Math.max(8 * s, (width - toastW) / 2) : 0
+    /** Card position in overlay space, for the input mask (the pill itself slides). */
+    readonly property real toastScreenY: waybar ? (hidden ? 12 * s : restH + 8 * s) : 0
+    /** Card position in pill space, for the host (the pill's own slide is added back). */
+    readonly property real toastY: waybar ? toastScreenY + (hidden ? hiddenOffset : 0) : 0
+    readonly property real toastCardW: waybar ? toastW : width
+    readonly property real toastCardH: waybar
+        ? (toastLoader.item ? toastLoader.item.implicitHeight + 24 * s : restH)
+        : height
     readonly property real quickChooseW: 344 * s
     readonly property real quickChooseH: 76 * s
     readonly property real quickCountW: 150 * s
@@ -1012,8 +1100,9 @@ Item {
      */
     readonly property var modeSize: ({
         toast: () => Qt.size(toastW, toastLoader.item ? toastLoader.item.implicitHeight + 24 * s : restH),
+        /** The waybar drawer hangs outside the pill, so the bar itself never grows. */
         hover: () => pill.waybar
-            ? Qt.size(pill.barWidth, hoverH)
+            ? Qt.size(pill.barWidth, restH)
             : Qt.size(hoverW, hoverH),
         quickChoose: () => Qt.size(quickChooseW, quickChooseH),
         quickCount:  () => Qt.size(quickCountW, quickCountH),
@@ -1032,6 +1121,9 @@ Item {
             : Qt.size(Math.max(restW, restRow.implicitWidth + 36 * s), restH))
 
     readonly property size targetSize: {
+        /* Waybar never morphs for a surface or a toast: the bar stays at rest and they hang below it. */
+        if (pill.waybar && (pill.surfaceOpen && surfaces[mode] || pill.mode === "toast"))
+            return restSize;
         const sf = surfaces[mode];
         if (sf)
             return sf.size();
@@ -1185,23 +1277,14 @@ Item {
      * while it is on — so a waybar bar never stays see-through against the
      * setting, and never turns glassy when the user asked for a flat bar.
      *
-     * The `waybarStyle` variant reshapes it: flat/pills fill the pill
-     * edge-to-edge, capsule insets it into a floating rounded bar, islands
-     * steps aside while resting (the group islands in `waybarFace` take over)
-     * and minimal removes it.
+     * Only the flat/pills styles use it: "capsule" and "islands" draw their own
+     * detached panels in `waybarFace`, and "minimal" has no chrome at all.
      */
     Rectangle {
         id: waybarBg
-        readonly property bool resting: pill.mode === "rest"
-        readonly property bool inset: pill.waybarCapsule || pill.waybarIslands
-        visible: pill.waybar && (pill.mode === "rest" || pill.mode === "hover")
-            && !pill.waybarBare && !(pill.waybarIslands && resting)
+        visible: pill.waybar && pill.mode !== "game"
+            && !pill.waybarBare && !pill.waybarIslands && !pill.waybarCapsule
         anchors.fill: parent
-        anchors.leftMargin: inset ? 10 * pill.s : 0
-        anchors.rightMargin: inset ? 10 * pill.s : 0
-        anchors.topMargin: pill.waybarCapsule ? 5 * pill.s : (pill.waybarIslands ? 8 * pill.s : 0)
-        anchors.bottomMargin: pill.waybarCapsule ? 5 * pill.s : (pill.waybarIslands ? 8 * pill.s : 0)
-        radius: pill.waybarCapsule ? height / 2 : (pill.waybarIslands ? 12 * pill.s : 0)
         color: pill.waybarPanel
     }
 
@@ -1216,11 +1299,10 @@ Item {
         anchors.fill: parent
 
         /**
-         * The waybar display paints its own flat slab (waybarFace), so the glass
-         * pill is faded out for the bar's rest and drawer states and only returns
-         * when a surface morphs open.
+         * The waybar display paints its own flat slab (waybarFace) and detached
+         * surface cards, so the glass pill is always faded out there.
          */
-        readonly property bool waybarFlat: pill.waybar && (pill.mode === "rest" || pill.mode === "hover")
+        readonly property bool waybarFlat: pill.waybar
         opacity: waybarFlat ? 0 : 1
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: Motion.pillFast } }
@@ -1338,6 +1420,8 @@ Item {
     Ame {
         id: ame
         anchors.fill: parent
+        /** The flat waybar has no room for the flame; its surfaces carry their own cues. */
+        visible: !pill.waybar
         s: pill.s
         heat: (pill.powerOpen && ldPower.item) ? ldPower.item.holdProgress : 0
         wake: pill.wakePoint
@@ -1417,12 +1501,19 @@ Item {
     }
 
     TapHandler {
-        enabled: !pill.surfaceOpen && pill.mode !== "game"
+        /** With auto-hide off the waybar's chevron is the expand control, so an empty-bar tap must not pin the drawer. */
+        enabled: !pill.surfaceOpen && pill.mode !== "game" && (!pill.waybar || Flags.autoHide)
         gesturePolicy: TapHandler.WithinBounds
         onTapped: {
             if (pill.expandLatch) {
                 pill.expandLatch = false;
                 pill.hoverLatch = false;
+                return;
+            }
+            if (pill.waybar) {
+                /* The bar's own tap opens the right-edge drawer, not a media morph. */
+                pill.hoverLatch = true;
+                pill.expandLatch = true;
                 return;
             }
             if (Flags.expandTo === "media" && pill.hasMedia) {
@@ -2022,7 +2113,7 @@ Item {
     Item {
         id: rest
         anchors.fill: parent
-        opacity: (pill.expanded || pill.dragActive || pill.mode === "game" || pill.mode === "toast" || pill.mode === "quickChoose" || pill.mode === "quickCount") ? 0 : 1
+        opacity: ((pill.expanded && !pill.waybar) || pill.dragActive || pill.mode === "game" || (pill.mode === "toast" && !pill.waybar) || pill.mode === "quickChoose" || pill.mode === "quickCount") ? 0 : 1
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: pill.mode === "rest" ? Motion.pillFast : Math.round(260 * Motion.mult) } }
 
@@ -2209,25 +2300,26 @@ Item {
         }
 
         /**
-         * Waybar face: the resting and expanded state of the "waybar" display.
-         * It is a flat, edge-to-edge bar — a near-opaque slab with plain text
-         * modules and no rounded pill chrome — mirroring the layout of the
-         * user's own waybar config: workspace numbers, cpu/memory/temperature
-         * on the left, the clock centred, and volume, battery, idle-inhibitor,
-         * network, bluetooth and notifications on the right.
+         * Waybar face: the resting row of the "waybar" display. It is a flat,
+         * edge-to-edge bar — a near-opaque slab with plain text modules and no
+         * rounded pill chrome — mirroring the layout of the user's own waybar
+         * config: workspace numbers, cpu/memory/temperature on the left, the
+         * clock centred, and volume, battery, idle-inhibitor, network,
+         * bluetooth and notifications on the right.
          *
          * The module row is the whole bar. Expanding (the chevron, or a tap on
-         * empty bar) replaces it in place: the bar grows downward into a wider
-         * flat panel carrying the extra modules the resting bar omits — tray,
-         * weather and every surface shortcut — and the module row steps aside
-         * while that panel is open.
+         * empty bar with auto-hide on) leaves this row in place and opens the
+         * detached right-edge drawer (`waybarDrawer`), which carries the extra
+         * surfaces without growing or replacing the bar.
          */
         Item {
             id: waybarFace
             visible: pill.specialView === "" && pill.waybar
             anchors.fill: parent
 
-            readonly property bool live: pill.mode === "rest" || pill.mode === "hover"
+            /** The bar stays interactive while any waybar popup is open, like a real waybar. */
+            readonly property bool live: pill.waybar ? pill.mode !== "game"
+                : (pill.mode === "rest" || pill.mode === "hover")
             readonly property bool open: pill.mode === "hover"
             readonly property var sink: Pipewire.defaultAudioSink
             readonly property bool muted: sink && sink.audio ? sink.audio.muted : false
@@ -2289,10 +2381,31 @@ Item {
                     border.color: Theme.hairSoft
                 }
 
+                /**
+                 * "capsule" chrome: a centred, content-hugging floating island
+                 * detached from the screen edge — the short-bar look of the
+                 * HANCORE themes, not a stretched full-width capsule.
+                 */
+                Rectangle {
+                    id: capsulePanel
+                    visible: pill.waybarCapsule
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 4 * pill.s
+                    width: Math.min(parent.width - 16 * pill.s,
+                        2 * Math.max(barLeft.implicitWidth, barRight.implicitWidth)
+                        + clockItem.width + 40 * pill.s)
+                    height: 30 * pill.s
+                    radius: height / 2
+                    color: pill.waybarPanel
+                    border.width: 1
+                    border.color: Theme.hairSoft
+                }
+
                 Row {
                     id: barLeft
-                    anchors.left: parent.left
-                    anchors.leftMargin: (pill.waybarIslands ? 16 : 10) * pill.s
+                    anchors.left: pill.waybarCapsule ? capsulePanel.left : parent.left
+                    anchors.leftMargin: (pill.waybarCapsule ? 16 : (pill.waybarIslands ? 16 : 10)) * pill.s
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 13 * pill.s
 
@@ -2364,6 +2477,7 @@ Item {
 
                     /** Load cluster: cpu / memory / temperature, the waybar's left modules. */
                     Item {
+                        id: loadModule
                         anchors.verticalCenter: parent.verticalCenter
                         width: loadRow.implicitWidth
                         height: loadRow.implicitHeight
@@ -2416,7 +2530,7 @@ Item {
                             hoverEnabled: true
                             enabled: waybarFace.live
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: pill.requestSurface("sysmon")
+                            onClicked: pill.requestWaybarSurface("sysmon", loadModule, "left")
                         }
                     }
                 }
@@ -2424,7 +2538,8 @@ Item {
                 /** Centre module: the clock. */
                 Item {
                     id: clockItem
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.horizontalCenter: pill.waybarCapsule
+                        ? capsulePanel.horizontalCenter : parent.horizontalCenter
                     anchors.verticalCenter: parent.verticalCenter
                     width: barClock.implicitWidth
                     height: barClock.implicitHeight
@@ -2453,19 +2568,20 @@ Item {
                         hoverEnabled: true
                         enabled: waybarFace.live
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: pill.requestSurface("calendar")
+                        onClicked: pill.requestWaybarSurface("calendar", clockItem, "center")
                     }
                 }
 
                 Row {
                     id: barRight
-                    anchors.right: parent.right
-                    anchors.rightMargin: (pill.waybarIslands ? 16 : 10) * pill.s
+                    anchors.right: pill.waybarCapsule ? capsulePanel.right : parent.right
+                    anchors.rightMargin: (pill.waybarCapsule ? 16 : (pill.waybarIslands ? 16 : 10)) * pill.s
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 13 * pill.s
 
                     /** Volume: click opens the sound surface, right-click mutes, wheel steps. */
                     Item {
+                        id: audioModule
                         anchors.verticalCenter: parent.verticalCenter
                         width: barAudioRow.implicitWidth
                         height: 16 * pill.s
@@ -2514,7 +2630,7 @@ Item {
                                         waybarFace.sink.audio.muted = !waybarFace.sink.audio.muted;
                                     return;
                                 }
-                                pill.requestSurface("sound");
+                                pill.requestWaybarSurface("sound", audioModule, "right");
                             }
                             onWheel: (e) => {
                                 if (waybarFace.sink && waybarFace.sink.audio) {
@@ -2527,6 +2643,7 @@ Item {
 
                     /** Battery. */
                     Item {
+                        id: battModule
                         anchors.verticalCenter: parent.verticalCenter
                         visible: Battery.present
                         width: barBattRow.implicitWidth
@@ -2571,7 +2688,7 @@ Item {
                             hoverEnabled: true
                             enabled: waybarFace.live
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: pill.requestSurface("battery")
+                            onClicked: pill.requestWaybarSurface("battery", battModule, "right")
                         }
                     }
 
@@ -2608,6 +2725,7 @@ Item {
 
                     /** Network. */
                     Item {
+                        id: wifiModule
                         anchors.verticalCenter: parent.verticalCenter
                         visible: pill.wifiDev !== null
                         width: 15 * pill.s
@@ -2640,13 +2758,14 @@ Item {
                                         Networking.wifiEnabled = !Networking.wifiEnabled;
                                     return;
                                 }
-                                pill.requestSurface("wifi");
+                                pill.requestWaybarSurface("wifi", wifiModule, "right");
                             }
                         }
                     }
 
                     /** Bluetooth. */
                     Item {
+                        id: btModule
                         anchors.verticalCenter: parent.verticalCenter
                         visible: pill.btAdapter !== null
                         width: 15 * pill.s
@@ -2680,13 +2799,14 @@ Item {
                                         pill.btAdapter.enabled = !pill.btAdapter.enabled;
                                     return;
                                 }
-                                pill.requestSurface("bt");
+                                pill.requestWaybarSurface("bt", btModule, "right");
                             }
                         }
                     }
 
                     /** Notifications, with the unread pip. */
                     Item {
+                        id: inboxModule
                         anchors.verticalCenter: parent.verticalCenter
                         width: 16 * pill.s
                         height: 16 * pill.s
@@ -2729,13 +2849,14 @@ Item {
                                     Flags.dnd = !Flags.dnd;
                                     return;
                                 }
-                                pill.requestSurface("link");
+                                pill.requestWaybarSurface("link", inboxModule, "right");
                             }
                         }
                     }
 
                     /** Media player: opens the player when something is playing. */
                     Item {
+                        id: mediaModule
                         anchors.verticalCenter: parent.verticalCenter
                         visible: pill.hasMedia
                         width: 16 * pill.s
@@ -2761,7 +2882,7 @@ Item {
                             hoverEnabled: true
                             enabled: waybarFace.live
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: pill.requestSurface("media")
+                            onClicked: pill.requestWaybarSurface("media", mediaModule, "right")
                         }
                     }
 
@@ -2792,10 +2913,9 @@ Item {
                             enabled: waybarFace.live
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                if (waybarFace.open) {
-                                    pill.expandLatch = false;
-                                    pill.hoverLatch = false;
-                                } else {
+                                if (waybarFace.open)
+                                    pill.closeWaybarDrawer();
+                                else {
                                     pill.hoverLatch = true;
                                     pill.expandLatch = true;
                                 }
@@ -3146,8 +3266,8 @@ Item {
     Item {
         id: hover
         anchors.fill: parent
-        opacity: pill.mode === "hover" ? Math.pow(pill.morphCloseness, 1.2) : 0
-        visible: true
+        opacity: pill.mode === "hover" && !pill.waybar ? Math.pow(pill.morphCloseness, 1.2) : 0
+        visible: !pill.waybar
         Behavior on opacity { NumberAnimation { duration: pill.mode === "hover" ? Motion.pillFast : 40 } }
 
         readonly property bool live: pill.mode === "hover"
@@ -3804,38 +3924,297 @@ Item {
                 }
             }
         }
+    }
 
-        /**
-         * Collapse affordance for the waybar expanded view: the module row's
-         * chevron is gone with the rest face, so the expanded face carries its
-         * own. It sits at the bar's right edge, where the bar's expand control
-         * was.
-         */
-        Item {
+    /**
+     * Waybar drawer: expansion is a detached card hanging from the bar's right
+     * end, not a grown bar. The bar keeps its resting row and height; the card
+     * lives outside the pill's own bounds (the full-screen overlay paints it and
+     * its modal mask covers it), so this reads as a control panel rather than a
+     * second bar. EQ and mixer are deliberately absent: the bar's volume module
+     * and the Sound surface own those.
+     */
+    Item {
+        id: waybarDrawer
+        readonly property bool open: pill.waybarDrawer
+        readonly property var shortcuts: [
+            { name: "calendar", glyph: "clock", label: "Calendar", on: true },
+            { name: "weather", glyph: Weather.ready ? Weather.glyphFor(Weather.codeNow, Weather.isDay) : "sun", label: "Weather", on: Weather.ready },
+            { name: "link", glyph: "inbox", label: "Inbox", on: true },
+            { name: "launcher", glyph: "app-window", label: "Apps", on: Flags.pillShowLauncher },
+            { name: "clipboard", glyph: "clipboard", label: "Clip", on: true },
+            { name: "mixer", glyph: "mixer", label: "Mixer", on: true },
+            { name: "filetray", glyph: "folder", label: "Files", on: Flags.pillShowFileTray },
+            { name: "emoji", glyph: "emoji", label: "Emoji", on: Flags.pillShowEmoji },
+            { name: "scratch", glyph: "type", label: "Scratch", on: Flags.pillShowScratch },
+            { name: "wallpaper", glyph: "wallpaper", label: "Wall", on: Flags.pillShowWallpaper },
+            { name: "sysmon", glyph: "monitor", label: "System", on: Flags.pillShowSysmon },
+            { name: "recorder", glyph: "video", label: "Record", on: Flags.pillShowRecorder },
+            { name: "timer", glyph: "stopwatch", label: "Timer", on: Flags.pillShowTimer },
+            { name: "appearance", glyph: "cog", label: "Settings", on: true },
+            { name: "power", glyph: "shutdown", label: "Power", on: Flags.pillShowPower }
+        ]
+
+        anchors.right: parent.right
+        anchors.rightMargin: 10 * pill.s
+        y: pill.restH + 8 * pill.s
+        width: 296 * pill.s
+        height: drawerBody.implicitHeight + 28 * pill.s
+        visible: opacity > 0.01
+        opacity: open ? 1 : 0
+        enabled: open
+        transform: Translate {
+            x: waybarDrawer.open ? 0 : 18 * pill.s
+            Behavior on x { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+        }
+        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 16 * pill.s
+            color: pill.waybarPanel
+            border.width: 1
+            border.color: Theme.hairSoft
+        }
+
+        /** Swallow presses on the card's dead space so the overlay's outside-click does not close it. */
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+        }
+
+        Column {
+            id: drawerBody
+            anchors.left: parent.left
             anchors.right: parent.right
-            anchors.rightMargin: (bud.shown ? bud.budR * 2 : 0) + 14 * pill.s
-            anchors.verticalCenter: parent.verticalCenter
-            visible: pill.waybar
-            width: 18 * pill.s
-            height: 18 * pill.s
+            anchors.top: parent.top
+            anchors.margins: 14 * pill.s
+            spacing: 10 * pill.s
 
-            GlyphIcon {
-                anchors.fill: parent
-                name: "chevron-up"
-                color: collapseArea.containsMouse ? Theme.cream : Theme.iconDim
-                stroke: 1.7
+            /** Header: time, date, and the drawer's own close control. */
+            Item {
+                width: parent.width
+                height: 40 * pill.s
+
+                Column {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 2 * pill.s
+                    Text {
+                        text: clock.hhmm
+                        color: Theme.cream
+                        font.family: Theme.font
+                        font.pixelSize: 22 * pill.s
+                        font.weight: Font.DemiBold
+                        font.features: { "tnum": 1 }
+                    }
+                    Text {
+                        text: clock.date
+                        color: Theme.dim
+                        font.family: Theme.font
+                        font.pixelSize: 9 * pill.s
+                        font.weight: Font.Medium
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 1.4 * pill.s
+                    }
+                }
+
+                Item {
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    width: 18 * pill.s
+                    height: 18 * pill.s
+
+                    GlyphIcon {
+                        anchors.fill: parent
+                        name: "close"
+                        color: drawerCloseArea.containsMouse ? Theme.cream : Theme.iconDim
+                        stroke: 1.7
+                    }
+                    MouseArea {
+                        id: drawerCloseArea
+                        anchors.fill: parent
+                        anchors.margins: -5 * pill.s
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pill.closeWaybarDrawer()
+                    }
+                }
             }
 
-            MouseArea {
-                id: collapseArea
-                anchors.fill: parent
-                anchors.margins: -5 * pill.s
-                hoverEnabled: true
-                enabled: hover.live
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    pill.expandLatch = false;
-                    pill.hoverLatch = false;
+            Text {
+                text: "WORKSPACES"
+                color: Theme.dim
+                font.family: Theme.fontMono
+                font.pixelSize: 8 * pill.s
+                font.letterSpacing: 1.3 * pill.s
+            }
+            Workspaces {
+                s: pill.s
+                screenName: pill.screenName
+                gap: 6 * pill.s
+                enabled: waybarDrawer.open
+            }
+
+            /** Load cluster, the same numbers the bar reads. */
+            Item {
+                width: parent.width
+                height: drawerLoad.implicitHeight
+
+                Row {
+                    id: drawerLoad
+                    spacing: 10 * pill.s
+                    Text {
+                        text: "CPU " + Sysmon.cpu + "%"
+                        color: Theme.iconDim
+                        font.family: Theme.fontMono
+                        font.pixelSize: 10.5 * pill.s
+                        font.features: { "tnum": 1 }
+                    }
+                    Text {
+                        text: "RAM " + Sysmon.memUsedGb.toFixed(1) + "G"
+                        color: Theme.iconDim
+                        font.family: Theme.fontMono
+                        font.pixelSize: 10.5 * pill.s
+                        font.features: { "tnum": 1 }
+                    }
+                    Text {
+                        visible: Sysmon.cpuTemp >= 0
+                        text: Sysmon.cpuTemp + "°C"
+                        color: Sysmon.cpuTemp >= 85 ? Theme.vermLit : Theme.iconDim
+                        font.family: Theme.fontMono
+                        font.pixelSize: 10.5 * pill.s
+                        font.features: { "tnum": 1 }
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: pill.requestWaybarSurface("sysmon", null)
+                }
+            }
+
+            Text {
+                text: "TOGGLES"
+                color: Theme.dim
+                font.family: Theme.fontMono
+                font.pixelSize: 8 * pill.s
+                font.letterSpacing: 1.3 * pill.s
+            }
+            Flow {
+                width: parent.width
+                spacing: 6 * pill.s
+
+                Repeater {
+                    model: [
+                        { key: "wifi", glyph: "wifi", label: "Wi-Fi", on: pill.wifiOn },
+                        { key: "bt", glyph: "bluetooth", label: "Bluetooth", on: pill.btOn },
+                        { key: "dnd", glyph: "dnd", label: "DND", on: Flags.dnd },
+                        { key: "awake", glyph: "awake", label: "Awake", on: Flags.keepAwake }
+                    ]
+
+                    delegate: Rectangle {
+                        required property var modelData
+
+                        width: (parent.width - 6 * pill.s) / 2
+                        height: 30 * pill.s
+                        radius: 9 * pill.s
+                        color: toggleArea.containsMouse ? Qt.alpha(Theme.cream, 0.12) : pill.waybarChipBg
+                        border.width: modelData.on ? 1 : 0
+                        border.color: Theme.vermLit
+
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 6 * pill.s
+                            GlyphIcon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 13 * pill.s
+                                height: 13 * pill.s
+                                name: modelData.glyph
+                                color: modelData.on ? Theme.vermLit : Theme.iconDim
+                                stroke: 1.7
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: modelData.label
+                                color: modelData.on ? Theme.cream : Theme.iconDim
+                                font.family: Theme.font
+                                font.pixelSize: 10 * pill.s
+                            }
+                        }
+
+                        MouseArea {
+                            id: toggleArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (modelData.key === "wifi")
+                                    pill.requestWaybarSurface("wifi", null);
+                                else if (modelData.key === "bt")
+                                    pill.requestWaybarSurface("bt", null);
+                                else if (modelData.key === "dnd")
+                                    Flags.dnd = !Flags.dnd;
+                                else if (modelData.key === "awake")
+                                    Flags.keepAwake = !Flags.keepAwake;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                text: "SURFACES"
+                color: Theme.dim
+                font.family: Theme.fontMono
+                font.pixelSize: 8 * pill.s
+                font.letterSpacing: 1.3 * pill.s
+            }
+            Flow {
+                width: parent.width
+                spacing: 6 * pill.s
+
+                Repeater {
+                    model: waybarDrawer.shortcuts
+
+                    delegate: Rectangle {
+                        required property var modelData
+
+                        visible: modelData.on
+                        width: (parent.width - 18 * pill.s) / 4
+                        height: 50 * pill.s
+                        radius: 10 * pill.s
+                        color: tileArea.containsMouse ? Qt.alpha(Theme.cream, 0.12) : "transparent"
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 4 * pill.s
+                            GlyphIcon {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: 17 * pill.s
+                                height: 17 * pill.s
+                                name: modelData.glyph
+                                color: tileArea.containsMouse ? Theme.cream : Theme.iconDim
+                                stroke: 1.7
+                            }
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: modelData.label
+                                color: tileArea.containsMouse ? Theme.cream : Theme.dim
+                                font.family: Theme.font
+                                font.pixelSize: 8.5 * pill.s
+                            }
+                        }
+
+                        MouseArea {
+                            id: tileArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: pill.requestWaybarSurface(modelData.name, null)
+                        }
+                    }
                 }
             }
         }
@@ -3847,12 +4226,45 @@ Item {
      * synchronously on its first open, kept for one private tiered countdown
      * after it stops being open, then dropped — so nothing is retained for surfaces
      * the user never opens, and closed ones don't linger past their own tail. Each
-     * loader fills the pill so the PillSurface inside anchors exactly as it did as a
+     * loader fills the host so the PillSurface inside anchors exactly as it did as a
      * direct child.
+     *
+     * In normal modes the host fills the pill, so the behaviour is unchanged. In
+     * waybar mode the bar stays at rest and the host becomes the detached card
+     * under the module that opened the surface, with its own flat backdrop.
      */
+    Item {
+        id: surfaceHost
+        x: pill.waybar && pill.waybarPopupName ? pill.waybarPopupX : 0
+        y: pill.waybar && pill.waybarPopupName ? pill.waybarPopupY : 0
+        width: pill.waybar && pill.waybarPopupName ? pill.waybarPopupW : pill.width
+        height: pill.waybar && pill.waybarPopupName ? pill.waybarPopupH : pill.height
+
+        /**
+         * Waybar's card has no pill morph to ride, so it earns its own entrance:
+         * a fade and a short drop-in. The geometry is latched (see
+         * `waybarPopupName`) so a closing card fades where it stands. Normal
+         * modes stay at rest here and let the pill body morph do the work.
+         */
+        opacity: pill.waybar ? (pill.surfaceOpen ? 1 : 0) : 1
+        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+        transformOrigin: Item.Top
+        scale: pill.waybar ? (pill.surfaceOpen ? 1 : 0.97) : 1
+        Behavior on scale { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+
+        Rectangle {
+            anchors.fill: parent
+            visible: pill.waybar
+            radius: 16 * pill.s
+            color: pill.waybarPanel
+            border.width: 1
+            border.color: Theme.hairSoft
+        }
+    }
 
     Loader {
         id: ldMixer
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Mixer {
@@ -3865,6 +4277,7 @@ Item {
 
     Loader {
         id: ldSound
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: SoundSurface {
@@ -3877,6 +4290,7 @@ Item {
 
     Loader {
         id: ldCalendar
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Calendar {
@@ -3888,6 +4302,7 @@ Item {
 
     Loader {
         id: ldWeather
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: WeatherSurface {
@@ -3900,6 +4315,7 @@ Item {
 
     Loader {
         id: ldLauncher
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Launcher {
@@ -3912,6 +4328,7 @@ Item {
 
     Loader {
         id: ldClip
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Clipboard {
@@ -3924,6 +4341,7 @@ Item {
 
     Loader {
         id: ldFileTray
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: FileTraySurface {
@@ -3936,6 +4354,7 @@ Item {
 
     Loader {
         id: ldEmoji
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Emoji {
@@ -3948,6 +4367,7 @@ Item {
 
     Loader {
         id: ldScratch
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Scratchpad {
@@ -3960,6 +4380,7 @@ Item {
 
     Loader {
         id: ldWall
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Wallpaper {
@@ -3972,6 +4393,7 @@ Item {
 
     Loader {
         id: ldPower
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Power {
@@ -3984,6 +4406,7 @@ Item {
 
     Loader {
         id: ldMedia
+        parent: surfaceHost
         active: false
         anchors.fill: parent
 sourceComponent: Media {
@@ -4003,6 +4426,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldTimer
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: TimerSurface {
@@ -4015,6 +4439,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldLink
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Link {
@@ -4027,6 +4452,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldWifi
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: WifiSurface {
@@ -4039,6 +4465,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldBt
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: BtSurface {
@@ -4051,6 +4478,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldBattery
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: BatterySurface {
@@ -4063,6 +4491,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldRecorder
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Recorder {
@@ -4076,6 +4505,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldSysmon
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: SysmonSurface {
@@ -4088,6 +4518,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldAppearance
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Appearance {
@@ -4101,6 +4532,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldAppcat
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: AppearanceSub {
@@ -4114,6 +4546,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldDisplay
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: DisplaySurface {
@@ -4127,6 +4560,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldModules
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: ModulesSurface {
@@ -4140,6 +4574,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldTheme
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: ThemeSurface {
@@ -4153,6 +4588,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldAccent
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: AccentSurface {
@@ -4166,6 +4602,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldGlass
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: GlassSurface {
@@ -4179,6 +4616,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldFontcolor
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: FontColorSurface {
@@ -4192,6 +4630,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldInterface
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: InterfaceSurface {
@@ -4205,6 +4644,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldRightClick
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: RightClickSurface {
@@ -4218,6 +4658,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldFontpicker
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: FontPicker {
@@ -4231,6 +4672,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldStyles
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: SurfaceStyles {
@@ -4244,6 +4686,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldProfile
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: Profile {
@@ -4257,6 +4700,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldUpdate
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: UpdateSurface {
@@ -4270,6 +4714,7 @@ sourceComponent: Media {
 
     Loader {
         id: ldLock
+        parent: surfaceHost
         active: false
         anchors.fill: parent
         sourceComponent: LockSettings {
@@ -4297,8 +4742,47 @@ sourceComponent: Media {
         enabled: false
     }
 
+    /**
+     * Toasts keep the bar at rest in waybar mode and become a centred card below
+     * it, mako/swaync style. Normal modes still fill the morphed pill, exactly as
+     * before.
+     */
+    Item {
+        id: toastHost
+        readonly property bool shown: pill.mode === "toast"
+
+        /** Waybar fades the whole card; normal modes let the loader fade and the pill morph. */
+        visible: pill.waybar ? opacity > 0.01 : shown
+        opacity: pill.waybar ? (shown ? 1 : 0) : 1
+        x: pill.toastX
+        y: pill.toastY
+        width: pill.toastCardW
+        height: pill.toastCardH
+
+        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+
+        /** Follow the bar's own slide when auto-hide pulls it off the top. */
+        Behavior on y {
+            NumberAnimation {
+                duration: Motion.pillMorph
+                easing.type: Motion.pillEase
+                easing.bezierCurve: Motion.morphCurve
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            visible: pill.waybar
+            radius: 16 * pill.s
+            color: pill.waybarPanel
+            border.width: 1
+            border.color: Theme.hairSoft
+        }
+    }
+
     Loader {
         id: toastLoader
+        parent: toastHost
         active: pill.toastActive
         anchors.fill: parent
         anchors.topMargin: 12 * pill.s

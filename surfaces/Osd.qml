@@ -13,6 +13,8 @@ Item {
     property bool expanded: false
     property bool flashing: false
     property string kind: "volume"
+    /** Waybar draws the richer leading art tile, the other modes the bare glyph. */
+    property bool waybar: false
     property bool armed: false
     property int holdExtends: 0
 
@@ -50,9 +52,42 @@ Item {
     readonly property bool micMuted: source && source.audio ? source.audio.muted : false
     readonly property real micVolume: source && source.audio ? Math.max(0, Math.min(1, source.audio.volume)) : 0
 
-    readonly property real desiredW: kind === "workspace" ? Math.max(120 * s, wsIndicator.implicitWidth + 40 * s)
-        : (kind === "track" ? 344 * s : (kind === "record" ? 256 * s : 248 * s))
-    readonly property real desiredH: kind === "track" ? 64 * s : 44 * s
+    readonly property real desiredW: waybar
+        ? (kind === "workspace" ? Math.max(120 * s, wsIndicator.implicitWidth + 40 * s) : 348 * s)
+        : (kind === "workspace" ? Math.max(120 * s, wsIndicator.implicitWidth + 40 * s)
+            : (kind === "track" ? 344 * s : (kind === "record" ? 256 * s : 248 * s)))
+    readonly property real desiredH: waybar
+        ? (kind === "workspace" ? 44 * s : ((kind === "volume" || kind === "track") && subjectHas ? 84 * s : 70 * s))
+        : (kind === "track" ? 64 * s : 44 * s)
+
+    /**
+     * Waybar's card face. One flash, one card: the leading art is the now-playing
+     * cover when the volume flash speaks for a track, otherwise the kind's own
+     * glyph on an accent tile; then a title, an optional second line, and the
+     * level bar. Copy-only flashes (record) drop the bar.
+     */
+    readonly property bool wbMedia: (kind === "volume" || kind === "track") && subjectHas
+    readonly property string wbTitle: kind === "mic" ? "Microphone"
+        : (kind === "brightness" ? "Brightness"
+        : (kind === "battery" ? (Battery.charging ? "Charging" : "Battery")
+        : (kind === "record" ? (recordStarted ? "Recording started" : "Recording stopped")
+        : (wbMedia ? subjectTitle : (kind === "track" ? "Nothing playing" : "Volume")))))
+    readonly property string wbSubtitle: wbMedia ? subjectArtist : ""
+    /** -1 hides the bar, for the flashes that carry copy only. */
+    readonly property real wbLevel: kind === "mic" ? micVolume
+        : (kind === "brightness" ? brightness
+        : (kind === "battery" ? Battery.frac
+        : (kind === "record" ? -1 : volume)))
+    readonly property string wbPct: kind === "mic" ? (micMuted ? "off" : Math.round(micVolume * 100) + "%")
+        : (kind === "brightness" ? Math.round(brightness * 100) + "%"
+        : (kind === "battery" ? Battery.pct + "%"
+        : (kind === "record" ? "" : (muted ? "off" : Math.round(volume * 100) + "%"))))
+    readonly property color wbAccent: (kind === "brightness" || kind === "battery") ? Theme.flameGlow : Theme.vermLit
+    readonly property string wbGlyph: kind === "mic" ? (micMuted ? "mic-off" : "mic")
+        : (kind === "brightness" ? "sun"
+        : (kind === "battery" ? "bolt"
+        : (muted ? "speaker-off" : "speaker")))
+    readonly property string wbArt: waybar && wbMedia && !muted ? liveArt : ""
 
     /**
      * Active workspace name on this monitor. Any switch (Super+arrow,
@@ -177,7 +212,7 @@ Item {
     Item {
         id: volRow
         anchors.fill: parent
-        opacity: root.kind === "volume" ? 1 : 0
+        opacity: (!root.waybar && root.kind === "volume") ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
@@ -191,7 +226,6 @@ Item {
             color: root.muted ? Theme.dim : Theme.iconDim
             stroke: 1.7
         }
-
         Text {
             id: volPct
             anchors.right: parent.right
@@ -232,7 +266,7 @@ Item {
     Item {
         id: micRow
         anchors.fill: parent
-        opacity: root.kind === "mic" ? 1 : 0
+        opacity: (!root.waybar && root.kind === "mic") ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
@@ -287,7 +321,7 @@ Item {
     Item {
         id: trackRow
         anchors.fill: parent
-        opacity: root.kind === "track" ? 1 : 0
+        opacity: (!root.waybar && root.kind === "track") ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
@@ -395,7 +429,7 @@ Item {
     Item {
         id: brightRow
         anchors.fill: parent
-        opacity: root.kind === "brightness" ? 1 : 0
+        opacity: (!root.waybar && root.kind === "brightness") ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
@@ -449,7 +483,7 @@ Item {
     Item {
         id: batteryRow
         anchors.fill: parent
-        opacity: root.kind === "battery" ? 1 : 0
+        opacity: (!root.waybar && root.kind === "battery") ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
@@ -547,7 +581,7 @@ Item {
     Item {
         id: recordRow
         anchors.fill: parent
-        opacity: root.kind === "record" ? 1 : 0
+        opacity: (!root.waybar && root.kind === "record") ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: 150 } }
 
@@ -580,6 +614,151 @@ Item {
             font.weight: Font.DemiBold
             elide: Text.ElideRight
             maximumLineCount: 1
+        }
+    }
+
+    /**
+     * Waybar's flash card. One flash, one card: the leading tile carries the
+     * now-playing cover for a media-speaking volume flash, otherwise the kind's
+     * glyph on an accent tile; then the title, an optional second line, and the
+     * level bar. Copy-only flashes drop the bar and show a dot or glyph alone.
+     */
+    Item {
+        id: wbCard
+        anchors.fill: parent
+        visible: root.waybar && root.kind !== "workspace"
+
+        Item {
+            id: wbTile
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            width: 46 * root.s
+            height: width
+
+            readonly property bool covered: root.wbArt.length > 0 && wbArtImg.status === Image.Ready
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 12 * root.s
+                border.width: 1
+                border.color: Qt.alpha(root.wbAccent, 0.25)
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.alpha(root.wbAccent, 0.22) }
+                    GradientStop { position: 1.0; color: Qt.alpha(root.wbAccent, 0.05) }
+                }
+            }
+
+            ClippingRectangle {
+                anchors.fill: parent
+                visible: wbTile.covered
+                radius: 12 * root.s
+                color: Theme.tileBg
+
+                Image {
+                    id: wbArtImg
+                    anchors.fill: parent
+                    source: root.wbArt
+                    sourceSize: Qt.size(Math.ceil(width * 2), Math.ceil(height * 2))
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                }
+            }
+
+            GlyphIcon {
+                anchors.centerIn: parent
+                width: 23 * root.s
+                height: width
+                name: root.wbGlyph
+                color: root.wbAccent
+                stroke: 1.8
+                visible: !wbTile.covered && root.kind !== "record"
+            }
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: 12 * root.s
+                height: width
+                radius: width / 2
+                color: root.recordStarted ? Theme.verm : Theme.dim
+                visible: root.kind === "record"
+
+                SequentialAnimation on opacity {
+                    running: root.kind === "record" && root.recordStarted
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.4; duration: 500; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1; duration: 500; easing.type: Easing.InOutSine }
+                }
+            }
+        }
+
+        Column {
+            anchors.left: wbTile.right
+            anchors.leftMargin: 13 * root.s
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 5 * root.s
+
+            Text {
+                width: parent.width
+                text: root.wbTitle
+                color: Theme.cream
+                font.family: Theme.font
+                font.pixelSize: 14 * root.s
+                font.weight: Font.DemiBold
+                maximumLineCount: 1
+                elide: Text.ElideRight
+            }
+
+            Text {
+                width: parent.width
+                visible: text.length > 0
+                text: root.wbSubtitle
+                color: Theme.dim
+                font.family: Theme.font
+                font.pixelSize: 11.5 * root.s
+                maximumLineCount: 1
+                elide: Text.ElideRight
+            }
+
+            Item {
+                width: parent.width
+                height: 14 * root.s
+                visible: root.wbLevel >= 0
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: wbPctLabel.left
+                    anchors.rightMargin: 10 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 4 * root.s
+                    radius: 2 * root.s
+                    color: Theme.threadBg
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: parent.width * Math.max(0, Math.min(1, root.wbLevel))
+                        radius: parent.radius
+                        color: root.wbAccent
+                        Behavior on width { NumberAnimation { duration: Motion.fast } }
+                    }
+                }
+
+                Text {
+                    id: wbPctLabel
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 32 * root.s
+                    horizontalAlignment: Text.AlignRight
+                    text: root.wbPct
+                    color: Theme.cream
+                    font.family: Theme.font
+                    font.pixelSize: 11 * root.s
+                    font.weight: Font.DemiBold
+                    font.features: { "tnum": 1 }
+                }
+            }
         }
     }
 }

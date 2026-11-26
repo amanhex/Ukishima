@@ -30,6 +30,9 @@ Item {
     property real topFlat: 0
     Behavior on topFlat { NumberAnimation { duration: Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
 
+    /** Waybar flashes carry the richer card face. */
+    property bool waybar: false
+
     readonly property bool active: osd.flashing
 
     width: osd.desiredW
@@ -57,9 +60,11 @@ Item {
     LiquidGlass {
         id: glass
         anchors.fill: parent
-        radius: 22 * s
-        topLeftRadius: 22 * s * (1 - topFlat)
-        topRightRadius: 22 * s * (1 - topFlat)
+        radius: waybar ? 16 * s : 22 * s
+        topLeftRadius: waybar ? 16 * s : 22 * s * (1 - topFlat)
+        topRightRadius: waybar ? 16 * s : 22 * s * (1 - topFlat)
+        bottomLeftRadius: waybar ? 16 * s : 22 * s
+        bottomRightRadius: waybar ? 16 * s : 22 * s
         style: "regular"
         legacyOpacity: Flags.pillOpacity
         accent: 0.08
@@ -79,13 +84,14 @@ Item {
         id: osd
         anchors.fill: parent
         anchors.topMargin: 12 * s
-        anchors.leftMargin: 18 * s
-        anchors.rightMargin: 18 * s
+        anchors.leftMargin: waybar ? 15 * s : 18 * s
+        anchors.rightMargin: waybar ? 15 * s : 18 * s
         anchors.bottomMargin: 12 * s
         s: popup.s
         screenName: popup.screenName
         suppressed: popup.suppressed
         expanded: popup.expanded
         workspaceFlash: popup.workspaceFlash
+        waybar: popup.waybar
     }
 }

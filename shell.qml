@@ -482,7 +482,7 @@ ShellRoot {
 
             anchors { top: true; left: true; right: true; bottom: true }
 
-            mask: monFullscreen ? hiddenRegion : (modal && !FileTray.dragging ? fullRegion : (pill.mode === "game" ? pillRegion : (Flags.autoHide ? (pill.revealSession || pill.transientLive ? revealPillRegion : (pill.expanded ? pillRegion : revealRegion)) : pillRegion)))
+            mask: monFullscreen ? hiddenRegion : (modal && !FileTray.dragging ? fullRegion : (pill.mode === "game" ? pillRegion : (pill.waybar && pill.toastActive ? toastRegion : (Flags.autoHide ? (pill.revealSession || pill.transientLive ? revealPillRegion : (pill.expanded ? pillRegion : revealRegion)) : pillRegion))))
             Region { id: hiddenRegion }
 
             /**
@@ -536,6 +536,29 @@ ShellRoot {
                     height: pillRegion.height
                 }
             }
+
+            /**
+             * Waybar keeps the bar live while a toast hangs below it, so the
+             * input mask covers both the bar and the detached card. With
+             * auto-hide the bar is off-screen, so its slice is dropped and only
+             * the centred card stays interactive.
+             */
+            Region {
+                id: toastRegion
+
+                Region {
+                    x: pillRegion.x
+                    y: pillRegion.y
+                    width: pill.hidden ? 0 : pillRegion.width
+                    height: pill.hidden ? 0 : pillRegion.height
+                }
+                Region {
+                    x: pill.x + pill.toastX
+                    y: pill.y + pill.toastScreenY
+                    width: pill.toastCardW
+                    height: pill.toastCardH
+                }
+            }
             Region {
                 id: fullRegion
                 width: overlay.width
@@ -551,16 +574,23 @@ ShellRoot {
                         ScreenRec.quickChoosing = false;
                         ScreenRec.quickScreenChoosing = false;
                     } else if (overlay.surfaceOpen) {
-                        var inside = mouse.x >= pillRegion.x && mouse.x <= pillRegion.x + pillRegion.width
+                        const insideBar = mouse.x >= pillRegion.x && mouse.x <= pillRegion.x + pillRegion.width
                             && mouse.y >= pillRegion.y && mouse.y <= pillRegion.y + pillRegion.height;
-                        if (!inside)
+                        const insidePopup = pill.waybar
+                            && mouse.x >= pill.waybarPopupX && mouse.x <= pill.waybarPopupX + pill.waybarPopupW
+                            && mouse.y >= pill.waybarPopupY && mouse.y <= pill.waybarPopupY + pill.waybarPopupH;
+                        if (!insideBar && !insidePopup)
                             root.close();
-                        else if (mouse.y <= pillRegion.y + 40 * pill.s)
+                        else if (!pill.waybar && insideBar && mouse.y <= pillRegion.y + 40 * pill.s)
                             pill.surfaceBack();
                     } else {
-                        pill.pinned = false;
-                        pill.expandLatch = false;
-                        root.peekMon = "";
+                        if (pill.waybarDrawer) {
+                            pill.closeWaybarDrawer();
+                        } else {
+                            pill.pinned = false;
+                            pill.expandLatch = false;
+                            root.peekMon = "";
+                        }
                     }
                 }
             }
@@ -759,7 +789,7 @@ ShellRoot {
                     surface: overlay.surface
                     forcePinned: root.peekMon === overlay.modelData.name
 
-                    opacity: (overlay.monFullscreen && !pill.transientLive) ? 0 : (osdPopup.active ? 0 : 1)
+                    opacity: (overlay.monFullscreen && !pill.transientLive) ? 0 : (osdPopup.active && !pill.waybar ? 0 : 1)
                     Behavior on opacity {
                         NumberAnimation {
                             duration: Motion.pillMorph
@@ -785,13 +815,21 @@ ShellRoot {
                 OsdPopup {
                     id: osdPopup
                     anchors.top: parent.top
-                    anchors.topMargin: (pill.stripBar || pill.waybar || pill.mode === "game") ? 0 : overlay.topGap
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: (pill.stripBar || pill.mode === "game") ? 0
+                        : (pill.waybar ? pill.restH + 8 * overlay.s : overlay.topGap)
+                    /**
+                     * mako/swaync-style card in waybar mode: the bar stays at
+                     * rest and the flash card drops in below its right end
+                     * instead of replacing the centred pill.
+                     */
+                    x: pill.waybar ? Math.max(8 * overlay.s, parent.width - width - 10 * overlay.s)
+                        : (parent.width - width) / 2
                     s: overlay.s
                     screenName: overlay.modelData.name
                     expanded: pill.expanded
                     workspaceFlash: !pill.waybar
-                    topFlat: (pill.mode === "game" || pill.stripBar || pill.waybar) ? 1 : 0
+                    waybar: pill.waybar
+                    topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
                     suppressed: overlay.surfaceOpen || pill.held || pill.quickChoosing
                         || pill.quickCounting || pill.mode === "game" || (pill.toastActive && Notifs.toastCritical)
                 }
