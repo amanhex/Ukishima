@@ -16,14 +16,33 @@ SettingsSurface {
 
     backSurface: "appcat"
 
-    rows: [
-        { item: pillRow, kind: "seg", vals: ["minimal", "classic", "system", "status", "strip"], get: function () { return Flags.mainDisplay; }, set: function (v) { Flags.mainDisplay = v; } },
+    rows: root.visibleRows
+
+    /**
+     * Every row, including the waybar-only one. The visible list below drops the
+     * rows that are off screen so the keyboard cursor never lands on a hidden
+     * row — SettingsRows.kbMove walks `rows` without a visibility test.
+     */
+    readonly property var allRows: [
+        { item: pillRow, kind: "seg", vals: ["minimal", "classic", "system", "status", "strip", "waybar"], get: function () { return Flags.mainDisplay; }, set: function (v) { Flags.mainDisplay = v; } },
+        { item: waybarStyleRow, kind: "seg", vals: ["flat", "pills", "islands", "capsule", "minimal"], get: function () { return Flags.styleWaybar || "flat"; }, set: function (v) { Flags.styleWaybar = v; } },
         { item: mediaStyleRow, kind: "seg", vals: ["default", "rail", "sleeve", "ledger", "matrix", "title"], get: function () { return Flags.styleMedia; }, set: function (v) { Flags.styleMedia = v; } },
         { item: mixerStyleRow, kind: "seg", vals: ["default", "comb", "slats", "stipple", "weave"], get: function () { return Flags.styleMixer; }, set: function (v) { Flags.styleMixer = v; } },
         { item: sysmonStyleRow, kind: "seg", vals: ["default", "rail", "ledger", "matrix", "title"], get: function () { return Flags.styleSysmon; }, set: function (v) { Flags.styleSysmon = v; } },
         { item: scratchStyleRow, kind: "seg", vals: ["default", "cassette", "index", "console", "ash"], get: function () { return Flags.styleScratch; }, set: function (v) { Flags.styleScratch = v; } },
         { item: lockStyleRow, kind: "seg", vals: ["default", "relay", "folio", "editorial", "phase", "spine", "reactive"], get: function () { return Flags.styleLock; }, set: function (v) { Flags.styleLock = v; } }
     ]
+
+    /** `allRows` minus rows that are not on screen. `void` keeps the dep live. */
+    readonly property var visibleRows: {
+        void Flags.mainDisplay;
+        const out = [];
+        for (const r of root.allRows) {
+            if (r.item && r.item.visible !== false)
+                out.push(r);
+        }
+        return out;
+    }
 
     glyph: "枠"
     title: "SURFACE STYLES"
@@ -43,12 +62,39 @@ SettingsSurface {
                 { label: "Classic", value: "classic" },
                 { label: "System", value: "system" },
                 { label: "Status", value: "status" },
-                { label: "Strip", value: "strip" }
+                { label: "Strip", value: "strip" },
+                { label: "Waybar", value: "waybar" }
             ]
             value: Flags.mainDisplay
             onChipClicked: pillDrop.open = !pillDrop.open
             onPicked: (v) => {
                 Flags.mainDisplay = v
+            }
+        }
+    }
+
+    SettingsRow {
+        id: waybarStyleRow
+        surface: root
+        glyph: "帯"
+        name: "Waybar style"
+        sub: "Chrome variant for the waybar display"
+        visible: Flags.mainDisplay === "waybar"
+
+        Dropdown {
+            id: waybarStyleDrop
+            s: root.s
+            options: [
+                { label: "Flat", value: "flat" },
+                { label: "Pills", value: "pills" },
+                { label: "Islands", value: "islands" },
+                { label: "Capsule", value: "capsule" },
+                { label: "Minimal", value: "minimal" }
+            ]
+            value: Flags.styleWaybar || "flat"
+            onChipClicked: waybarStyleDrop.open = !waybarStyleDrop.open
+            onPicked: (v) => {
+                Flags.styleWaybar = v
             }
         }
     }

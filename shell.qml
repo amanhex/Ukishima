@@ -32,6 +32,13 @@ ShellRoot {
     property string openSurface: ""
     property string peekMon: ""
 
+    /** The waybar display shows live CPU/RAM/temp, so its polls stay on while it is the active face. */
+    Binding {
+        target: Sysmon
+        property: "ambient"
+        value: Flags.mainDisplay === "waybar"
+    }
+
     /**
      * Battery notification latches, change-triggered by UPower (never polled).
      * Low battery escalates down the levels — 25% then 20% fire once each as a
@@ -344,7 +351,7 @@ ShellRoot {
             readonly property real restFaceH: 44 * s
 
                         /** Trimming the reserved band below the pill's bottom lets windows climb, so App gap sets the pill-to-window air without touching the desktop gaps_out. The strip face docks flush to the screen top (its own topGap is zero), so it never adds the margin. */
-            readonly property real reservedH: Flags.mainDisplay === "strip"
+            readonly property real reservedH: (Flags.mainDisplay === "strip" || Flags.mainDisplay === "waybar")
                 ? Math.max(0, restFaceH - 12 * (1 - Flags.appGap) * s)
                 : Math.max(0, restFaceH + topGap - 12 * (1 - Flags.appGap) * s)
 
@@ -490,7 +497,8 @@ ShellRoot {
              */
             Region {
                 id: revealRegion
-                readonly property real revealW: pill.stripBar ? Math.max(420 * pill.s, pill.stripFaceW) : 420 * pill.s
+                readonly property real revealW: pill.waybar ? overlay.width
+                    : (pill.stripBar ? Math.max(420 * pill.s, pill.stripFaceW) : 420 * pill.s)
                 readonly property real revealH: 10 * pill.s
                 x: Math.max(0, overlay.width / 2 - revealW / 2)
                 y: 0
@@ -708,7 +716,7 @@ ShellRoot {
                  */
                 DropArea {
                     id: stripDrop
-                    width: pill.stripBar ? Math.max(420 * overlay.s, pill.width) : 420 * overlay.s
+                    width: (pill.stripBar || pill.waybar) ? Math.max(420 * overlay.s, pill.width) : 420 * overlay.s
                     height: 8 * overlay.s
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
@@ -735,7 +743,7 @@ ShellRoot {
                 Pill {
                     id: pill
                     anchors.top: parent.top
-                    anchors.topMargin: (pill.stripBar || pill.mode === "game") ? 0 : overlay.topGap
+                    anchors.topMargin: (pill.stripBar || pill.waybar || pill.mode === "game") ? 0 : overlay.topGap
                     anchors.horizontalCenter: parent.horizontalCenter
 
                     Behavior on anchors.topMargin {
@@ -777,12 +785,13 @@ ShellRoot {
                 OsdPopup {
                     id: osdPopup
                     anchors.top: parent.top
-                    anchors.topMargin: (pill.stripBar || pill.mode === "game") ? 0 : overlay.topGap
+                    anchors.topMargin: (pill.stripBar || pill.waybar || pill.mode === "game") ? 0 : overlay.topGap
                     anchors.horizontalCenter: parent.horizontalCenter
                     s: overlay.s
                     screenName: overlay.modelData.name
                     expanded: pill.expanded
-                    topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
+                    workspaceFlash: !pill.waybar
+                    topFlat: (pill.mode === "game" || pill.stripBar || pill.waybar) ? 1 : 0
                     suppressed: overlay.surfaceOpen || pill.held || pill.quickChoosing
                         || pill.quickCounting || pill.mode === "game" || (pill.toastActive && Notifs.toastCritical)
                 }

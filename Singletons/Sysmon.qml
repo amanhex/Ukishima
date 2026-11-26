@@ -25,6 +25,12 @@ Singleton {
     id: root
 
     property bool open: false
+    /**
+     * Keep polling for a surface that is always on screen, like the waybar
+     * display's load cluster. `open` remains the SYSTEM surface's own gate, so
+     * closing that surface never stops an ambient bar from refreshing.
+     */
+    property bool ambient: false
 
     property int cpu: 0
     property int cpuTemp: -1
@@ -120,6 +126,7 @@ Singleton {
     }
 
     onOpenChanged: if (open) primeAll()
+    onAmbientChanged: if (ambient) primeAll()
 
     function fmtUptime(sec) {
         var d = Math.floor(sec / 86400);
@@ -160,7 +167,7 @@ Singleton {
                 }
                 if (root.gpuVendor.length === 0)
                     root.gpuVendor = "none";
-                if (root.open)
+                if (root.open || root.ambient)
                     root.primeAll();
             }
         }
@@ -275,21 +282,21 @@ Singleton {
 
     Timer {
         interval: 500
-        running: root.open
+        running: root.open || root.ambient
         repeat: true
         onTriggered: if (!fastProc.running) fastProc.running = true
     }
 
     Timer {
         interval: 1000
-        running: root.open && root.hasGpu
+        running: (root.open || root.ambient) && root.hasGpu
         repeat: true
         onTriggered: if (!gpuProc.running) gpuProc.running = true
     }
 
     Timer {
         interval: 5000
-        running: root.open
+        running: root.open || root.ambient
         repeat: true
         onTriggered: if (!slowProc.running) slowProc.running = true
     }

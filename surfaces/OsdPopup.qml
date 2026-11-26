@@ -19,6 +19,8 @@ Item {
     property string screenName: ""
     property bool suppressed: false
     property bool expanded: false
+    /** Waybar mode draws workspaces itself; suppress its redundant flash. */
+    property bool workspaceFlash: true
 
     /**
      * 1 when the popup should dock flush to the screen top like the strip bar
@@ -84,5 +86,6 @@ Item {
         screenName: popup.screenName
         suppressed: popup.suppressed
         expanded: popup.expanded
+        workspaceFlash: popup.workspaceFlash
     }
 }

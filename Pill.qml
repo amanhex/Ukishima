@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
 import Quickshell.Bluetooth
+import Quickshell.Services.Pipewire
 import "Singletons"
 import "components"
 import "surfaces"
@@ -201,6 +202,39 @@ Item {
      * exactly like the other faces.
      */
     readonly property bool stripBar: Flags.mainDisplay === "strip"
+
+    /**
+     * The "waybar" main display: an edge-to-edge top bar instead of a centred
+     * capsule. Rest holds the classic waybar modules (workspaces and load on
+     * the left, clock centred, audio/radios/battery/inbox on the right); the
+     * chevron at the far right expands the regular hover face so every surface
+     * is still one click away. Auto-hide keeps working: the top edge reveals
+     * the bar, a click latches it open.
+     */
+    readonly property bool waybar: Flags.mainDisplay === "waybar"
+
+    /**
+     * Waybar chrome variant (see `Flags.styleWaybar`). Only read while `waybar`
+     * is on; the settings surface hides the picker otherwise.
+     *
+     *  flat     edge-to-edge slab, plain modules
+     *  pills    slab plus a rounded chip behind every module
+     *  islands  no slab; three floating rounded groups
+     *  capsule  one rounded bar inset from the screen edges
+     *  minimal  no chrome at all, modules over the wallpaper
+     */
+    readonly property string waybarStyle: Flags.styleWaybar || "flat"
+    readonly property bool waybarChips: waybarStyle === "pills"
+    readonly property bool waybarIslands: waybarStyle === "islands"
+    readonly property bool waybarCapsule: waybarStyle === "capsule"
+    readonly property bool waybarBare: waybarStyle === "minimal"
+
+    /** The bar's slab fill, shared by the slab, the islands and the chips' host. */
+    readonly property color waybarPanel: Qt.alpha(Theme.tileBg,
+        Flags.glass ? Math.min(0.95, 0.8 * Flags.pillOpacity) : Flags.pillOpacity)
+
+    /** Chip / island tint, an overlay that reads on light and dark walls. */
+    readonly property color waybarChipBg: Qt.alpha(Theme.cream, 0.08)
 
     /**
      * True when this pill sits on the monitor Hyprland currently has focused.
@@ -978,7 +1012,9 @@ Item {
      */
     readonly property var modeSize: ({
         toast: () => Qt.size(toastW, toastLoader.item ? toastLoader.item.implicitHeight + 24 * s : restH),
-        hover: () => Qt.size(hoverW, hoverH),
+        hover: () => pill.waybar
+            ? Qt.size(pill.barWidth, hoverH)
+            : Qt.size(hoverW, hoverH),
         quickChoose: () => Qt.size(quickChooseW, quickChooseH),
         quickCount:  () => Qt.size(quickCountW, quickCountH),
         dragOver:    () => Qt.size(dragOverW, dragOverH),
@@ -988,9 +1024,12 @@ Item {
     /**
      * The pill's resting size for the current display mode.
      */
-    readonly property size restSize: stripBar
-        ? Qt.size(Math.max(restW, stripFaceW), restH)
-        : Qt.size(Math.max(restW, restRow.implicitWidth + 36 * s), restH)
+    readonly property real barWidth: Math.max(restW, barWindow ? barWindow.width : 0)
+    readonly property size restSize: waybar
+        ? Qt.size(barWidth, restH)
+        : (stripBar
+            ? Qt.size(Math.max(restW, stripFaceW), restH)
+            : Qt.size(Math.max(restW, restRow.implicitWidth + 36 * s), restH))
 
     readonly property size targetSize: {
         const sf = surfaces[mode];
@@ -1073,7 +1112,7 @@ Item {
 
     LiquidGlass {
         id: bud
-        readonly property bool shown: pill.mode === "hover" && pill.hasMedia
+        readonly property bool shown: pill.mode === "hover" && pill.hasMedia && !pill.waybar
         property real budR: (budArea.containsMouse ? 15 : 12) * pill.s
         width: budR * 2
         height: budR * 2
@@ -1129,6 +1168,44 @@ Item {
     }
 
     /**
+     * The waybar module chip: the rounded background waybar configs put behind
+     * each module. The caller sizes it (usually anchored to its module with a
+     * negative margin so the chip's padding wraps the content). Only drawn for
+     * the "pills" style; all other styles leave it invisible.
+     */
+    component WbChip: Rectangle {
+        radius: 6 * pill.s
+        color: pill.waybarChipBg
+    }
+
+    /**
+     * The waybar face's slab: a flat bar fill, not the glass pill. It honours
+     * the same Transparency-mode switch the glass does — opaque while
+     * transparency is off, translucent (scaled by the pill-opacity setting)
+     * while it is on — so a waybar bar never stays see-through against the
+     * setting, and never turns glassy when the user asked for a flat bar.
+     *
+     * The `waybarStyle` variant reshapes it: flat/pills fill the pill
+     * edge-to-edge, capsule insets it into a floating rounded bar, islands
+     * steps aside while resting (the group islands in `waybarFace` take over)
+     * and minimal removes it.
+     */
+    Rectangle {
+        id: waybarBg
+        readonly property bool resting: pill.mode === "rest"
+        readonly property bool inset: pill.waybarCapsule || pill.waybarIslands
+        visible: pill.waybar && (pill.mode === "rest" || pill.mode === "hover")
+            && !pill.waybarBare && !(pill.waybarIslands && resting)
+        anchors.fill: parent
+        anchors.leftMargin: inset ? 10 * pill.s : 0
+        anchors.rightMargin: inset ? 10 * pill.s : 0
+        anchors.topMargin: pill.waybarCapsule ? 5 * pill.s : (pill.waybarIslands ? 8 * pill.s : 0)
+        anchors.bottomMargin: pill.waybarCapsule ? 5 * pill.s : (pill.waybarIslands ? 8 * pill.s : 0)
+        radius: pill.waybarCapsule ? height / 2 : (pill.waybarIslands ? 12 * pill.s : 0)
+        color: pill.waybarPanel
+    }
+
+    /**
      * The flagship slab: translucent regular glass — a palette-tinted slab
      * over the transparent window, the exact legacy flat gradient (scaled by
      * the user's own translucency) when glass is off. Hover lifts sheen, an
@@ -1139,6 +1216,16 @@ Item {
         anchors.fill: parent
 
         /**
+         * The waybar display paints its own flat slab (waybarFace), so the glass
+         * pill is faded out for the bar's rest and drawer states and only returns
+         * when a surface morphs open.
+         */
+        readonly property bool waybarFlat: pill.waybar && (pill.mode === "rest" || pill.mode === "hover")
+        opacity: waybarFlat ? 0 : 1
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: Motion.pillFast } }
+
+        /**
          * Corner flatness rides the morph curve so docking into the game bar
          * squares the corners as one continuous shape change instead of a snap.
          * The strip docks flush to the screen edge, so its top corners square
@@ -1146,7 +1233,7 @@ Item {
          */
         property real gameFlat: pill.mode === "game" ? 1 : 0
         Behavior on gameFlat { NumberAnimation { duration: Motion.pillMorph; easing.type: Motion.pillEase; easing.bezierCurve: Motion.morphCurve } }
-        property real topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
+        property real topFlat: (pill.mode === "game" || pill.stripBar || pill.waybar) ? 1 : 0
         Behavior on topFlat { NumberAnimation { duration: Motion.pillMorph; easing.type: Motion.pillEase; easing.bezierCurve: Motion.morphCurve } }
 
         radius: pill.morphRadius
@@ -1170,7 +1257,7 @@ Item {
          * off-screen (nobody sees the shadow there) — the layer's FBO and the
          * per-frame update only exist while the pill is actually visible.
          */
-        layer.enabled: !pill.morphing && !pill.hidden
+        layer.enabled: !pill.morphing && !pill.hidden && !body.waybarFlat
         layer.effect: MultiEffect {
             shadowEnabled: true
             shadowColor: Qt.rgba(0, 0, 0, Theme.shadowOpacity)
@@ -1276,7 +1363,7 @@ Item {
     onHoveredChanged: {
         if (hovered && pill.mode !== "game") {
             if (!Flags.autoHide && Flags.expandTo === "media" && pill.hasMedia
-                && !pill.surfaceOpen && !pill.dragActive
+                && !pill.surfaceOpen && !pill.dragActive && !pill.waybar
                 && !quickChoosing && !quickCounting
                 && bootSettled && !toastActive) {
                 /* expandTo "media" with auto-hide off: a hover grows the pill
@@ -1289,7 +1376,7 @@ Item {
                 && !quickChoosing && !quickCounting) {
                 revealSession = true;
                 revealTimer.stop();
-            } else if (bootSettled && !revealSession && !toastActive) {
+            } else if (bootSettled && !revealSession && !toastActive && !pill.waybar) {
                 /* A toast owns the pill; hovering it must not latch an expansion
                  * underneath, or the pill stays open once the toast is dismissed. */
                 hoverLatch = true;
@@ -2121,6 +2208,604 @@ Item {
             }
         }
 
+        /**
+         * Waybar face: the resting and expanded state of the "waybar" display.
+         * It is a flat, edge-to-edge bar — a near-opaque slab with plain text
+         * modules and no rounded pill chrome — mirroring the layout of the
+         * user's own waybar config: workspace numbers, cpu/memory/temperature
+         * on the left, the clock centred, and volume, battery, idle-inhibitor,
+         * network, bluetooth and notifications on the right.
+         *
+         * The module row is the whole bar. Expanding (the chevron, or a tap on
+         * empty bar) replaces it in place: the bar grows downward into a wider
+         * flat panel carrying the extra modules the resting bar omits — tray,
+         * weather and every surface shortcut — and the module row steps aside
+         * while that panel is open.
+         */
+        Item {
+            id: waybarFace
+            visible: pill.specialView === "" && pill.waybar
+            anchors.fill: parent
+
+            readonly property bool live: pill.mode === "rest" || pill.mode === "hover"
+            readonly property bool open: pill.mode === "hover"
+            readonly property var sink: Pipewire.defaultAudioSink
+            readonly property bool muted: sink && sink.audio ? sink.audio.muted : false
+            readonly property int vol: sink && sink.audio
+                ? Math.round(Math.max(0, Math.min(1, sink.audio.volume)) * 100) : 0
+
+            /** Compress a workspace id to a waybar-style label: "5", or "WO" for specials. */
+            function wsLabel(name) {
+                const t = String(name);
+                return t.indexOf("special:") === 0 ? t.slice(8, 10).toUpperCase() : t;
+            }
+
+            /** Fixed-height top band: the modules sit in a single row, like the bar. */
+            Item {
+                id: barBand
+                anchors.top: parent.top
+                width: parent.width
+                height: pill.restH
+
+                /**
+                 * "islands" chrome: the three groups float as separate rounded
+                 * slabs. Drawn before the rows below so they paint behind them.
+                 */
+                Rectangle {
+                    visible: pill.waybarIslands
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: barLeft.left
+                    anchors.leftMargin: -8 * pill.s
+                    width: barLeft.width + 16 * pill.s
+                    height: 28 * pill.s
+                    radius: 9 * pill.s
+                    color: pill.waybarPanel
+                    border.width: 1
+                    border.color: Theme.hairSoft
+                }
+
+                Rectangle {
+                    visible: pill.waybarIslands
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: clockItem.width + 24 * pill.s
+                    height: 28 * pill.s
+                    radius: 9 * pill.s
+                    color: pill.waybarPanel
+                    border.width: 1
+                    border.color: Theme.hairSoft
+                }
+
+                Rectangle {
+                    visible: pill.waybarIslands
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: barRight.right
+                    anchors.rightMargin: -8 * pill.s
+                    width: barRight.width + 16 * pill.s
+                    height: 28 * pill.s
+                    radius: 9 * pill.s
+                    color: pill.waybarPanel
+                    border.width: 1
+                    border.color: Theme.hairSoft
+                }
+
+                Row {
+                    id: barLeft
+                    anchors.left: parent.left
+                    anchors.leftMargin: (pill.waybarIslands ? 16 : 10) * pill.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 13 * pill.s
+
+                    /** Workspace numbers with the active one brightened, waybar's left module. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: wsRow.implicitWidth
+                        height: wsRow.implicitHeight
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        Row {
+                            id: wsRow
+                            anchors.centerIn: parent
+                            spacing: 1 * pill.s
+
+                            Repeater {
+                                model: Wm.workspacesFor(pill.screenName)
+
+                                delegate: Item {
+                                    id: wsBtn
+                                    required property var modelData
+
+                                    readonly property bool isActive: String(modelData.name) === Wm.activeWorkspaceName(pill.screenName)
+                                    readonly property bool occupied: {
+                                        const wins = Wm.windows;
+                                        for (let i = 0; i < wins.length; i++) {
+                                            const w = wins[i];
+                                            if (w && w.workspace && String(w.workspace.name) === String(modelData.name))
+                                                return true;
+                                        }
+                                        return false;
+                                    }
+
+                                    width: Math.max(19 * pill.s, wsNum.implicitWidth + 12 * pill.s)
+                                    height: 22 * pill.s
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 5 * pill.s
+                                        color: wsArea.containsMouse ? Qt.alpha(Theme.cream, 0.1) : "transparent"
+                                    }
+                                    Text {
+                                        id: wsNum
+                                        anchors.centerIn: parent
+                                        text: waybarFace.wsLabel(modelData.name)
+                                        color: wsBtn.isActive ? Theme.cream
+                                            : (wsBtn.occupied ? Qt.alpha(Theme.cream, 0.72) : Theme.dim)
+                                        font.family: Theme.fontMono
+                                        font.pixelSize: 12.5 * pill.s
+                                        font.weight: wsBtn.isActive ? Font.Bold : Font.Medium
+                                    }
+                                    MouseArea {
+                                        id: wsArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        enabled: waybarFace.live
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: Wm.activateWorkspace(modelData)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    /** Load cluster: cpu / memory / temperature, the waybar's left modules. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: loadRow.implicitWidth
+                        height: loadRow.implicitHeight
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        Row {
+                            id: loadRow
+                            spacing: 11 * pill.s
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "CPU " + Sysmon.cpu + "%"
+                                color: loadArea.containsMouse ? Theme.cream : Theme.iconDim
+                                font.family: Theme.fontMono
+                                font.pixelSize: 12 * pill.s
+                                font.weight: Font.Medium
+                                font.features: { "tnum": 1 }
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "RAM " + Sysmon.memUsedGb.toFixed(1) + "G"
+                                color: loadArea.containsMouse ? Theme.cream : Theme.iconDim
+                                font.family: Theme.fontMono
+                                font.pixelSize: 12 * pill.s
+                                font.weight: Font.Medium
+                                font.features: { "tnum": 1 }
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Sysmon.cpuTemp >= 0
+                                text: Sysmon.cpuTemp + "°C"
+                                color: loadArea.containsMouse ? Theme.cream
+                                    : (Sysmon.cpuTemp >= 85 ? Theme.vermLit : Theme.iconDim)
+                                font.family: Theme.fontMono
+                                font.pixelSize: 12 * pill.s
+                                font.weight: Font.Medium
+                                font.features: { "tnum": 1 }
+                            }
+                        }
+
+                        MouseArea {
+                            id: loadArea
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            hoverEnabled: true
+                            enabled: waybarFace.live
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: pill.requestSurface("sysmon")
+                        }
+                    }
+                }
+
+                /** Centre module: the clock. */
+                Item {
+                    id: clockItem
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: barClock.implicitWidth
+                    height: barClock.implicitHeight
+
+                    WbChip {
+                        anchors.fill: parent
+                        anchors.margins: -6 * pill.s
+                        visible: pill.waybarChips
+                    }
+
+                    Text {
+                        id: barClock
+                        anchors.centerIn: parent
+                        text: clock.hhmm
+                        color: Theme.cream
+                        font.family: Theme.fontMono
+                        font.pixelSize: 13.5 * pill.s
+                        font.weight: Font.Medium
+                        font.features: { "tnum": 1 }
+                    }
+
+                    MouseArea {
+                        anchors.centerIn: parent
+                        width: barClock.implicitWidth + 16 * pill.s
+                        height: 22 * pill.s
+                        hoverEnabled: true
+                        enabled: waybarFace.live
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pill.requestSurface("calendar")
+                    }
+                }
+
+                Row {
+                    id: barRight
+                    anchors.right: parent.right
+                    anchors.rightMargin: (pill.waybarIslands ? 16 : 10) * pill.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 13 * pill.s
+
+                    /** Volume: click opens the sound surface, right-click mutes, wheel steps. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: barAudioRow.implicitWidth
+                        height: 16 * pill.s
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        Row {
+                            id: barAudioRow
+                            anchors.centerIn: parent
+                            spacing: 3 * pill.s
+
+                            GlyphIcon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 14 * pill.s
+                                height: 14 * pill.s
+                                name: waybarFace.muted ? "speaker-off" : "speaker"
+                                color: (waybarFace.muted || barAudioArea.containsMouse) ? Theme.vermLit : Theme.iconDim
+                                stroke: 1.7
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: waybarFace.vol + "%"
+                                color: barAudioArea.containsMouse ? Theme.cream : (waybarFace.muted ? Theme.vermLit : Theme.iconDim)
+                                font.family: Theme.fontMono
+                                font.pixelSize: 12 * pill.s
+                                font.weight: Font.Medium
+                                font.features: { "tnum": 1 }
+                            }
+                        }
+
+                        MouseArea {
+                            id: barAudioArea
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            hoverEnabled: true
+                            enabled: waybarFace.live
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: (e) => {
+                                if (e.button === Qt.RightButton) {
+                                    if (waybarFace.sink && waybarFace.sink.audio)
+                                        waybarFace.sink.audio.muted = !waybarFace.sink.audio.muted;
+                                    return;
+                                }
+                                pill.requestSurface("sound");
+                            }
+                            onWheel: (e) => {
+                                if (waybarFace.sink && waybarFace.sink.audio) {
+                                    const step = e.angleDelta.y > 0 ? 0.05 : -0.05;
+                                    waybarFace.sink.audio.volume = Math.max(0, Math.min(1, waybarFace.sink.audio.volume + step));
+                                }
+                            }
+                        }
+                    }
+
+                    /** Battery. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: Battery.present
+                        width: barBattRow.implicitWidth
+                        height: 16 * pill.s
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        Row {
+                            id: barBattRow
+                            anchors.centerIn: parent
+                            spacing: 3 * pill.s
+
+                            GlyphIcon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Battery.charging
+                                width: 12 * pill.s
+                                height: 12 * pill.s
+                                name: "bolt"
+                                color: Battery.low ? Theme.vermLit : Theme.iconDim
+                                stroke: 1.7
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: Battery.pct + "%"
+                                color: Battery.low ? Theme.vermLit
+                                    : (Battery.charging ? Theme.flameGlow : (battArea.containsMouse ? Theme.cream : Theme.iconDim))
+                                font.family: Theme.fontMono
+                                font.pixelSize: 12 * pill.s
+                                font.weight: Battery.charging ? Font.DemiBold : Font.Medium
+                                font.features: { "tnum": 1 }
+                            }
+                        }
+
+                        MouseArea {
+                            id: battArea
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            hoverEnabled: true
+                            enabled: waybarFace.live
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: pill.requestSurface("battery")
+                        }
+                    }
+
+                    /** Idle inhibitor: lit while keep-awake holds, click toggles. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 15 * pill.s
+                        height: 15 * pill.s
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        GlyphIcon {
+                            anchors.fill: parent
+                            name: "eye-off"
+                            color: Flags.keepAwake ? Theme.vermLit
+                                : (awakeArea.containsMouse ? Theme.cream : Qt.alpha(Theme.iconDim, 0.75))
+                            stroke: 1.7
+                        }
+
+                        MouseArea {
+                            id: awakeArea
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            hoverEnabled: true
+                            enabled: waybarFace.live
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Flags.keepAwake = !Flags.keepAwake
+                        }
+                    }
+
+                    /** Network. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: pill.wifiDev !== null
+                        width: 15 * pill.s
+                        height: 15 * pill.s
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        WifiGlyph {
+                            anchors.centerIn: parent
+                            s: pill.s
+                            level: pill.wifiLevel
+                            on: pill.wifiOn
+                            stroke: 1.7
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            hoverEnabled: true
+                            enabled: waybarFace.live
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: (e) => {
+                                if (e.button === Qt.RightButton) {
+                                    if (typeof Networking !== "undefined" && Networking)
+                                        Networking.wifiEnabled = !Networking.wifiEnabled;
+                                    return;
+                                }
+                                pill.requestSurface("wifi");
+                            }
+                        }
+                    }
+
+                    /** Bluetooth. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: pill.btAdapter !== null
+                        width: 15 * pill.s
+                        height: 15 * pill.s
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        GlyphIcon {
+                            anchors.fill: parent
+                            name: "bluetooth"
+                            color: barBtArea.containsMouse ? Theme.cream
+                                : (pill.btOn ? Theme.iconDim : Qt.alpha(Theme.iconDim, 0.4))
+                            stroke: 1.7
+                        }
+
+                        MouseArea {
+                            id: barBtArea
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            hoverEnabled: true
+                            enabled: waybarFace.live
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: (e) => {
+                                if (e.button === Qt.RightButton) {
+                                    if (pill.btAdapter)
+                                        pill.btAdapter.enabled = !pill.btAdapter.enabled;
+                                    return;
+                                }
+                                pill.requestSurface("bt");
+                            }
+                        }
+                    }
+
+                    /** Notifications, with the unread pip. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 16 * pill.s
+                        height: 16 * pill.s
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        GlyphIcon {
+                            anchors.fill: parent
+                            name: "inbox"
+                            color: Flags.dnd ? Theme.vermLit
+                                : (barInboxArea.containsMouse ? Theme.cream : Theme.iconDim)
+                            stroke: 1.7
+                        }
+                        Rectangle {
+                            visible: Notifs.unread > 0
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.topMargin: -2 * pill.s
+                            anchors.rightMargin: -2 * pill.s
+                            width: 5 * pill.s
+                            height: 5 * pill.s
+                            radius: width / 2
+                            color: Theme.flameGlow
+                        }
+
+                        MouseArea {
+                            id: barInboxArea
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            hoverEnabled: true
+                            enabled: waybarFace.live
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: (e) => {
+                                if (e.button === Qt.RightButton) {
+                                    Flags.dnd = !Flags.dnd;
+                                    return;
+                                }
+                                pill.requestSurface("link");
+                            }
+                        }
+                    }
+
+                    /** Media player: opens the player when something is playing. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: pill.hasMedia
+                        width: 16 * pill.s
+                        height: 16 * pill.s
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        GlyphIcon {
+                            anchors.fill: parent
+                            name: "play"
+                            color: barMediaArea.containsMouse ? Theme.cream : Theme.iconDim
+                            stroke: 1.7
+                        }
+
+                        MouseArea {
+                            id: barMediaArea
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            hoverEnabled: true
+                            enabled: waybarFace.live
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: pill.requestSurface("media")
+                        }
+                    }
+
+                    /** Expand toggle: opens/closes the drawer below the bar. */
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 16 * pill.s
+                        height: 16 * pill.s
+
+                        WbChip {
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            visible: pill.waybarChips
+                        }
+
+                        GlyphIcon {
+                            anchors.fill: parent
+                            name: waybarFace.open ? "chevron-up" : "chevron-down"
+                            color: chevronArea.containsMouse ? Theme.cream : Theme.iconDim
+                            stroke: 1.7
+                        }
+
+                        MouseArea {
+                            id: chevronArea
+                            anchors.fill: parent
+                            anchors.margins: -5 * pill.s
+                            hoverEnabled: true
+                            enabled: waybarFace.live
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (waybarFace.open) {
+                                    pill.expandLatch = false;
+                                    pill.hoverLatch = false;
+                                } else {
+                                    pill.hoverLatch = true;
+                                    pill.expandLatch = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         TextMetrics {
             id: stripTitleMetrics
             text: Players.title
@@ -2131,7 +2816,7 @@ Item {
 
         Row {
             id: restRow
-            visible: !pill.stripBar
+            visible: !pill.stripBar && !pill.waybar
             anchors.centerIn: parent
             spacing: 9 * pill.s
             Item {
@@ -3119,6 +3804,41 @@ Item {
                 }
             }
         }
+
+        /**
+         * Collapse affordance for the waybar expanded view: the module row's
+         * chevron is gone with the rest face, so the expanded face carries its
+         * own. It sits at the bar's right edge, where the bar's expand control
+         * was.
+         */
+        Item {
+            anchors.right: parent.right
+            anchors.rightMargin: (bud.shown ? bud.budR * 2 : 0) + 14 * pill.s
+            anchors.verticalCenter: parent.verticalCenter
+            visible: pill.waybar
+            width: 18 * pill.s
+            height: 18 * pill.s
+
+            GlyphIcon {
+                anchors.fill: parent
+                name: "chevron-up"
+                color: collapseArea.containsMouse ? Theme.cream : Theme.iconDim
+                stroke: 1.7
+            }
+
+            MouseArea {
+                id: collapseArea
+                anchors.fill: parent
+                anchors.margins: -5 * pill.s
+                hoverEnabled: true
+                enabled: hover.live
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    pill.expandLatch = false;
+                    pill.hoverLatch = false;
+                }
+            }
+        }
     }
 
     /**
@@ -3270,7 +3990,7 @@ sourceComponent: Media {
             s: pill.s
             open: pill.mediaOpen
             morphCloseness: pill.morphCloseness
-            topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
+            topFlat: (pill.mode === "game" || pill.stripBar || pill.waybar) ? 1 : 0
             pinned: pill.pinned
             onRequestClose: pill.requestClose()
             onRequestExpand: {
@@ -3572,6 +4292,7 @@ sourceComponent: Media {
         screenName: pill.screenName
         suppressed: pill.surfaceOpen || pill.held
         expanded: pill.expanded
+        workspaceFlash: !pill.waybar
         visible: false
         enabled: false
     }

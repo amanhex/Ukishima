@@ -63,7 +63,12 @@ Item {
      * the active one marked, so the OSD would only be a redundant morph.
      */
     readonly property string activeWsName: Wm.activeWorkspaceName(screenName)
-    onActiveWsNameChanged: if (activeWsName.length > 0 && !expanded) flash("workspace");
+    /**
+     * Waybar mode shows the live workspace numbers in the bar itself, so the
+     * flash would repeat what the bar already reports. The owner turns it off.
+     */
+    property bool workspaceFlash: true
+    onActiveWsNameChanged: if (workspaceFlash && activeWsName.length > 0 && !expanded) flash("workspace");
 
     /**
      * Media (track) flashes are intentionally disabled: a playing browser throws

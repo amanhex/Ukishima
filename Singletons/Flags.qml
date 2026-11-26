@@ -107,6 +107,11 @@ Singleton {
     property alias styleSysmon: adapter.styleSysmon
     property alias styleScratch: adapter.styleScratch
     property alias styleLock: adapter.styleLock
+    //* Chrome variant for the "waybar" display: "flat" (edge-to-edge slab),
+    //* "pills" (slab + a rounded chip per module), "islands" (no slab, three
+    //* floating group islands), "capsule" (one inset rounded bar) or "minimal"
+    //* (modules over the wallpaper, no chrome). Only shown while waybar is selected.
+    property alias styleWaybar: adapter.styleWaybar
 
     //* Right-click walk: the bar opens the collapsed pill, the media surface
     //* and the timer as its three fixed stops, then these two, wrapping back to
@@ -170,7 +175,7 @@ Singleton {
             property bool keepAwake: false
             property bool time12h: false
             property bool clockSeconds: false
-            //* Collapsed-pill face: "minimal" (glyph + time), "classic" (date + time), "system" (weekday, time, workspace, layout, battery), "status" (workspace bars, time, wifi bars, battery icon) or "strip" (full-width top bar).
+            //* Collapsed-pill face: "minimal" (glyph + time), "classic" (date + time), "system" (weekday, time, workspace, layout, battery), "status" (workspace bars, time, wifi bars, battery icon), "strip" (compact top-centre notch) or "waybar" (edge-to-edge top bar: workspaces + load left, clock centre, audio/radios/battery/inbox right, chevron to expand).
             property string mainDisplay: "minimal"
             //* What the media card's Expand control opens: "media" keeps the surface as the main screen, "pill" swaps to the expanded pill. With auto-hide off, "media" also makes hovering the resting pill grow into the player.
             property string expandTo: "pill"
@@ -258,6 +263,7 @@ Singleton {
             property string styleSysmon: "default"
             property string styleScratch: "default"
             property string styleLock: "default"
+            property string styleWaybar: "flat"
             //* Drop closed surfaces after their own idle tier instead of holding them in RAM all session.
             property bool memorySaver: true
             //* Wallpaper-tier idle in seconds when memorySaver is on; the other tiers scale off it.
