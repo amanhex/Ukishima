@@ -25,7 +25,7 @@ SettingsSurface {
      */
     readonly property var allRows: [
         { item: pillRow, kind: "seg", vals: ["minimal", "classic", "system", "status", "strip", "waybar"], get: function () { return Flags.mainDisplay; }, set: function (v) { Flags.mainDisplay = v; } },
-        { item: waybarStyleRow, kind: "seg", vals: ["flat", "pills", "islands", "capsule", "minimal"], get: function () { return Flags.styleWaybar || "flat"; }, set: function (v) { Flags.styleWaybar = v; } },
+        { item: waybarStyleRow, kind: "seg", vals: ["flat", "rail", "islands", "capsule", "minimal"], get: function () { return Flags.styleWaybar || "flat"; }, set: function (v) { Flags.styleWaybar = v; } },
         { item: mediaStyleRow, kind: "seg", vals: ["default", "rail", "sleeve", "ledger", "matrix", "title"], get: function () { return Flags.styleMedia; }, set: function (v) { Flags.styleMedia = v; } },
         { item: mixerStyleRow, kind: "seg", vals: ["default", "comb", "slats", "stipple", "weave"], get: function () { return Flags.styleMixer; }, set: function (v) { Flags.styleMixer = v; } },
         { item: sysmonStyleRow, kind: "seg", vals: ["default", "rail", "ledger", "matrix", "title"], get: function () { return Flags.styleSysmon; }, set: function (v) { Flags.styleSysmon = v; } },
@@ -86,7 +86,7 @@ SettingsSurface {
             s: root.s
             options: [
                 { label: "Flat", value: "flat" },
-                { label: "Pills", value: "pills" },
+                { label: "Rail", value: "rail" },
                 { label: "Islands", value: "islands" },
                 { label: "Capsule", value: "capsule" },
                 { label: "Minimal", value: "minimal" }

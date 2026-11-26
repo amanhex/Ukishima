@@ -99,6 +99,12 @@ Item {
         if (pill.prevSurface.length > 0 && pill.prevSurface !== pill.surface)
             pill.scheduleUnload(pill.prevSurface);
         pill.prevSurface = pill.surface;
+        /* Build the loader before waybarPopupSize runs. If the size binding were the
+           thing that activated it, the new item's anchors would read the host width
+           that binding is still sizing, and QML reports that as a binding loop.
+           Activating here is a plain handler write, so nothing re-enters. */
+        if (pill.waybar && pill.surface.length > 0)
+            pill.surfaceItem(pill.surface);
         /* Latch the presented name so a closing waybar card keeps its geometry while it fades. */
         if (pill.surface.length > 0)
             pill.waybarPopupName = pill.surface;
@@ -228,16 +234,27 @@ Item {
      * is on; the settings surface hides the picker otherwise.
      *
      *  flat     edge-to-edge slab, plain modules
-     *  pills    slab plus a rounded chip behind every module
+     *  rail     slab, plain modules, a centred clock tag and a hairline rail
      *  islands  no slab; three floating rounded groups
      *  capsule  one content-hugging island centred on the screen
      *  minimal  no chrome at all, modules over the wallpaper
      */
     readonly property string waybarStyle: Flags.styleWaybar || "flat"
-    readonly property bool waybarChips: waybarStyle === "pills"
+    readonly property bool waybarRail: waybarStyle === "rail"
     readonly property bool waybarIslands: waybarStyle === "islands"
     readonly property bool waybarCapsule: waybarStyle === "capsule"
     readonly property bool waybarBare: waybarStyle === "minimal"
+
+    /**
+     * Capsule geometry, hoisted to the root so a surface card opened while the
+     * capsule is up can hang off the capsule's own end instead of the reserved
+     * bar height — the capsule floats short of the screen edges, so a card at
+     * `restH` reads as detached from it.
+     */
+    readonly property real waybarCapsuleH: 34 * s
+    readonly property real waybarCapsuleTop: (restH - waybarCapsuleH) / 2
+    /** Share of the bar the capsule fills at minimum, so it reads as a floating bar. */
+    readonly property real waybarCapsuleMinShare: 0.62
 
     /**
      * The expanded waybar face is a detached right-edge drawer, not a grown
@@ -279,7 +296,15 @@ Item {
         : Qt.size(0, 0)
     readonly property real waybarPopupW: Math.min(waybarPopupSize.width, barWidth - 16 * s)
     readonly property real waybarPopupH: waybarPopupSize.height
-    readonly property real waybarPopupY: restH + 8 * s
+    readonly property real waybarPopupY: {
+        /* Capsule mode: the capsule floats short of the bar's reserved height, so
+           a card with no module to anchor to (Settings, a drawer tile, an IPC
+           open) hangs off the capsule's own bottom edge instead of `restH`, which
+           would leave it visibly detached from the capsule. */
+        if (waybar && waybarCapsule && !waybarPopupAnchor)
+            return capsulePanel.mapToItem(pill, 0, capsulePanel.height).y + 6 * s;
+        return restH + 8 * s;
+    }
     readonly property real waybarPopupX: {
         if (!waybar || !waybarPopupName)
             return 0;
@@ -296,6 +321,15 @@ Item {
                 x = p.x;
             else
                 x = p.x + a.width - w;
+        } else if (pill.waybarCapsule && pill.waybarPopupAlign !== "center") {
+            /* Capsule mode, no module to hang from: align the card's right edge to
+               the capsule's own right end, read from the laid-out panel so it
+               tracks the capsule's width instead of a hardcoded offset. */
+            x = capsulePanel.mapToItem(pill, capsulePanel.width, 0).x - w;
+        } else if (pill.waybarPopupAlign === "center") {
+            /* No module to hang from: centre the card like a modal. The right-click
+               walk (media, timer) opens this way. */
+            x = (pill.width - w) / 2;
         }
         return Math.max(8 * s, Math.min(x, pill.width - w - 8 * s));
     }
@@ -1260,17 +1294,6 @@ Item {
     }
 
     /**
-     * The waybar module chip: the rounded background waybar configs put behind
-     * each module. The caller sizes it (usually anchored to its module with a
-     * negative margin so the chip's padding wraps the content). Only drawn for
-     * the "pills" style; all other styles leave it invisible.
-     */
-    component WbChip: Rectangle {
-        radius: 6 * pill.s
-        color: pill.waybarChipBg
-    }
-
-    /**
      * The waybar face's slab: a flat bar fill, not the glass pill. It honours
      * the same Transparency-mode switch the glass does — opaque while
      * transparency is off, translucent (scaled by the pill-opacity setting)
@@ -1559,6 +1582,8 @@ Item {
             const next = pill.cycleNext();
             if (next.length === 0)
                 pill.requestClose();
+            else if (pill.waybar)
+                pill.requestWaybarSurface(next, null, "center");
             else
                 pill.requestSurface(next);
         }
@@ -2382,6 +2407,41 @@ Item {
                 }
 
                 /**
+                 * "rail" chrome: the modules sit straight on the full-width slab.
+                 * No per-module pills — the only fills are a faint inverted clock
+                 * tag and a hairline rail under the bar, with the active
+                 * workspace as the single solid block.
+                 */
+                Rectangle {
+                    visible: pill.waybarRail
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: clockItem.width + 22 * pill.s
+                    height: 22 * pill.s
+                    radius: 7 * pill.s
+                    color: Qt.alpha(Theme.cream, 0.07)
+                    border.width: 1
+                    border.color: Theme.hairSoft
+                }
+
+                Rectangle {
+                    visible: pill.waybarRail
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin: 12 * pill.s
+                    anchors.rightMargin: 12 * pill.s
+                    height: 2 * pill.s
+                    radius: height / 2
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: "transparent" }
+                        GradientStop { position: 0.5; color: Qt.alpha(Theme.cream, 0.28) }
+                        GradientStop { position: 1.0; color: "transparent" }
+                    }
+                }
+
+                /**
                  * "capsule" chrome: a centred, content-hugging floating island
                  * detached from the screen edge — the short-bar look of the
                  * HANCORE themes, not a stretched full-width capsule.
@@ -2391,11 +2451,12 @@ Item {
                     visible: pill.waybarCapsule
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
-                    anchors.topMargin: 4 * pill.s
-                    width: Math.min(parent.width - 16 * pill.s,
-                        2 * Math.max(barLeft.implicitWidth, barRight.implicitWidth)
-                        + clockItem.width + 40 * pill.s)
-                    height: 30 * pill.s
+                    anchors.topMargin: pill.waybarCapsuleTop
+                    width: Math.min(parent.width - 24 * pill.s,
+                        Math.max(pill.waybarCapsuleMinShare * parent.width,
+                            barLeft.implicitWidth + clockItem.width
+                            + barRight.implicitWidth + 80 * pill.s))
+                    height: pill.waybarCapsuleH
                     radius: height / 2
                     color: pill.waybarPanel
                     border.width: 1
@@ -2405,21 +2466,15 @@ Item {
                 Row {
                     id: barLeft
                     anchors.left: pill.waybarCapsule ? capsulePanel.left : parent.left
-                    anchors.leftMargin: (pill.waybarCapsule ? 16 : (pill.waybarIslands ? 16 : 10)) * pill.s
+                    anchors.leftMargin: (pill.waybarCapsule ? 22 : (pill.waybarIslands ? 16 : 10)) * pill.s
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 13 * pill.s
+                    spacing: (pill.waybarCapsule ? 16 : 13) * pill.s
 
                     /** Workspace numbers with the active one brightened, waybar's left module. */
                     Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: wsRow.implicitWidth
                         height: wsRow.implicitHeight
-
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
 
                         Row {
                             id: wsRow
@@ -2450,14 +2505,16 @@ Item {
                                     Rectangle {
                                         anchors.fill: parent
                                         radius: 5 * pill.s
-                                        color: wsArea.containsMouse ? Qt.alpha(Theme.cream, 0.1) : "transparent"
+                                        color: (wsBtn.isActive && pill.waybarRail) ? Theme.cream
+                                            : (wsArea.containsMouse ? Qt.alpha(Theme.cream, 0.1) : "transparent")
                                     }
                                     Text {
                                         id: wsNum
                                         anchors.centerIn: parent
                                         text: waybarFace.wsLabel(modelData.name)
-                                        color: wsBtn.isActive ? Theme.cream
-                                            : (wsBtn.occupied ? Qt.alpha(Theme.cream, 0.72) : Theme.dim)
+                                        color: (wsBtn.isActive && pill.waybarRail) ? Theme.tileBg
+                                            : (wsBtn.isActive ? Theme.cream
+                                                : (wsBtn.occupied ? Qt.alpha(Theme.cream, 0.72) : Theme.dim))
                                         font.family: Theme.fontMono
                                         font.pixelSize: 12.5 * pill.s
                                         font.weight: wsBtn.isActive ? Font.Bold : Font.Medium
@@ -2481,12 +2538,6 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: loadRow.implicitWidth
                         height: loadRow.implicitHeight
-
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
 
                         Row {
                             id: loadRow
@@ -2544,12 +2595,6 @@ Item {
                     width: barClock.implicitWidth
                     height: barClock.implicitHeight
 
-                    WbChip {
-                        anchors.fill: parent
-                        anchors.margins: -6 * pill.s
-                        visible: pill.waybarChips
-                    }
-
                     Text {
                         id: barClock
                         anchors.centerIn: parent
@@ -2575,9 +2620,9 @@ Item {
                 Row {
                     id: barRight
                     anchors.right: pill.waybarCapsule ? capsulePanel.right : parent.right
-                    anchors.rightMargin: (pill.waybarCapsule ? 16 : (pill.waybarIslands ? 16 : 10)) * pill.s
+                    anchors.rightMargin: (pill.waybarCapsule ? 22 : (pill.waybarIslands ? 16 : 10)) * pill.s
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 13 * pill.s
+                    spacing: (pill.waybarCapsule ? 16 : 13) * pill.s
 
                     /** Volume: click opens the sound surface, right-click mutes, wheel steps. */
                     Item {
@@ -2585,12 +2630,6 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: barAudioRow.implicitWidth
                         height: 16 * pill.s
-
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
 
                         Row {
                             id: barAudioRow
@@ -2649,12 +2688,6 @@ Item {
                         width: barBattRow.implicitWidth
                         height: 16 * pill.s
 
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
-
                         Row {
                             id: barBattRow
                             anchors.centerIn: parent
@@ -2698,12 +2731,6 @@ Item {
                         width: 15 * pill.s
                         height: 15 * pill.s
 
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
-
                         GlyphIcon {
                             anchors.fill: parent
                             name: "eye-off"
@@ -2730,12 +2757,6 @@ Item {
                         visible: pill.wifiDev !== null
                         width: 15 * pill.s
                         height: 15 * pill.s
-
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
 
                         WifiGlyph {
                             anchors.centerIn: parent
@@ -2771,12 +2792,6 @@ Item {
                         width: 15 * pill.s
                         height: 15 * pill.s
 
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
-
                         GlyphIcon {
                             anchors.fill: parent
                             name: "bluetooth"
@@ -2810,12 +2825,6 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 16 * pill.s
                         height: 16 * pill.s
-
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
 
                         GlyphIcon {
                             anchors.fill: parent
@@ -2862,12 +2871,6 @@ Item {
                         width: 16 * pill.s
                         height: 16 * pill.s
 
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
-
                         GlyphIcon {
                             anchors.fill: parent
                             name: "play"
@@ -2891,12 +2894,6 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: 16 * pill.s
                         height: 16 * pill.s
-
-                        WbChip {
-                            anchors.fill: parent
-                            anchors.margins: -5 * pill.s
-                            visible: pill.waybarChips
-                        }
 
                         GlyphIcon {
                             anchors.fill: parent
@@ -4120,9 +4117,9 @@ Item {
                         width: (parent.width - 6 * pill.s) / 2
                         height: 30 * pill.s
                         radius: 9 * pill.s
-                        color: toggleArea.containsMouse ? Qt.alpha(Theme.cream, 0.12) : pill.waybarChipBg
-                        border.width: modelData.on ? 1 : 0
-                        border.color: Theme.vermLit
+                        color: modelData.on
+                            ? Qt.alpha(Theme.vermLit, toggleArea.containsMouse ? 0.26 : 0.16)
+                            : (toggleArea.containsMouse ? Qt.alpha(Theme.cream, 0.12) : pill.waybarChipBg)
 
                         Row {
                             anchors.centerIn: parent
@@ -4232,6 +4229,12 @@ Item {
      * In normal modes the host fills the pill, so the behaviour is unchanged. In
      * waybar mode the bar stays at rest and the host becomes the detached card
      * under the module that opened the surface, with its own flat backdrop.
+     *
+     * Waybar has no pill morph to hide a surface handoff, so each loader hides
+     * itself the moment another surface is opening: otherwise the outgoing
+     * surface stays anchored at the incoming card's geometry and cross-fades
+     * over it. The opacity is instant (no Behavior), and a close (surface "")
+     * leaves it, so the whole card can still fade out.
      */
     Item {
         id: surfaceHost
@@ -4267,6 +4270,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Mixer {
             s: pill.s
             open: pill.mixerOpen
@@ -4280,6 +4285,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: SoundSurface {
             s: pill.s
             open: pill.soundOpen
@@ -4293,6 +4300,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Calendar {
             s: pill.s
             open: pill.calendarOpen
@@ -4305,6 +4314,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: WeatherSurface {
             s: pill.s
             open: pill.weatherOpen
@@ -4318,6 +4329,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Launcher {
             s: pill.s
             open: pill.launcherOpen
@@ -4331,6 +4344,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Clipboard {
             s: pill.s
             open: pill.clipboardOpen
@@ -4344,6 +4359,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: FileTraySurface {
             s: pill.s
             open: pill.fileTrayOpen
@@ -4357,6 +4374,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Emoji {
             s: pill.s
             open: pill.emojiOpen
@@ -4370,6 +4389,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Scratchpad {
             s: pill.s
             open: pill.scratchOpen
@@ -4383,6 +4404,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Wallpaper {
             s: pill.s
             open: pill.wallpaperOpen
@@ -4396,6 +4419,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Power {
             s: pill.s
             open: pill.powerOpen
@@ -4409,6 +4434,8 @@ Item {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
 sourceComponent: Media {
             s: pill.s
             open: pill.mediaOpen
@@ -4429,6 +4456,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: TimerSurface {
             s: pill.s
             open: pill.timerOpen
@@ -4442,6 +4471,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Link {
             s: pill.s
             open: pill.linkOpen
@@ -4455,6 +4486,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: WifiSurface {
             s: pill.s
             open: pill.wifiOpen
@@ -4468,6 +4501,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: BtSurface {
             s: pill.s
             open: pill.btOpen
@@ -4481,6 +4516,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: BatterySurface {
             s: pill.s
             open: pill.batteryOpen
@@ -4494,6 +4531,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Recorder {
             s: pill.s
             screenName: pill.screenName
@@ -4508,6 +4547,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: SysmonSurface {
             s: pill.s
             open: pill.sysmonOpen
@@ -4521,6 +4562,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Appearance {
             s: pill.s * pill.settingsScale
             open: pill.appearanceOpen
@@ -4535,6 +4578,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: AppearanceSub {
             s: pill.s * pill.settingsScale
             open: pill.appcatOpen
@@ -4549,6 +4594,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: DisplaySurface {
             s: pill.s * pill.settingsScale
             open: pill.displayOpen
@@ -4563,6 +4610,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: ModulesSurface {
             s: pill.s * pill.settingsScale
             open: pill.modulesOpen
@@ -4577,6 +4626,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: ThemeSurface {
             s: pill.s * pill.settingsScale
             open: pill.themeOpen
@@ -4591,6 +4642,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: AccentSurface {
             s: pill.s * pill.settingsScale
             open: pill.accentOpen
@@ -4605,6 +4658,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: GlassSurface {
             s: pill.s * pill.settingsScale
             open: pill.glassOpen
@@ -4619,6 +4674,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: FontColorSurface {
             s: pill.s * pill.settingsScale
             open: pill.fontColorOpen
@@ -4633,6 +4690,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: InterfaceSurface {
             s: pill.s * pill.settingsScale
             open: pill.interfaceOpen
@@ -4647,6 +4706,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: RightClickSurface {
             s: pill.s * pill.settingsScale
             open: pill.rightClickOpen
@@ -4661,6 +4722,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: FontPicker {
             s: pill.s * pill.settingsScale
             open: pill.fontpickerOpen
@@ -4675,6 +4738,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: SurfaceStyles {
             s: pill.s * pill.settingsScale
             open: pill.surfacestylesOpen
@@ -4689,6 +4754,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: Profile {
             s: pill.s * pill.settingsScale
             open: pill.profileOpen
@@ -4703,6 +4770,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: UpdateSurface {
             s: pill.s * pill.settingsScale
             open: pill.updateOpen
@@ -4717,6 +4786,8 @@ sourceComponent: Media {
         parent: surfaceHost
         active: false
         anchors.fill: parent
+        /* Hide the outgoing surface on a waybar handoff (see surfaceHost). */
+        opacity: (pill.waybar && pill.surface.length > 0 && item && !item.open) ? 0 : 1
         sourceComponent: LockSettings {
             s: pill.s * pill.settingsScale
             open: pill.lockSettingsOpen

@@ -581,6 +581,8 @@ ShellRoot {
                             && mouse.y >= pill.waybarPopupY && mouse.y <= pill.waybarPopupY + pill.waybarPopupH;
                         if (!insideBar && !insidePopup)
                             root.close();
+                        else if (pill.waybar && insidePopup && mouse.y <= pill.waybarPopupY + 40 * pill.s)
+                            pill.surfaceBack();
                         else if (!pill.waybar && insideBar && mouse.y <= pillRegion.y + 40 * pill.s)
                             pill.surfaceBack();
                     } else {
