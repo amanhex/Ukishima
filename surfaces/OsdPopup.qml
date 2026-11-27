@@ -7,10 +7,9 @@ import "../components"
 
 /**
  * Standalone OSD overlay, fully decoupled from the pill. The pill never morphs
- * for volume/brightness/workspace flashes anymore; this capsule shows itself at
- * its final size, grows in from the screen top like a notch, holds for the
- * flash timeout, then shrinks away. Content stays at fixed geometry the whole
- * time, so the level bars never stretch with the transition.
+ * for volume/brightness/workspace flashes; this compact pill drops in below the
+ * bar, holds for the flash timeout, then fades away. Content stays at fixed
+ * geometry the whole time, so the level bar never stretches.
  */
 Item {
     id: popup
@@ -21,17 +20,6 @@ Item {
     property bool expanded: false
     /** Waybar mode draws workspaces itself; suppress its redundant flash. */
     property bool workspaceFlash: true
-
-    /**
-     * 1 when the popup should dock flush to the screen top like the strip bar
-     * (squared top corners); 0 for the rounded island capsule. Mirrors the
-     * pill's own top-flat rule so the OSD keeps each display mode's silhouette.
-     */
-    property real topFlat: 0
-    Behavior on topFlat { NumberAnimation { duration: Motion.morph; easing.type: Motion.easeMorph; easing.bezierCurve: Motion.morphCurve } }
-
-    /** Waybar flashes carry the richer card face. */
-    property bool waybar: false
 
     readonly property bool active: osd.flashing
 
@@ -44,8 +32,8 @@ Item {
     visible: opacity > 0.01
     Behavior on opacity { NumberAnimation { duration: active ? Motion.fast : 220; easing.type: Easing.OutCubic } }
 
-    transformOrigin: Item.Top
-    scale: active ? 1 : 0.68
+    transformOrigin: Item.Center
+    scale: active ? 1 : 0.9
     Behavior on scale {
         NumberAnimation {
             duration: active ? Motion.standard : Motion.fast
@@ -54,17 +42,13 @@ Item {
     }
 
     /**
-     * The translucent capsule: the same material as the pill, with a small
-     * veil so percentage and title copy keep contrast while flashing.
+     * The shell: the same material as the bar, a full-height capsule with a
+     * soft veil and a drop shadow so it reads as a floating overlay.
      */
     LiquidGlass {
         id: glass
         anchors.fill: parent
-        radius: waybar ? 16 * s : 22 * s
-        topLeftRadius: waybar ? 16 * s : 22 * s * (1 - topFlat)
-        topRightRadius: waybar ? 16 * s : 22 * s * (1 - topFlat)
-        bottomLeftRadius: waybar ? 16 * s : 22 * s
-        bottomRightRadius: waybar ? 16 * s : 22 * s
+        radius: height / 2
         style: "regular"
         legacyOpacity: Flags.pillOpacity
         accent: 0.08
@@ -83,15 +67,10 @@ Item {
     Osd {
         id: osd
         anchors.fill: parent
-        anchors.topMargin: 12 * s
-        anchors.leftMargin: waybar ? 15 * s : 18 * s
-        anchors.rightMargin: waybar ? 15 * s : 18 * s
-        anchors.bottomMargin: 12 * s
         s: popup.s
         screenName: popup.screenName
         suppressed: popup.suppressed
         expanded: popup.expanded
         workspaceFlash: popup.workspaceFlash
-        waybar: popup.waybar
     }
 }

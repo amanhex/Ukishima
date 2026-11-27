@@ -826,20 +826,21 @@ ShellRoot {
                     id: osdPopup
                     anchors.top: parent.top
                     anchors.topMargin: (pill.stripBar || pill.mode === "game") ? 0
-                        : (pill.waybar ? pill.restH + 8 * overlay.s : overlay.topGap)
-                    /**
-                     * mako/swaync-style card in waybar mode: the bar stays at
-                     * rest and the flash card drops in below its right end
-                     * instead of replacing the centred pill.
-                     */
-                    x: pill.waybar ? Math.max(8 * overlay.s, parent.width - width - 10 * overlay.s)
-                        : (parent.width - width) / 2
+                        : (pill.waybar ? (pill.hidden ? 12 * overlay.s : pill.restH + 8 * overlay.s) : overlay.topGap)
+                    /** Follow the bar's own slide when auto-hide pulls it off the top. */
+                    Behavior on anchors.topMargin {
+                        NumberAnimation {
+                            duration: Motion.pillMorph
+                            easing.type: Motion.pillEase
+                            easing.bezierCurve: Motion.morphCurve
+                        }
+                    }
+                    /** Centred under the bar. */
+                    x: (parent.width - width) / 2
                     s: overlay.s
                     screenName: overlay.modelData.name
                     expanded: pill.expanded
                     workspaceFlash: !pill.waybar
-                    waybar: pill.waybar
-                    topFlat: (pill.mode === "game" || pill.stripBar) ? 1 : 0
                     suppressed: overlay.surfaceOpen || pill.held || pill.quickChoosing
                         || pill.quickCounting || pill.mode === "game" || (pill.toastActive && Notifs.toastCritical)
                 }
