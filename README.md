@@ -18,8 +18,7 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 
 - **Pill** — one per monitor. Hovering expands it into a row of modules; surfaces open from the pill and fold back into it when dismissed. Right-clicking the pill cycles through the media surface, the timer, and up to two more surfaces chosen under **Settings → Interface → Right-click**.
 - **Dock** — pinned and running apps, hover magnification, window previews, auto-hide, and its own theme.
-- **Surfaces** — launcher, emoji, weather, calendar, media player, mixer, wallpaper browser and Wallhaven search, screen recorder, clipboard, Wi-Fi, Bluetooth, battery, power menu, system monitor, scratchpad and settings.
-- **Surface styles** — the pill, media player, mixer, system monitor, scratchpad and lock screen each offer several layouts, under **Settings → Appearance → Surface Styles**.
+- **Surfaces** — launcher, emoji, weather, calendar, media player, mixer, wallpaper browser and Wallhaven search, screen recorder, clipboard, Wi-Fi (with a scannable share QR), Bluetooth, battery, power menu, system monitor, scratchpad and settings.
 - **Wallpapers** — shuffled image wallpapers through `awww`, video wallpapers through `mpvpaper`, a cover/contain/stretch/center fit, and a palette taken from the current wallpaper.
 - **Compositor-aware** — workspaces, window state, keyboard layout, lock backends and dependency checks follow Hyprland or niri. Hyprland-only features are hidden on niri.
 - **Extras** — night light (Hyprland), game mode, keep-awake and an in-app updater.

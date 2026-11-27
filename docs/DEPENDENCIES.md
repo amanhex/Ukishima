@@ -40,6 +40,7 @@ ones you actually want.
 | `hyprlock` (Hyprland only) | optional external lock backend; the Quickshell lockscreen remains available without it |
 | `swaylock` (niri only) | optional external niri lock backend; the Quickshell lockscreen remains available without it |
 | `grim` | the screen capture behind the lock's capture backdrop — without it that backdrop falls back to the wallpaper |
+| `qrencode` | the Wi-Fi share QR card — without it the card reports the missing dependency |
 | `kitty` | live terminal palette reload via `kitty @ set-colors` (needs `allow_remote_control yes`, and `include ~/.cache/ukishima/kitty-colors` for persistence) |
 | `ghostty` | live terminal palette reload over D-Bus |
 | `fastfetch` | the recoloured system readout (needs `~/.config/fastfetch/config.jsonc.in`) |

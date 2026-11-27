@@ -24,6 +24,8 @@ PillSurface {
     mRight: 16
     mBottom: 13
 
+    property string screenName: ""
+
     readonly property var devices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
     readonly property var wifiDev: devices.find(function(d) { return d && d.type === DeviceType.Wifi }) || null
     readonly property string wifiIface: wifiDev ? (wifiDev.name || "wlan0") : "wlan0"
@@ -740,6 +742,37 @@ PillSurface {
                                         onClicked: netItem.isActive
                                             ? root.disconnectNetwork(netItem.modelData)
                                             : root.connectKnown(netItem.modelData)
+                                    }
+                                }
+
+                                Rectangle {
+                                    id: qrBtn
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    visible: netItem.isActive
+                                    width: qrLabel.implicitWidth + 18 * root.s
+                                    height: 22 * root.s
+                                    radius: 7 * root.s
+                                    color: qrArea.containsMouse ? Theme.tileBg : "transparent"
+                                    border.width: 1
+                                    border.color: qrArea.containsMouse ? Theme.vermDim : Theme.border
+
+                                    Text {
+                                        id: qrLabel
+                                        anchors.centerIn: parent
+                                        text: "QR"
+                                        color: Theme.cream
+                                        font.family: Theme.font
+                                        font.pixelSize: 10 * root.s
+                                        font.weight: Font.DemiBold
+                                        font.letterSpacing: 0.3 * root.s
+                                    }
+
+                                    MouseArea {
+                                        id: qrArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: WifiShare.toggle(root.screenName, root.wifiIface)
                                     }
                                 }
 

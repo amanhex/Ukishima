@@ -180,6 +180,13 @@
       "nudge": true
     },
     {
+      "id": "qrencode",
+      "check": { "bin": "qrencode" },
+      "pkg": ["qrencode"],
+      "why": "the Wi-Fi share QR card — the card reports that qrencode is missing",
+      "nudge": true
+    },
+    {
       "id": "kitty",
       "check": { "bin": "kitty" },
       "pkg": ["kitty"],

@@ -31,3 +31,4 @@ singleton DockState DockState.qml
 singleton Scratch Scratch.qml
 singleton Countdown Countdown.qml
 singleton Selector Selector.qml
+singleton WifiShare WifiShare.qml

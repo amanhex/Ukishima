@@ -97,6 +97,7 @@ Calling a surface again toggles it closed. Most surface calls accept a monitor n
 - `peek` — toggle the pill's peek view
 - `hide` — close the open surface
 - `page` — open a surface by name
+- `wifiQr` — open or close the Wi-Fi share QR card for the focused monitor's active Wi-Fi connection
 - `unloadAll` — free closed surfaces
 - `minimizeWindow` / `restoreWindow` — minimize or restore a Hyprland window
 - `emoji` — emoji picker
