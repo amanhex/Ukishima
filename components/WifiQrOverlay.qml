@@ -362,6 +362,7 @@ Item {
 
                 Text {
                     visible: root.showingQr
+                    width: Math.min(320 * root.s, root.width * 0.72)
                     text: "Scan to join"
                     textFormat: Text.PlainText
                     color: root.onScrimDim
@@ -394,6 +395,7 @@ Item {
 
                 Text {
                     visible: root.showingQr
+                    width: Math.min(320 * root.s, root.width * 0.72)
                     text: "Esc or click outside to close"
                     textFormat: Text.PlainText
                     color: Qt.rgba(1, 1, 1, 0.35)
