@@ -103,8 +103,13 @@ Item {
            thing that activated it, the new item's anchors would read the host width
            that binding is still sizing, and QML reports that as a binding loop.
            Activating here is a plain handler write, so nothing re-enters. */
-        if (pill.waybar && pill.surface.length > 0)
+        if (pill.waybar && pill.surface.length > 0) {
             pill.surfaceItem(pill.surface);
+            /* The surface takes over from the drawer it was opened from. Drop the
+               drawer holds now, or closing the surface re-expands the drawer. */
+            pill.hoverLatch = false;
+            pill.expandLatch = false;
+        }
         /* Latch the presented name so a closing waybar card keeps its geometry while it fades. */
         if (pill.surface.length > 0)
             pill.waybarPopupName = pill.surface;
@@ -162,7 +167,16 @@ Item {
     readonly property bool updateOpen: surface === "update"
     readonly property bool profileOpen: surface === "profile"
     readonly property bool surfacestylesOpen: surface === "surfacestyles"
-    readonly property bool settingsLike: appearanceOpen || appcatOpen || displayOpen || modulesOpen || themeOpen || accentOpen || glassOpen || fontColorOpen || interfaceOpen || rightClickOpen || fontpickerOpen || lockSettingsOpen || updateOpen || profileOpen || surfacestylesOpen
+    /** The settings page and every sub-page it can navigate to, by name. */
+    readonly property var settingsSurfaces: [
+        "appearance", "appcat", "surfacestyles", "display", "modules", "theme",
+        "accent", "glass", "fontcolor", "interface", "rightclick", "fontpicker",
+        "locksettings", "update", "profile"
+    ]
+    readonly property bool settingsLike: settingsSurfaces.indexOf(surface) >= 0
+    function isSettingsSurface(name) {
+        return !!name && settingsSurfaces.indexOf(name) >= 0;
+    }
     readonly property bool hasMedia: Players.list.length > 0
 
     readonly property var netDevices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
@@ -287,11 +301,25 @@ Item {
     }
 
     /**
+     * True while a surface's loader is actually built. `waybarPopupName` is
+     * latched so a closing card keeps its geometry while it fades, but once the
+     * loader is reclaimed the size binding must stop measuring it: re-entering
+     * `surfaceItem` to rebuild a reclaimed loader is a write back into the
+     * binding's own dependency chain, which QML reports as a waybarPopupSize
+     * binding loop.
+     */
+    function surfaceLoaderActive(name) {
+        const ld = name && pill.loaders[name] ? pill.loaders[name]() : null;
+        return !!ld && ld.active === true;
+    }
+
+    /**
      * The surface card's size in waybar mode. Normal modes still morph the pill
      * to this size; waybar keeps the bar at rest and draws the card in a
      * detached host under the module instead.
      */
-    readonly property var waybarPopupSize: (waybar && waybarPopupName && surfaces[waybarPopupName])
+    readonly property var waybarPopupSize: (waybar && waybarPopupName && surfaces[waybarPopupName]
+            && surfaceLoaderActive(waybarPopupName))
         ? surfaces[waybarPopupName].size()
         : Qt.size(0, 0)
     readonly property real waybarPopupW: Math.min(waybarPopupSize.width, barWidth - 16 * s)
@@ -321,14 +349,22 @@ Item {
                 x = p.x;
             else
                 x = p.x + a.width - w;
+        } else if (isSettingsSurface(pill.waybarPopupName)) {
+            /* Settings and its sub-pages never centre: they stay hung on the
+               capsule's right end (or the screen's right edge in the other
+               styles), so the whole settings stack shares one edge however it
+               was reached. */
+            x = pill.waybarCapsule
+                ? capsulePanel.mapToItem(pill, capsulePanel.width, 0).x - w
+                : pill.width - w - 10 * s;
         } else if (pill.waybarCapsule && pill.waybarPopupAlign !== "center") {
             /* Capsule mode, no module to hang from: align the card's right edge to
                the capsule's own right end, read from the laid-out panel so it
                tracks the capsule's width instead of a hardcoded offset. */
             x = capsulePanel.mapToItem(pill, capsulePanel.width, 0).x - w;
         } else if (pill.waybarPopupAlign === "center") {
-            /* No module to hang from: centre the card like a modal. The right-click
-               walk (media, timer) opens this way. */
+            /* No module to hang from: centre the card like a modal. Drawer tiles
+               and the right-click walk (media, timer) open this way. */
             x = (pill.width - w) / 2;
         }
         return Math.max(8 * s, Math.min(x, pill.width - w - 8 * s));
@@ -1307,6 +1343,7 @@ Item {
         id: waybarBg
         visible: pill.waybar && pill.mode !== "game"
             && !pill.waybarBare && !pill.waybarIslands && !pill.waybarCapsule
+            && !pill.waybarRail
         anchors.fill: parent
         color: pill.waybarPanel
     }
@@ -2357,6 +2394,27 @@ Item {
                 return t.indexOf("special:") === 0 ? t.slice(8, 10).toUpperCase() : t;
             }
 
+            /**
+             * Kanji numeral for a workspace id, used by the "rail" chrome. The
+             * formal set (壱弐参…) is deliberate: 一二三 read as bare dashes at
+             * bar size, while these keep their shape. Handles 1..99; special
+             * workspaces collapse to 特 (special).
+             */
+            function wsKanji(name) {
+                const t = String(name);
+                if (t.indexOf("special:") === 0)
+                    return "特";
+                const n = parseInt(t, 10);
+                if (!isFinite(n) || n <= 0 || n > 99)
+                    return t;
+                const d = ["", "壱", "弐", "参", "肆", "伍", "陸", "柒", "捌", "玖"];
+                if (n < 10)
+                    return d[n];
+                const tens = Math.floor(n / 10);
+                const ones = n % 10;
+                return (tens === 1 ? "拾" : d[tens] + "拾") + (ones ? d[ones] : "");
+            }
+
             /** Fixed-height top band: the modules sit in a single row, like the bar. */
             Item {
                 id: barBand
@@ -2407,38 +2465,32 @@ Item {
                 }
 
                 /**
-                 * "rail" chrome: the modules sit straight on the full-width slab.
-                 * No per-module pills — the only fills are a faint inverted clock
-                 * tag and a hairline rail under the bar, with the active
-                 * workspace as the single solid block.
+                 * "rail" chrome: one seamless shape (§ SeamlessBar) — a thin
+                 * strip along the top edge joins the left and right module
+                 * notches, so the bar sticks to the top and both screen edges.
+                 * The clock floats in the open centre as a pill island.
                  */
-                Rectangle {
+                SeamlessBar {
                     visible: pill.waybarRail
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: clockItem.width + 22 * pill.s
-                    height: 22 * pill.s
-                    radius: 7 * pill.s
-                    color: Qt.alpha(Theme.cream, 0.07)
-                    border.width: 1
-                    border.color: Theme.hairSoft
+                    anchors.fill: parent
+                    leftWidth: barLeft.width + 30 * pill.s
+                    rightWidth: barRight.width + 30 * pill.s
+                    radius: 14 * pill.s
+                    strip: 5 * pill.s
+                    color: pill.waybarPanel
                 }
 
+                /** The clock island: a floating pill in the centre gap. */
                 Rectangle {
+                    id: clockPlate
                     visible: pill.waybarRail
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.leftMargin: 12 * pill.s
-                    anchors.rightMargin: 12 * pill.s
-                    height: 2 * pill.s
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 8 * pill.s
+                    width: clockItem.width + 34 * pill.s
+                    height: pill.restH - 8 * pill.s
                     radius: height / 2
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "transparent" }
-                        GradientStop { position: 0.5; color: Qt.alpha(Theme.cream, 0.28) }
-                        GradientStop { position: 1.0; color: "transparent" }
-                    }
+                    color: pill.waybarPanel
                 }
 
                 /**
@@ -2479,7 +2531,7 @@ Item {
                         Row {
                             id: wsRow
                             anchors.centerIn: parent
-                            spacing: 1 * pill.s
+                            spacing: (pill.waybarRail ? 4 : 1) * pill.s
 
                             Repeater {
                                 model: Wm.workspacesFor(pill.screenName)
@@ -2499,7 +2551,9 @@ Item {
                                         return false;
                                     }
 
-                                    width: Math.max(19 * pill.s, wsNum.implicitWidth + 12 * pill.s)
+                                    width: pill.waybarRail
+                                        ? 25 * pill.s
+                                        : Math.max(19 * pill.s, wsNum.implicitWidth + 12 * pill.s)
                                     height: 22 * pill.s
 
                                     Rectangle {
@@ -2511,12 +2565,14 @@ Item {
                                     Text {
                                         id: wsNum
                                         anchors.centerIn: parent
-                                        text: waybarFace.wsLabel(modelData.name)
+                                        text: pill.waybarRail
+                                            ? waybarFace.wsKanji(modelData.name)
+                                            : waybarFace.wsLabel(modelData.name)
                                         color: (wsBtn.isActive && pill.waybarRail) ? Theme.tileBg
-                                            : (wsBtn.isActive ? Theme.cream
-                                                : (wsBtn.occupied ? Qt.alpha(Theme.cream, 0.72) : Theme.dim))
-                                        font.family: Theme.fontMono
-                                        font.pixelSize: 12.5 * pill.s
+                                            : (wsBtn.isActive ? Theme.accent
+                                                : Qt.alpha(Theme.accent, wsBtn.occupied ? 0.65 : 0.4))
+                                        font.family: pill.waybarRail ? Theme.font : Theme.fontMono
+                                        font.pixelSize: (pill.waybarRail ? 13 : 12.5) * pill.s
                                         font.weight: wsBtn.isActive ? Font.Bold : Font.Medium
                                     }
                                     MouseArea {
@@ -2591,7 +2647,8 @@ Item {
                     id: clockItem
                     anchors.horizontalCenter: pill.waybarCapsule
                         ? capsulePanel.horizontalCenter : parent.horizontalCenter
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: pill.waybarRail
+                        ? clockPlate.verticalCenter : parent.verticalCenter
                     width: barClock.implicitWidth
                     height: barClock.implicitHeight
 
@@ -2693,14 +2750,14 @@ Item {
                             anchors.centerIn: parent
                             spacing: 3 * pill.s
 
-                            GlyphIcon {
+                            BatteryGlyph {
                                 anchors.verticalCenter: parent.verticalCenter
-                                visible: Battery.charging
-                                width: 12 * pill.s
-                                height: 12 * pill.s
-                                name: "bolt"
-                                color: Battery.low ? Theme.vermLit : Theme.iconDim
-                                stroke: 1.7
+                                s: pill.s
+                                frac: Battery.frac
+                                charging: Battery.charging
+                                low: Battery.low
+                                color: Battery.low ? Theme.vermLit
+                                    : (Battery.charging ? Theme.flameGlow : Theme.iconDim)
                             }
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -2910,9 +2967,14 @@ Item {
                             enabled: waybarFace.live
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                if (waybarFace.open)
+                                if (pill.surfaceOpen) {
+                                    /* A card opened from the drawer replaces it, so
+                                       the chevron must dismiss that card too. */
                                     pill.closeWaybarDrawer();
-                                else {
+                                    pill.requestClose();
+                                } else if (waybarFace.open) {
+                                    pill.closeWaybarDrawer();
+                                } else {
                                     pill.hoverLatch = true;
                                     pill.expandLatch = true;
                                 }
@@ -3210,43 +3272,12 @@ Item {
                         width: 23 * pill.s
                         height: 12 * pill.s
 
-                        Rectangle {
-                            id: statusBattShell
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 20 * pill.s
-                            height: 11 * pill.s
-                            radius: 3 * pill.s
-                            color: "transparent"
-                            border.width: 1.3 * pill.s
-                            border.color: Battery.low ? Theme.vermLit : Qt.alpha(Theme.cream, 0.6)
-                        }
-                        Rectangle {
-                            anchors.left: statusBattShell.left
-                            anchors.leftMargin: 1.8 * pill.s
-                            anchors.verticalCenter: statusBattShell.verticalCenter
-                            width: Math.max(0, (statusBattShell.width - 3.6 * pill.s) * Battery.frac)
-                            height: statusBattShell.height - 3.6 * pill.s
-                            radius: 1.4 * pill.s
-                            color: (Battery.charging || Battery.low) ? Theme.vermLit : Theme.cream
-                        }
-                        GlyphIcon {
-                            anchors.centerIn: statusBattShell
-                            visible: Battery.charging
-                            width: 8 * pill.s
-                            height: 8 * pill.s
-                            name: "bolt"
-                            color: Theme.cream
-                            stroke: 1.6
-                        }
-                        Rectangle {
-                            anchors.left: statusBattShell.right
-                            anchors.leftMargin: 1 * pill.s
-                            anchors.verticalCenter: statusBattShell.verticalCenter
-                            width: 2 * pill.s
-                            height: 4.5 * pill.s
-                            radius: width / 2
-                            color: statusBattShell.border.color
+                        BatteryGlyph {
+                            anchors.centerIn: parent
+                            s: pill.s
+                            frac: Battery.frac
+                            charging: Battery.charging
+                            low: Battery.low
                         }
                     }
                 }
@@ -3952,8 +3983,12 @@ Item {
             { name: "power", glyph: "shutdown", label: "Power", on: Flags.pillShowPower }
         ]
 
-        anchors.right: parent.right
-        anchors.rightMargin: 10 * pill.s
+        /* Capsule mode floats short of the screen edges, so the drawer hangs off
+           the capsule's own right end (read from the laid-out panel) instead of
+           the screen's; every other style keeps it flush to the right margin. */
+        x: pill.waybarCapsule
+            ? capsulePanel.mapToItem(pill, capsulePanel.width, 0).x - width
+            : pill.width - width - 10 * pill.s
         y: pill.restH + 8 * pill.s
         width: 296 * pill.s
         height: drawerBody.implicitHeight + 28 * pill.s
@@ -4088,7 +4123,7 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: pill.requestWaybarSurface("sysmon", null)
+                    onClicked: pill.requestWaybarSurface("sysmon", null, "center")
                 }
             }
 
@@ -4148,9 +4183,9 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 if (modelData.key === "wifi")
-                                    pill.requestWaybarSurface("wifi", null);
+                                    pill.requestWaybarSurface("wifi", null, "center");
                                 else if (modelData.key === "bt")
-                                    pill.requestWaybarSurface("bt", null);
+                                    pill.requestWaybarSurface("bt", null, "center");
                                 else if (modelData.key === "dnd")
                                     Flags.dnd = !Flags.dnd;
                                 else if (modelData.key === "awake")
@@ -4209,7 +4244,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: pill.requestWaybarSurface(modelData.name, null)
+                            onClicked: pill.requestWaybarSurface(modelData.name, null, "center")
                         }
                     }
                 }

@@ -585,6 +585,14 @@ ShellRoot {
                             pill.surfaceBack();
                         else if (!pill.waybar && insideBar && mouse.y <= pillRegion.y + 40 * pill.s)
                             pill.surfaceBack();
+                        else if (pill.waybar && insideBar) {
+                            /* The bar background under a waybar popup is not a
+                               module (modules consume their own clicks first), so
+                               a press there dismisses the card like any other
+                               click-away instead of being swallowed. */
+                            pill.closeWaybarDrawer();
+                            root.close();
+                        }
                     } else {
                         if (pill.waybarDrawer) {
                             pill.closeWaybarDrawer();
