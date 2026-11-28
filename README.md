@@ -2,7 +2,7 @@
 
 > A Quickshell desktop shell for Hyprland and niri.
 
-Ukishima (浮島, *"floating island"*) puts a pill at the top of every monitor and a dock along the bottom. The pill expands in place into surfaces — launcher, media, settings and the rest — rather than opening separate panels. It is a self-contained Quickshell config and does not edit your compositor files.
+Ukishima (浮島, *"floating island"*) puts a pill at the top of every monitor and a dock along the bottom. The pill expands in place into surfaces — launcher, media, settings and the rest — rather than opening separate panels. It can also run as an edge-to-edge top bar instead of the pill, with surfaces opening under the module that launched them. It is a self-contained Quickshell config and does not edit your compositor files.
 
 ## Preview
 
@@ -16,11 +16,11 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 
 ## Features
 
-- **Pill** — one per monitor. Hovering expands it into a row of modules; surfaces open from the pill and fold back into it when dismissed. Right-clicking the pill cycles through the media surface, the timer, and up to two more surfaces chosen under **Settings → Interface → Right-click**.
+- **Pill** — hovering expands it into a row of modules; surfaces open from the pill and fold back into it when dismissed. Right-clicking the pill cycles through the media surface, the timer, and up to two more surfaces chosen under **Settings → Interface → Right-click**.
 - **Dock** — pinned and running apps, hover magnification, window previews, auto-hide, and its own theme.
-- **Surfaces** — launcher, emoji, weather, calendar, media player, mixer, wallpaper browser and Wallhaven search, screen recorder, clipboard, Wi-Fi, Bluetooth, battery, power menu, system monitor, scratchpad and settings.
-- **Surface styles** — the pill, media player, mixer, system monitor, scratchpad and lock screen each offer several layouts, under **Settings → Appearance → Surface Styles**.
-- **Wallpapers** — shuffled image wallpapers through `awww`, video wallpapers through `mpvpaper`, a cover/contain/stretch/center fit, and a palette taken from the current wallpaper.
+- **Surfaces** — launcher, emoji, weather, calendar, media player, mixer, wallpaper browser and Wallhaven search, screen recorder, clipboard, Wi-Fi, Bluetooth, battery, power menu, system monitor, scratchpad, file tray, profile and settings.
+- **Audio EQ** — the sound surface carries a ten-band equalizer with live spectrum, bass/treble/widen shelves and AutoEQ headphone profiles, alongside per-app volume and mic gain.
+- **Wallpapers** — shuffled image wallpapers through `awww` with configurable transitions, video wallpapers through `mpvpaper`, a cover/contain/stretch/center fit, and a palette taken from the current wallpaper.
 - **Compositor-aware** — workspaces, window state, keyboard layout, lock backends and dependency checks follow Hyprland or niri. Hyprland-only features are hidden on niri.
 - **Extras** — night light (Hyprland), game mode, keep-awake and an in-app updater.
 
@@ -28,6 +28,7 @@ Explore the animated showcase, features and settings on the [Ukishima website](h
 
 - Linux with Wayland, running **Hyprland** or **niri**
 - **Quickshell** 0.3.0 or newer
+- **PipeWire** for the audio EQ (the rest of the audio uses Quickshell's own bindings)
 - The command-line tools listed in [Dependencies](docs/DEPENDENCIES.md)
 
 ## Install

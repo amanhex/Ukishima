@@ -6,11 +6,12 @@ import Quickshell.Io
 /**
  * System-vitals backend for the 系 SYSTEM surface. Polls CPU, memory, swap,
  * network, disk and (when a discrete GPU is present) GPU load, temperature and
- * VRAM, exposing them as live properties the surface binds to. Polling only runs
- * while `open` is true, on three decoupled cadences so a slow source never
- * stalls the dials: the cheap /proc and hwmon reads refresh every 500ms, the GPU
- * query every 1s, and disk plus uptime every 5s. Opening the surface primes all
- * three at once so the dials are populated immediately.
+ * VRAM, exposing them as live properties the surface binds to. The cheap /proc
+ * and hwmon reads refresh every 500ms while the surface is open (1s in the
+ * ambient waybar, which only draws CPU/memory/temp); the GPU query and the
+ * disk/uptime reads run only while the surface is open, on 1s and 5s cadences.
+ * Opening the surface primes all of them at once so the dials populate
+ * immediately.
  *
  * CPU load is a two-sample delta of /proc/stat (busy vs total jiffies); network
  * rates are a two-sample delta of /proc/net/dev summed over every interface but
@@ -120,6 +121,10 @@ Singleton {
         prevRx = 0;
         prevNetTime = 0;
         fastProc.running = true;
+        /* An ambient waybar only draws CPU/memory/temp, so the GPU and
+           disk/uptime polls are primed only for the SYSTEM surface itself. */
+        if (!root.open)
+            return;
         if (hasGpu)
             gpuProc.running = true;
         slowProc.running = true;
@@ -281,7 +286,9 @@ Singleton {
     }
 
     Timer {
-        interval: 500
+        /* 500ms keeps the SYSTEM surface's dials lively; the ambient waybar only
+           draws integer CPU/temp, so it can refresh at 1s. */
+        interval: root.open ? 500 : 1000
         running: root.open || root.ambient
         repeat: true
         onTriggered: if (!fastProc.running) fastProc.running = true
@@ -289,14 +296,14 @@ Singleton {
 
     Timer {
         interval: 1000
-        running: (root.open || root.ambient) && root.hasGpu
+        running: root.open && root.hasGpu
         repeat: true
         onTriggered: if (!gpuProc.running) gpuProc.running = true
     }
 
     Timer {
         interval: 5000
-        running: root.open || root.ambient
+        running: root.open
         repeat: true
         onTriggered: if (!slowProc.running) slowProc.running = true
     }

@@ -4004,9 +4004,9 @@ Item {
         enabled: open
         transform: Translate {
             x: waybarDrawer.open ? 0 : 18 * pill.s
-            Behavior on x { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+            Behavior on x { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.cardEase } }
         }
-        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.cardEase } }
 
         Rectangle {
             anchors.fill: parent
@@ -4292,10 +4292,15 @@ Item {
          * modes stay at rest here and let the pill body morph do the work.
          */
         opacity: pill.waybar ? (pill.surfaceOpen ? 1 : 0) : 1
-        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.cardEase } }
         transformOrigin: Item.Top
         scale: pill.waybar ? (pill.surfaceOpen ? 1 : 0.97) : 1
-        Behavior on scale { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+        Behavior on scale { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.cardEase } }
+        /** The drop-in itself: sink from just under the bar. Bounce overshoots, Float eases in-out, Snap lands hard. */
+        transform: Translate {
+            y: pill.waybar ? (pill.surfaceOpen ? 0 : -10 * pill.s) : 0
+            Behavior on y { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.cardEase } }
+        }
 
         Rectangle {
             anchors.fill: parent
@@ -4872,7 +4877,7 @@ sourceComponent: Media {
         width: pill.toastCardW
         height: pill.toastCardH
 
-        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard } }
+        Behavior on opacity { NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.cardEase } }
 
         /** Follow the bar's own slide when auto-hide pulls it off the top. */
         Behavior on y {
@@ -4906,7 +4911,7 @@ sourceComponent: Media {
         opacity: pill.toastShown ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity {
-            NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard }
+            NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.cardEase }
         }
 
         sourceComponent: Item {

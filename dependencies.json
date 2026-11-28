@@ -198,6 +198,12 @@
       "why": "the recoloured system readout (needs `~/.config/fastfetch/config.jsonc.in`)"
     },
     {
+      "id": "pipewire",
+      "check": { "bin": "pipewire" },
+      "pkg": ["pipewire"],
+      "why": "the audio EQ — it runs a dedicated filter-chain instance; playback and the mixer still work without it"
+    },
+    {
       "id": "hypridle",
       "compositor": "hyprland",
       "check": { "bin": "hypridle" },

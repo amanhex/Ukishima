@@ -48,6 +48,15 @@ Singleton {
     readonly property int pillEase: styleEase(Flags.motionStyle)
     readonly property int dockEase: styleEase(Flags.dockMotionStyle)
 
+    /**
+     * Entrance feel for the bar's own cards (waybar popups, the expand drawer,
+     * the toast). Standard keeps the shipped OutCubic; Snap/Float/Bounce let
+     * the Motion style shape it. The pill body morph keeps `pillEase` above, so
+     * in waybar mode — where the bar never morphs — this is what the setting
+     * actually drives.
+     */
+    readonly property int cardEase: Flags.motionStyle === "standard" ? easeStandard : pillEase
+
     /** Looping scan/pairing breath pulse. */
     readonly property int pulse: Math.round(420 * mult)
 }

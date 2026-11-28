@@ -43,6 +43,7 @@ ones you actually want.
 | `kitty` | live terminal palette reload via `kitty @ set-colors` (needs `allow_remote_control yes`, and `include ~/.cache/ukishima/kitty-colors` for persistence) |
 | `ghostty` | live terminal palette reload over D-Bus |
 | `fastfetch` | the recoloured system readout (needs `~/.config/fastfetch/config.jsonc.in`) |
+| `pipewire` | the audio EQ — it runs a dedicated filter-chain instance; playback and the mixer work without it |
 | `hypridle` | idle / DPMS lock integration alongside the built-in keep-awake (Hyprland) |
 
 ## Compositor notes

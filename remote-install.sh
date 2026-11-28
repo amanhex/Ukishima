@@ -68,20 +68,25 @@ else
     printf 'Download failed. Check your connection and retry.\n' >&2
     exit 1
   fi
-  for file in shell.qml launch.sh dependencies.json scripts/wm.sh scripts/check-deps.sh; do
+  for file in shell.qml launch.sh dependencies.json scripts/wm.sh scripts/check-deps.sh \
+              sound/eq.conf sound/eq-run.sh; do
     if [ ! -f "$STAGE/repo/$file" ]; then
       printf 'Downloaded files are incomplete (%s missing); nothing was installed.\n' "$file" >&2
       exit 1
     fi
   done
-  if [ ! -d "$STAGE/repo/components" ]; then
-    printf 'Downloaded files are incomplete (components/ missing); nothing was installed.\n' >&2
-    exit 1
-  fi
-  if [ ! -x "$STAGE/repo/scripts/check-deps.sh" ]; then
-    printf 'Downloaded files are incomplete (check-deps.sh is not executable); nothing was installed.\n' >&2
-    exit 1
-  fi
+  for dir in Singletons components surfaces lib sound; do
+    if [ ! -d "$STAGE/repo/$dir" ]; then
+      printf 'Downloaded files are incomplete (%s/ missing); nothing was installed.\n' "$dir" >&2
+      exit 1
+    fi
+  done
+  for script in scripts/check-deps.sh sound/eq-run.sh; do
+    if [ ! -x "$STAGE/repo/$script" ]; then
+      printf 'Downloaded files are incomplete (%s is not executable); nothing was installed.\n' "$script" >&2
+      exit 1
+    fi
+  done
   if ! mv -T -- "$STAGE/repo" "$ROOT"; then
     printf 'Could not place Ukishima in %s; nothing was installed.\n' "$ROOT" >&2
     exit 1

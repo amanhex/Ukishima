@@ -108,9 +108,10 @@ Singleton {
     property alias styleScratch: adapter.styleScratch
     property alias styleLock: adapter.styleLock
     //* Chrome variant for the "waybar" display: "flat" (edge-to-edge slab),
-    //* "pills" (slab + a rounded chip per module), "islands" (no slab, three
-    //* floating group islands), "capsule" (one content-hugging centred island)
-    //* or "minimal" (modules over the wallpaper, no chrome). Only shown while
+    //* "rail" (two edge notches with the clock floating between), "islands" (no
+    //* slab, three floating group islands), "capsule" (one content-hugging centred
+    //* island) or "minimal" (modules over the wallpaper, no chrome). Only shown
+    //* while
     //* waybar is selected.
     property alias styleWaybar: adapter.styleWaybar
 
