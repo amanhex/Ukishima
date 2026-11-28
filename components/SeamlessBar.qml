@@ -1,14 +1,12 @@
 import QtQuick
 
 /**
- * Waybar "rail" chrome, ported from the SeamlessBarShape in the reference
- * dotfiles (SaratAngajalaoffl/dotfiles-quickshell).
- *
- * One Canvas paints a thin strip along the top edge plus the left and right
- * module notches. The notches are flush to the screen edges and to the top,
- * their inner top corner sweeps into the strip, and their bottom inner corner
- * is rounded — so the strip joins the pieces into a single object. The centre
- * is left open for the floating clock island.
+ * Waybar "rail" chrome: two separate notches, one flush to the left screen
+ * edge and one to the right, both attached to the top edge. Each inner edge
+ * sweeps out and blends into the top edge (a "swoosh") instead of meeting it
+ * at a hard corner, so the modules read as flowing out of the top of the
+ * screen. There is no connector strip between them; the centre stays open for
+ * the floating clock island.
  */
 Canvas {
     id: root
@@ -16,7 +14,7 @@ Canvas {
     property real leftWidth: 240
     property real rightWidth: 240
     property real radius: 14
-    property real strip: 5
+    property real swoosh: 28
     property color color: "black"
 
     onWidthChanged: requestPaint()
@@ -24,8 +22,29 @@ Canvas {
     onLeftWidthChanged: requestPaint()
     onRightWidthChanged: requestPaint()
     onRadiusChanged: requestPaint()
-    onStripChanged: requestPaint()
+    onSwooshChanged: requestPaint()
     onColorChanged: requestPaint()
+
+    /**
+     * One notch, flush to the top and its own screen edge. `l` is its inner
+     * edge; `swoosh` is how far the top edge flares past that edge before
+     * curving back down into it.
+     */
+    function notch(ctx, l, h) {
+        const r = root.radius
+        const sw = Math.max(0, Math.min(root.swoosh, l - r, h - r))
+
+        ctx.beginPath()
+        ctx.moveTo(0, h)
+        ctx.lineTo(l - r, h)
+        ctx.arcTo(l, h, l, h - r, r)            // bottom-inner rounded corner
+        ctx.lineTo(l, sw)
+        ctx.quadraticCurveTo(l, 0, l + sw, 0)   // sweep out into the top edge
+        ctx.lineTo(0, 0)
+        ctx.lineTo(0, h)
+        ctx.closePath()
+        ctx.fill()
+    }
 
     onPaint: {
         const ctx = getContext("2d")
@@ -33,34 +52,17 @@ Canvas {
 
         const w = width
         const h = height
-        const r = root.radius
-        const b = root.strip
         const l = Math.min(root.leftWidth, w * 0.42)
         const rightStart = w - Math.min(root.rightWidth, w * 0.42)
 
-        ctx.beginPath()
         ctx.fillStyle = root.color
 
-        // Left notch: flush to the left edge, top-inner corner into the strip.
-        ctx.moveTo(0, h)
-        ctx.lineTo(l - r, h)
-        ctx.arcTo(l, h, l, h - r, r)
-        ctx.lineTo(l, b + r)
-        ctx.arcTo(l, b, l + r, b, r)
+        root.notch(ctx, l, h)
 
-        // Thin connecting strip across the gap.
-        ctx.lineTo(rightStart - r, b)
-
-        // Right notch, mirrored.
-        ctx.arcTo(rightStart, b, rightStart, b + r, r)
-        ctx.lineTo(rightStart, h - r)
-        ctx.arcTo(rightStart, h, rightStart + r, h, r)
-        ctx.lineTo(w, h)
-
-        // Close over the top edge: the strip runs the full width.
-        ctx.lineTo(w, 0)
-        ctx.lineTo(0, 0)
-        ctx.lineTo(0, h)
-        ctx.fill()
+        ctx.save()
+        ctx.translate(w, 0)
+        ctx.scale(-1, 1)
+        root.notch(ctx, w - rightStart, h)
+        ctx.restore()
     }
 }

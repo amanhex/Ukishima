@@ -552,6 +552,15 @@ ShellRoot {
                     width: pill.hidden ? 0 : pillRegion.width
                     height: pill.hidden ? 0 : pillRegion.height
                 }
+                /* Keep the reveal strip live: with auto-hide the bar sits off-screen
+                   behind the toast, so this is the only way to pull it back and reach
+                   the chevron. */
+                Region {
+                    x: revealRegion.x
+                    y: revealRegion.y
+                    width: revealRegion.width
+                    height: revealRegion.height
+                }
                 Region {
                     x: pill.x + pill.toastX
                     y: pill.y + pill.toastScreenY

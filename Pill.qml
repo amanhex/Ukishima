@@ -444,6 +444,13 @@ Item {
         return "";
     }
     readonly property bool toastActive: Notifs.popups.length > 0
+    /**
+     * Whether the toast card is mounted. Waybar floats it as a detached overlay
+     * that never claims the bar's mode — so the bar stays at rest (and the
+     * chevron can still open the drawer) while it shows. Other modes route
+     * through the "toast" morph mode unchanged.
+     */
+    readonly property bool toastShown: waybar ? toastActive : mode === "toast"
     readonly property bool osdActive: osd.flashing
 
     /**
@@ -815,8 +822,8 @@ Item {
         : (Flags.gameMode ? "game"
         : (quickChoosing ? "quickChoose"
         : (quickCounting ? "quickCount"
-        : (toastActive && Notifs.toastCritical && !held ? "toast"
-        : (toastActive && !held ? "toast"
+        : (toastActive && Notifs.toastCritical && !held && !waybar ? "toast"
+        : (toastActive && !held && !waybar ? "toast"
         : (expanded ? "hover" : "rest"))))))))
 
     /**
@@ -2465,10 +2472,10 @@ Item {
                 }
 
                 /**
-                 * "rail" chrome: one seamless shape (§ SeamlessBar) — a thin
-                 * strip along the top edge joins the left and right module
-                 * notches, so the bar sticks to the top and both screen edges.
-                 * The clock floats in the open centre as a pill island.
+                 * "rail" chrome: two separate notches (§ SeamlessBar), each
+                 * flush to the top edge and its own screen edge, their inner
+                 * ends swooshing up into the top. No connector between them —
+                 * the clock floats in the open centre as a pill island.
                  */
                 SeamlessBar {
                     visible: pill.waybarRail
@@ -2476,7 +2483,7 @@ Item {
                     leftWidth: barLeft.width + 30 * pill.s
                     rightWidth: barRight.width + 30 * pill.s
                     radius: 14 * pill.s
-                    strip: 5 * pill.s
+                    swoosh: 28 * pill.s
                     color: pill.waybarPanel
                 }
 
@@ -4855,7 +4862,7 @@ sourceComponent: Media {
      */
     Item {
         id: toastHost
-        readonly property bool shown: pill.mode === "toast"
+        readonly property bool shown: pill.toastShown
 
         /** Waybar fades the whole card; normal modes let the loader fade and the pill morph. */
         visible: pill.waybar ? opacity > 0.01 : shown
@@ -4895,8 +4902,8 @@ sourceComponent: Media {
         anchors.leftMargin: 16 * pill.s
         anchors.rightMargin: 16 * pill.s
         anchors.bottomMargin: 12 * pill.s
-        enabled: pill.mode === "toast"
-        opacity: pill.mode === "toast" ? 1 : 0
+        enabled: pill.toastShown
+        opacity: pill.toastShown ? 1 : 0
         visible: opacity > 0.01
         Behavior on opacity {
             NumberAnimation { duration: Motion.pillStandard; easing.type: Motion.easeStandard }
@@ -4911,7 +4918,7 @@ sourceComponent: Media {
                 anchors.right: parent.right
                 anchors.top: parent.top
                 s: pill.s
-                live: pill.mode === "toast"
+                live: pill.toastShown
                 notif: Notifs.popups.length > 0 ? Notifs.popups[Notifs.popups.length - 1] : null
             }
 

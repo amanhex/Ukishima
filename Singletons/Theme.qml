@@ -52,9 +52,9 @@ Singleton {
     readonly property string customHex: Flags.accentOverride
     readonly property bool customAccent: customHex.length > 0
     /** Effective accent base — the override, else the wallpaper/hue accent, else the warm default. */
-    readonly property color accent: customAccent ? customHex : (manual ? manualPal.primary : (dynamic ? Dyn.primary : "#ff9a64"))
+    readonly property color accent: customAccent ? customHex : (manual ? manualPal.primary : (dynamic ? Dyn.primary : (light ? "#b0491f" : "#ff9a64")))
     /** Deep pair, standing in where the scheme has a matugen container colour. */
-    readonly property color accentDeep: customAccent ? Qt.darker(accent, 1.45) : (manual ? manualPal.primary_container : (dynamic ? Dyn.primaryContainer : "#a3371f"))
+    readonly property color accentDeep: customAccent ? Qt.darker(accent, 1.45) : (manual ? manualPal.primary_container : (dynamic ? Dyn.primaryContainer : (light ? "#8f3a17" : "#a3371f")))
 
     /**
      * User text-colour override: a "#rrggbb" hex, empty to follow the scheme.
@@ -119,21 +119,21 @@ Singleton {
      * token to black, while the accent always loads and contrasts the pill
      * surface. The static branches keep the fixed warm hex.
      */
-    readonly property color onGlow: customAccent ? accent : (manual ? manualPal.primary : (dynamic ? Dyn.primary : "#ff9a64"))
+    readonly property color onGlow: customAccent ? accent : (manual ? manualPal.primary : (dynamic ? Dyn.primary : (light ? "#b0491f" : "#ff9a64")))
 
-    readonly property color verm:     customAccent ? Qt.darker(accent, 1.18) : (manual ? Qt.darker(manualPal.primary, 1.18) : (dynamic ? Qt.darker(Dyn.primary, 1.18) : "#c0442b"))
-    readonly property color vermLit:  customAccent ? accent : (manual ? manualPal.primary : (dynamic ? Dyn.primary : "#e0563b"))
-    readonly property color vermDeep: customAccent ? accentDeep : (manual ? manualPal.primary_container : (dynamic ? Dyn.primaryContainer : "#a3371f"))
+    readonly property color verm:     customAccent ? Qt.darker(accent, 1.18) : (manual ? Qt.darker(manualPal.primary, 1.18) : (dynamic ? Qt.darker(Dyn.primary, 1.18) : (light ? "#a8431f" : "#c0442b")))
+    readonly property color vermLit:  customAccent ? accent : (manual ? manualPal.primary : (dynamic ? Dyn.primary : (light ? "#c25028" : "#e0563b")))
+    readonly property color vermDeep: customAccent ? accentDeep : (manual ? manualPal.primary_container : (dynamic ? Dyn.primaryContainer : (light ? "#8f3a17" : "#a3371f")))
     readonly property color cream:    customText ? customTextHex : (manual ? manualPal.cream : (dynamic ? Dyn.cream : (light ? "#2a241f" : "#ececec")))
     readonly property color bright:   customText ? customTextHex : (manual ? manualPal.bright : (dynamic ? Dyn.bright : (light ? "#1d1814" : "#ffffff")))
     readonly property color dim:      manual ? manualPal.dim : (dynamic ? Dyn.dim : (light ? "#6b635c" : "#8c8c8c"))
     readonly property color cardTop:  oled ? "#000000" : (manual ? manualPal.surface_container_high : (dynamic ? Dyn.surfaceContainerHigh : (light ? "#f6f2ec" : "#171717")))
     readonly property color cardBot:  oled ? "#000000" : (manual ? manualPal.surface_container_low : (dynamic ? Dyn.surfaceContainerLow : (light ? "#ece6df" : "#0c0c0c")))
-    readonly property color border:   oled ? "#2a2a2a" : (manual ? manualPal.outline_variant : (dynamic ? Dyn.outlineVariant : (light ? "#d9d1c8" : "#2b2b2b")))
-    readonly property color shadow:     Qt.rgba(0, 0, 0, 0.55)
+    readonly property color border:   oled ? "#2a2a2a" : (manual ? manualPal.outline_variant : (dynamic ? Dyn.outlineVariant : (light ? "#c9bfb3" : "#2b2b2b")))
+    readonly property color shadow:     light ? Qt.rgba(0, 0, 0, 0.22) : Qt.rgba(0, 0, 0, 0.55)
     readonly property color tileBg:   oled ? "#000000" : (manual ? manualPal.surface : (dynamic ? Dyn.surface : (light ? "#e9e3dc" : "#141414")))
     readonly property color subtle:   manual ? manualPal.subtle : (dynamic ? Dyn.subtle : (light ? "#5f574f" : "#a8a8a8"))
-    readonly property color faint:    manual ? manualPal.faint : (dynamic ? Dyn.faint : (light ? "#8a8078" : "#6a6a6a"))
+    readonly property color faint:    manual ? manualPal.faint : (dynamic ? Dyn.faint : (light ? "#6f665e" : "#6a6a6a"))
     readonly property color iconDim:  customText ? Qt.alpha(cream, 0.6) : (manual ? manualPal.icon_dim : (dynamic ? Dyn.iconDim : (light ? "#5a524b" : "#bdbdbd")))
     readonly property color hair:     Qt.alpha(cream, 0.13)
     readonly property color hairSoft: Qt.alpha(cream, 0.08)
@@ -143,8 +143,8 @@ Singleton {
     readonly property color vermBurn:  customAccent ? Qt.darker(accentDeep, 1.1) : (manual ? Qt.darker(manualPal.primary_container, 1.1) : (dynamic ? Qt.darker(Dyn.primaryContainer, 1.1) : "#8a2c14"))
     readonly property color tickRest:  manual ? manualPal.tick_rest : (dynamic ? Dyn.tickRest : (light ? "#4a423c" : "#c2c2c2"))
     readonly property color threadBg:  Qt.alpha(cream, 0.13)
-    readonly property color flameCore: customAccent ? Qt.lighter(accent, 1.03) : (dyn ? Qt.lighter(onGlow, 1.03) : "#ffd9c2")
-    readonly property color flameGlow: customAccent ? accent : (dyn ? onGlow : "#ff9a64")
+    readonly property color flameCore: customAccent ? Qt.lighter(accent, 1.03) : (dyn ? Qt.lighter(onGlow, 1.03) : (light ? "#d0603a" : "#ffd9c2"))
+    readonly property color flameGlow: customAccent ? accent : (dyn ? onGlow : (light ? "#b0491f" : "#ff9a64"))
 
     /**
      * Flame canvas ramp: literal hex strings (color type won't work), fed
@@ -153,16 +153,16 @@ Singleton {
      * matugen's raw hex strings through untouched rather than any Qt.darker math,
      * and the manual branch passes the locally-computed PaletteHue hex strings.
      */
-    readonly property string flameInk:   customAccent ? customHex : (manual ? manualPal.primary : (dynamic ? Dyn.primary : "#f0795a"))
+    readonly property string flameInk:   customAccent ? customHex : (manual ? manualPal.primary : (dynamic ? Dyn.primary : (light ? "#b0491f" : "#f0795a")))
     readonly property string flameEmber: customAccent ? hexOf(accentDeep) : (manual ? manualPal.primary_container : (dynamic ? Dyn.primaryContainer : "#7e2812"))
     readonly property string flameBurn:  customAccent ? hexOf(accentDeep) : (manual ? manualPal.primary_container : (dynamic ? Dyn.primaryContainer : "#8a2c14"))
-    readonly property string flameTip:   customAccent ? hexOf(Qt.lighter(accent, 1.2)) : (manual ? manualPal.on_primary_container : (dynamic ? Dyn.onPrimaryContainer : "#ffb38a"))
-    readonly property color todayWarm: customAccent ? accent : (dyn ? onGlow : "#ffb38a")
+    readonly property string flameTip:   customAccent ? hexOf(Qt.lighter(accent, 1.2)) : (manual ? manualPal.on_primary_container : (dynamic ? Dyn.onPrimaryContainer : (light ? "#b95a2c" : "#ffb38a")))
+    readonly property color todayWarm: customAccent ? accent : (dyn ? onGlow : (light ? "#b0491f" : "#ffb38a"))
     readonly property color ghost:     oled ? "#000000" : (manual ? manualPal.surface_container_highest : (dynamic ? Dyn.surfaceContainerHighest : (light ? "#e3ddd5" : "#242424")))
     readonly property color frameBg:      Qt.alpha(cream, 0.055)
     readonly property color frameBorder:  Qt.alpha(cream, 0.10)
     readonly property color creamMenu:     Qt.alpha(cream, 0.82)
-    readonly property real shadowOpacity: 0.5
+    readonly property real shadowOpacity: light ? 0.22 : 0.5
     /**
      * Snapshot of the system families, not a binding: Qt.fontFamilies() is not
      * notifiable, so a font dropped onto the pill re-registers through
